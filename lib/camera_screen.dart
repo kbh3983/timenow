@@ -6,10 +6,15 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'timestamp_overlays.dart';
+import 'calendar_album_screen.dart';
+import 'album_service.dart';
+import 'photo_review_screen.dart';
+import 'widgets/bottom_nav_bar.dart';
+import 'ux_config.dart';
 
 class CameraScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -25,22 +30,51 @@ class _CameraScreenState extends State<CameraScreen>
   int _selectedCameraIndex = 0;
   CameraAspectRatio _aspectRatio = CameraAspectRatio.ratio1x1;
   TimestampDesign _selectedDesign = TimestampDesign.dateText;
+  String _currentAlbum = '일상';
   bool _isCapturing = false;
-  double _overlayOpacity = 0.9;
-  bool _showOpacitySlider = false;
 
   FlashMode _flashMode = FlashMode.off;
   int _timerSeconds = 0;
   int _timerCountdown = 0;
   Timer? _captureTimer;
 
+  double _currentZoom = 1.0;
   final GlobalKey _repaintKey = GlobalKey();
+  final GlobalKey _rawRepaintKey = GlobalKey();
+  File? _latestPhoto;
+
+  // Timer Status Overlay State
+  String? _timerStatusText;
+  Timer? _statusOverlayTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initCamera();
+    _loadAlbums();
+  }
+
+  Future<void> _toggleZoom() async {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    final newZoom = _currentZoom == 1.0 ? 2.0 : 1.0;
+    try {
+      await _controller!.setZoomLevel(newZoom);
+      setState(() => _currentZoom = newZoom);
+    } catch (e) {
+      debugPrint("Zoom error: $e");
+    }
+  }
+
+  Future<void> _loadAlbums() async {
+    final allPhotos = await AlbumService.getAllPhotos(albumName: '전체');
+    if (mounted) {
+      setState(() {
+        if (allPhotos.isNotEmpty) {
+          _latestPhoto = allPhotos.first;
+        }
+      });
+    }
   }
 
   @override
@@ -90,33 +124,16 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Future<void> _toggleFlash() async {
-    final modes = [FlashMode.off, FlashMode.auto, FlashMode.always];
-    final idx = modes.indexOf(_flashMode);
-    _flashMode = modes[(idx + 1) % modes.length];
+    // Only OFF and ALWAYS (ON) for 2-way toggle
+    _flashMode = _flashMode == FlashMode.off ? FlashMode.always : FlashMode.off;
     await _controller?.setFlashMode(_flashMode);
     setState(() {});
   }
 
-  IconData get _flashIcon {
-    switch (_flashMode) {
-      case FlashMode.auto:
-        return Icons.flash_auto;
-      case FlashMode.always:
-        return Icons.flash_on;
-      default:
-        return Icons.flash_off;
-    }
-  }
-
-  String get _flashLabel {
-    switch (_flashMode) {
-      case FlashMode.auto:
-        return 'Auto';
-      case FlashMode.always:
-        return 'On';
-      default:
-        return 'Off';
-    }
+  String get _flashSvg {
+    return _flashMode == FlashMode.always
+        ? 'assets/icons/flash_on.svg'
+        : 'assets/icons/flash_off.svg';
   }
 
   void _onCapturePressed() {
@@ -131,12 +148,34 @@ class _CameraScreenState extends State<CameraScreen>
     setState(() => _timerCountdown = _timerSeconds);
     _captureTimer?.cancel();
     _captureTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_timerCountdown <= 1) {
-        timer.cancel();
-        setState(() => _timerCountdown = 0);
-        _capturePhoto();
-      } else {
+      if (_timerCountdown > 0) {
         setState(() => _timerCountdown--);
+        if (_timerCountdown == 0) {
+          timer.cancel();
+          _capturePhoto();
+        }
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _cycleTimer() {
+    final cycle = UXConfig.kTimerCycle;
+    final currentIndex = cycle.indexOf(_timerSeconds);
+    final nextIndex = (currentIndex + 1) % cycle.length;
+    final nextSeconds = cycle[nextIndex];
+
+    setState(() => _timerSeconds = nextSeconds);
+    _showTimerStatusOverlay(nextSeconds == 0 ? 'OFF' : '$nextSeconds');
+  }
+
+  void _showTimerStatusOverlay(String text) {
+    _statusOverlayTimer?.cancel();
+    setState(() => _timerStatusText = text);
+    _statusOverlayTimer = Timer(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        setState(() => _timerStatusText = null);
       }
     });
   }
@@ -151,7 +190,7 @@ class _CameraScreenState extends State<CameraScreen>
 
     try {
       final boundary =
-          _repaintKey.currentContext?.findRenderObject()
+          _rawRepaintKey.currentContext?.findRenderObject()
               as RenderRepaintBoundary?;
 
       if (boundary != null) {
@@ -161,11 +200,30 @@ class _CameraScreenState extends State<CameraScreen>
 
         final dir = await getTemporaryDirectory();
         final path =
-            '${dir.path}/timenow_${DateTime.now().millisecondsSinceEpoch}.png';
-        await File(path).writeAsBytes(bytes);
-        await Gal.putImage(path, album: 'Timenow');
+            '${dir.path}/timenow_raw_${DateTime.now().millisecondsSinceEpoch}.png';
+        final file = File(path);
+        await file.writeAsBytes(bytes);
 
-        if (mounted) _showSavedSnackbar();
+        if (mounted) {
+          final now = DateTime.now();
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PhotoReviewScreen(
+                imageFile: file,
+                initialDesign: _selectedDesign,
+                initialAlbum: _currentAlbum,
+                aspectRatio: _aspectRatio.value,
+                captureTime: now,
+              ),
+            ),
+          );
+
+          if (result == true && mounted) {
+            _showSavedSnackbar();
+            _loadAlbums();
+          }
+        }
       }
     } catch (e) {
       debugPrint('Capture error: $e');
@@ -197,138 +255,84 @@ class _CameraScreenState extends State<CameraScreen>
     );
   }
 
-  void _showTimerSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.88),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(0, 20, 0, 8),
-              child: Text(
-                'Self-timer',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ...[0, 3, 5, 10].map((sec) {
-              final selected = _timerSeconds == sec;
-              return ListTile(
-                leading: Icon(
-                  sec == 0 ? Icons.timer_off : Icons.timer,
-                  color: selected ? Colors.deepOrange : Colors.white54,
-                ),
-                title: Text(
-                  sec == 0 ? 'Off' : '${sec}s',
-                  style: TextStyle(
-                    color: selected ? Colors.deepOrange : Colors.white,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-                trailing: selected
-                    ? const Icon(Icons.check, color: Colors.deepOrange)
-                    : null,
-                onTap: () {
-                  setState(() => _timerSeconds = sec);
-                  Navigator.pop(ctx);
-                },
-              );
-            }),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
     );
 
-    final bool isFullScreen = _aspectRatio == CameraAspectRatio.ratio16x9;
+    final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
+    final Color topIconColor = UXConfig.getTopIconColor(_aspectRatio.value);
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: isFullScreen ? _buildFullLayout() : _buildNormalLayout(),
-      ),
-    );
-  }
-
-  // ─── Normal Layout (1:1 / 5:4) ───────────────────────────────────
-  Widget _buildNormalLayout() {
-    return Column(
-      children: [
-        _topBar(isOverlay: false),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (ctx, constraints) {
-              return _buildCameraBox(constraints);
-            },
-          ),
-        ),
-        _bottomControls(isOverlay: false),
-        _timestampPicker(),
-      ],
-    );
-  }
-
-  Widget _buildCameraBox(BoxConstraints constraints) {
-    final targetRatio = _aspectRatio.value;
-    final maxW = constraints.maxWidth;
-    final maxH = constraints.maxHeight;
-
-    double boxW, boxH;
-    if (maxW / targetRatio <= maxH) {
-      boxW = maxW;
-      boxH = maxW / targetRatio;
-    } else {
-      boxH = maxH;
-      boxW = maxH * targetRatio;
-    }
-
-    return Container(
-      color: Colors.white,
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          RepaintBoundary(
-            key: _repaintKey,
-            child: SizedBox(
-              width: boxW,
-              height: boxH,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ClipRect(child: _cameraPreview()),
-                  if (_selectedDesign != TimestampDesign.none)
-                    Positioned.fill(
-                      child: TimestampOverlayWidget(design: _selectedDesign),
-                    ),
-                ],
-              ),
+          // 1. Camera Preview with localized RepaintBoundary for cropping
+          _cameraPreviewWithTimestamp(),
+
+          // 2. Translucent Mask for Aspect Ratio
+          _buildCameraMask(),
+
+          // 3. UI Overlays
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _topBar(iconColor: topIconColor),
+          ),
+
+          // Bottom UI Stack
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ratioButtons(isOverlay: !isFullAuto),
+                const SizedBox(height: 12),
+                _timestampPicker(),
+                const SizedBox(height: 12),
+                _bottomControls(isOverlay: !isFullAuto),
+              ],
             ),
           ),
-          _ratioButtons(isOverlay: false),
+
+          // Countdown
           if (_timerCountdown > 0)
-            Text(
-              '$_timerCountdown',
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 60,
-                fontWeight: FontWeight.w200,
+            Center(
+              child: Text(
+                '$_timerCountdown',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 120,
+                  fontWeight: FontWeight.w100,
+                  shadows: [Shadow(blurRadius: 20, color: Colors.black)],
+                ),
+              ),
+            ),
+
+          // Timer Status Overlay
+          if (_timerStatusText != null)
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  _timerStatusText!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
         ],
@@ -336,95 +340,200 @@ class _CameraScreenState extends State<CameraScreen>
     );
   }
 
-  // ─── Full Screen Layout (16:9) ───────────────────────────────────
-  Widget _buildFullLayout() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Camera + timestamp overlay (full screen)
-        RepaintBoundary(
-          key: _repaintKey,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              _cameraPreview(),
-              if (_selectedDesign != TimestampDesign.none)
-                Positioned.fill(
-                  child: TimestampOverlayWidget(design: _selectedDesign),
+  Widget _cameraPreviewWithTimestamp() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenW = constraints.maxWidth;
+        final screenH = constraints.maxHeight;
+
+        final targetRatio = _aspectRatio.value;
+        double clearW, clearH;
+        if (screenW / targetRatio <= screenH) {
+          clearW = screenW;
+          clearH = screenW / targetRatio;
+        } else {
+          clearH = screenH;
+          clearW = screenH * targetRatio;
+        }
+
+        // Centering logic: Center between top bar and bottom ratio buttons
+        final topPadding = MediaQuery.of(context).padding.top;
+        final topMenuH = topPadding + 60;
+        final bottomUIH =
+            286; // 20 (pos) + 64 (ctrls) + 12 (gap) + 138 (picker) + 12 (gap) + 40 (ratio)
+        final availableH = screenH - topMenuH - bottomUIH;
+
+        // Vertically center clearH within availableH (except for 9:16 which starts from top)
+        final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
+
+        final clearTop =
+            (isFullAuto || _aspectRatio == CameraAspectRatio.ratio5x4)
+            ? topMenuH
+            : topMenuH + (availableH - clearH) / 2;
+        final clearLeft = (screenW - clearW) / 2;
+
+        // 1:1 specific coordinates for fixed hover buttons
+        final ratio1x1 = CameraAspectRatio.ratio1x1.value;
+        double clearW1x1, clearH1x1;
+        if (screenW / ratio1x1 <= screenH) {
+          clearW1x1 = screenW;
+          clearH1x1 = screenW / ratio1x1;
+        } else {
+          clearH1x1 = screenH;
+          clearW1x1 = screenH * ratio1x1;
+        }
+        final clearTop1x1 = topMenuH + (availableH - clearH1x1) / 2;
+        final clearLeft1x1 = (screenW - clearW1x1) / 2;
+
+        return Stack(
+          children: [
+            // Full background preview (non-captured)
+            Positioned.fill(
+              child: OverflowBox(
+                maxHeight: screenH,
+                maxWidth: screenW,
+                child: _cameraPreview(),
+              ),
+            ),
+
+            // Captured area (Clear hole + Timestamp)
+            Positioned(
+              top: clearTop,
+              left: clearLeft,
+              child: RepaintBoundary(
+                key: _repaintKey,
+                child: SizedBox(
+                  width: clearW,
+                  height: clearH,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      RepaintBoundary(
+                        key: _rawRepaintKey,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Positioned(
+                              top: -clearTop,
+                              left: -clearLeft,
+                              width: screenW,
+                              height: screenH,
+                              child: _cameraPreview(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_selectedDesign != TimestampDesign.none)
+                        Positioned.fill(
+                          child: TimestampOverlayWidget(
+                            design: _selectedDesign,
+                            opacity: 1.0, // Fixed opacity
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-            ],
-          ),
-        ),
-        // Ratio buttons are mid-overlay, above camera, below controls
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 230,
-          child: Opacity(
-            opacity: _overlayOpacity,
-            child: Center(child: _ratioButtons(isOverlay: true)),
-          ),
-        ),
-        // Top bar overlay
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: Opacity(
-            opacity: _overlayOpacity,
-            child: _topBar(isOverlay: true),
-          ),
-        ),
-        // Bottom controls overlay
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Opacity(
-            opacity: _overlayOpacity,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [_bottomControls(isOverlay: true), _timestampPicker()],
-            ),
-          ),
-        ),
-        // Opacity control icon
-        Positioned(
-          right: 12,
-          bottom: 240,
-          child: GestureDetector(
-            onTap: () =>
-                setState(() => _showOpacitySlider = !_showOpacitySlider),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(
-                _showOpacitySlider ? Icons.tune : Icons.opacity,
-                color: Colors.white,
-                size: 22,
               ),
             ),
-          ),
-        ),
-        if (_showOpacitySlider)
-          Positioned(right: 52, bottom: 234, child: _opacitySlider()),
-        // Countdown
-        if (_timerCountdown > 0)
-          Center(
-            child: Text(
-              '$_timerCountdown',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 120,
-                fontWeight: FontWeight.w100,
-                shadows: [Shadow(blurRadius: 20, color: Colors.black)],
-              ),
+
+            // Hover buttons (fixed to 1:1 position)
+            Positioned(
+              top: clearTop1x1,
+              left: clearLeft1x1,
+              width: clearW1x1,
+              height: clearH1x1,
+              child: _buildHoverButtons(),
             ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHoverButtons() {
+    return Container(
+      padding: const EdgeInsets.only(right: 12, bottom: 12),
+      alignment: Alignment.bottomRight,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _hoverButton(
+            icon: Icons.open_with,
+            onTap: () {}, // Future feature: timestamp interval
           ),
-      ],
+          const SizedBox(height: 12),
+          _hoverButton(label: "${_currentZoom.toInt()}x", onTap: _toggleZoom),
+        ],
+      ),
+    );
+  }
+
+  Widget _hoverButton({IconData? icon, String? label, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withOpacity(0.4),
+          border: Border.all(color: Colors.white24, width: 1),
+        ),
+        child: Center(
+          child: icon != null
+              ? Icon(icon, color: Colors.white, size: 20)
+              : Text(
+                  label!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCameraMask() {
+    final topPadding = MediaQuery.of(context).padding.top;
+    return IgnorePointer(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final screenH = constraints.maxHeight;
+          final topMenuH = topPadding + 60;
+          final bottomUIH = 258;
+          final availableH = screenH - topMenuH - bottomUIH;
+
+          // Same centering calculation for the mask
+          final targetRatio = _aspectRatio.value;
+          final screenW = constraints.maxWidth;
+          final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
+
+          double clearW, clearH;
+          if (screenW / targetRatio <= screenH) {
+            clearW = screenW;
+            clearH = screenW / targetRatio;
+          } else {
+            clearH = screenH;
+            clearW = screenH * targetRatio;
+          }
+
+          final clearTop =
+              (isFullAuto || _aspectRatio == CameraAspectRatio.ratio5x4)
+              ? topMenuH
+              : topMenuH + (availableH - clearH) / 2;
+
+          return CustomPaint(
+            size: Size(constraints.maxWidth, constraints.maxHeight),
+            painter: _CameraMaskPainter(
+              aspectRatio: _aspectRatio.value,
+              topOffset: clearTop,
+              maskColor: Colors.black.withOpacity(UXConfig.kCameraMaskOpacity),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -451,11 +560,14 @@ class _CameraScreenState extends State<CameraScreen>
     return CameraPreview(_controller!);
   }
 
-  Widget _topBar({required bool isOverlay}) {
+  Widget _topBar({required Color iconColor}) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isOverlay ? Colors.black.withOpacity(0.0) : Colors.white,
+      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 10),
+      decoration: const BoxDecoration(
+        color:
+            Colors.transparent, // Always transparent to show camera underneath
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -465,26 +577,29 @@ class _CameraScreenState extends State<CameraScreen>
             children: [
               _glassButton(
                 onTap: _toggleFlash,
-                icon: _flashIcon,
-                label: _flashLabel,
-                isOverlay: isOverlay,
+                svgPath: _flashSvg,
+                iconColor: iconColor,
               ),
               const SizedBox(width: 8),
               _glassButton(
-                onTap: _showTimerSheet,
-                icon: Icons.timer,
-                label: _timerSeconds == 0 ? 'Timer' : '${_timerSeconds}s',
-                isOverlay: isOverlay,
+                onTap: _cycleTimer,
+                imagePath: _timerImagePath,
+                iconColor: iconColor,
               ),
             ],
           ),
-          _glassButton(
-            onTap: () {
-              // TODO: Navigate to Album Settings Screen
-            },
-            icon: Icons.photo_library_outlined,
-            label: 'Album',
-            isOverlay: isOverlay,
+          // Flip Camera icon only
+          GestureDetector(
+            onTap: _flipCamera,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              child: SvgPicture.asset(
+                'assets/icons/camera_flip.svg',
+                colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                width: 24,
+                height: 24,
+              ),
+            ),
           ),
         ],
       ),
@@ -493,50 +608,47 @@ class _CameraScreenState extends State<CameraScreen>
 
   Widget _glassButton({
     required VoidCallback onTap,
-    required IconData icon,
-    required String label,
-    required bool isOverlay,
+    IconData? icon,
+    String? svgPath,
+    String? imagePath,
+    required Color iconColor,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: isOverlay
-              ? Colors.white.withOpacity(0.18)
-              : Colors.black.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: isOverlay ? Colors.white30 : Colors.black12,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isOverlay ? Colors.white : Colors.black87,
-              size: 15,
-            ),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: isOverlay ? Colors.white : Colors.black87,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
+        padding: const EdgeInsets.all(8),
+        child: imagePath != null
+            ? Image.asset(imagePath, width: 24, height: 24, color: iconColor)
+            : (svgPath != null
+                  ? SvgPicture.asset(
+                      svgPath,
+                      colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                      width: 24,
+                      height: 24,
+                    )
+                  : Icon(icon, color: iconColor, size: 24)),
       ),
     );
+  }
+
+  String get _timerImagePath {
+    switch (_timerSeconds) {
+      case 3:
+        return UXConfig.kTimerIcon3s;
+      case 5:
+        return UXConfig.kTimerIcon5s;
+      case 7:
+        return UXConfig.kTimerIcon7s;
+      default:
+        return UXConfig.kTimerIconOff;
+    }
   }
 
   Widget _ratioButtons({required bool isOverlay}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: CameraAspectRatio.values.map((ratio) {
           final selected = _aspectRatio == ratio;
@@ -545,28 +657,25 @@ class _CameraScreenState extends State<CameraScreen>
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              width: 58,
+              padding: const EdgeInsets.symmetric(vertical: 6),
               decoration: BoxDecoration(
                 color: selected
-                    ? Colors.deepOrange
-                    : isOverlay
-                    ? Colors.black.withOpacity(0.4)
-                    : Colors.black12,
-                borderRadius: BorderRadius.circular(22),
+                    ? const Color(0xFF333333)
+                    : Colors.black.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: selected
-                      ? Colors.deepOrange
-                      : (isOverlay ? Colors.white38 : Colors.black12),
+                  color: selected ? Colors.white24 : Colors.transparent,
                 ),
               ),
-              child: Text(
-                ratio.label,
-                style: TextStyle(
-                  color: selected
-                      ? Colors.white
-                      : (isOverlay ? Colors.white : Colors.black87),
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+              child: Center(
+                child: Text(
+                  ratio.label,
+                  style: TextStyle(
+                    color: selected ? const Color(0xFFFFD700) : Colors.white70,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                  ),
                 ),
               ),
             ),
@@ -577,169 +686,99 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Widget _bottomControls({required bool isOverlay}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-      color: isOverlay ? Colors.black.withOpacity(0.0) : Colors.white,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Album
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: isOverlay
-                    ? Colors.white.withOpacity(0.18)
-                    : Colors.black.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isOverlay ? Colors.white30 : Colors.black12,
-                ),
-              ),
-              child: Icon(
-                Icons.photo_library_outlined,
-                color: isOverlay ? Colors.white : Colors.black87,
-                size: 24,
-              ),
-            ),
-          ),
-          // Shutter
-          GestureDetector(
-            onTap: _isCapturing || _timerCountdown > 0
-                ? null
-                : _onCapturePressed,
-            child: Container(
-              width: 74,
-              height: 74,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isOverlay ? Colors.white : Colors.black12,
-                boxShadow: [
-                  BoxShadow(
-                    color: isOverlay
-                        ? Colors.white.withOpacity(0.5)
-                        : Colors.black.withOpacity(0.1),
-                    blurRadius: 16,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: _isCapturing
-                  ? Center(
-                      child: SizedBox(
-                        width: 30,
-                        height: 30,
-                        child: CircularProgressIndicator(
-                          color: isOverlay ? Colors.black : Colors.deepOrange,
-                          strokeWidth: 2.5,
-                        ),
-                      ),
-                    )
-                  : _timerCountdown > 0
-                  ? Center(
-                      child: Text(
-                        '$_timerCountdown',
-                        style: TextStyle(
-                          color: isOverlay ? Colors.black : Colors.deepOrange,
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
-                  : Center(
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isOverlay ? Colors.black12 : Colors.black26,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-          // Flip
-          GestureDetector(
-            onTap: _flipCamera,
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: isOverlay
-                    ? Colors.white.withOpacity(0.18)
-                    : Colors.black.withOpacity(0.05),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isOverlay ? Colors.white30 : Colors.black12,
-                ),
-              ),
-              child: Icon(
-                Icons.flip_camera_ios_outlined,
-                color: isOverlay ? Colors.white : Colors.black87,
-                size: 24,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return CustomBottomNavBar(
+      onLeftActionPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CalendarAlbumScreen()),
+        );
+      },
+      onRightActionPressed: () {
+        // TODO: Open Gallery
+      },
+      onCenterActionPressed: _onCapturePressed,
+      rightThumbnail: _latestPhoto,
+      isLoading: _isCapturing || _timerCountdown > 0,
     );
   }
 
   Widget _timestampPicker() {
-    return Container(
-      height: 112,
-      color: Colors.grey[50],
-      child: ListView(
+    return SizedBox(
+      height: 138,
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        children: TimestampDesign.values.map((design) {
-          return TimestampThumbnail(
-            design: design,
-            isSelected: _selectedDesign == design,
-            onTap: () => setState(() => _selectedDesign = design),
+        itemCount: TimestampDesign.values.length,
+        itemBuilder: (context, index) {
+          final design = TimestampDesign.values[index];
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            child: TimestampThumbnail(
+              design: design,
+              isSelected: _selectedDesign == design,
+              onTap: () => setState(() => _selectedDesign = design),
+            ),
           );
-        }).toList(),
+        },
       ),
     );
   }
+}
 
-  Widget _opacitySlider() {
-    return Container(
-      width: 190,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.78),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.brightness_3, color: Colors.white54, size: 16),
-          Expanded(
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 2,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-              ),
-              child: Slider(
-                value: _overlayOpacity,
-                min: 0.1,
-                max: 1.0,
-                activeColor: Colors.white,
-                inactiveColor: Colors.white24,
-                onChanged: (val) => setState(() => _overlayOpacity = val),
-              ),
-            ),
-          ),
-          const Icon(Icons.brightness_high, color: Colors.white, size: 16),
-        ],
-      ),
+class _CameraMaskPainter extends CustomPainter {
+  final double aspectRatio;
+  final double topOffset;
+  final Color maskColor;
+
+  _CameraMaskPainter({
+    required this.aspectRatio,
+    required this.topOffset,
+    required this.maskColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final screenW = size.width;
+    final screenH = size.height;
+
+    double clearW, clearH;
+    if (screenW / aspectRatio <= screenH) {
+      clearW = screenW;
+      clearH = screenW / aspectRatio;
+    } else {
+      clearH = screenH;
+      clearW = screenH * aspectRatio;
+    }
+
+    // Alignment: Center horizontally, specific offset vertically
+    final clearRect = Rect.fromLTWH(
+      (screenW - clearW) / 2,
+      topOffset,
+      clearW,
+      clearH,
     );
+
+    final paint = Paint()..color = maskColor;
+
+    // Create a path for the whole screen
+    final maskPath = Path()..addRect(Rect.fromLTWH(0, 0, screenW, screenH));
+    // Create a path for the hole
+    final holePath = Path()..addRect(clearRect);
+
+    // Subtract the hole from the mask
+    final finalPath = Path.combine(
+      PathOperation.difference,
+      maskPath,
+      holePath,
+    );
+
+    canvas.drawPath(finalPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CameraMaskPainter oldDelegate) {
+    return oldDelegate.aspectRatio != aspectRatio ||
+        oldDelegate.topOffset != topOffset ||
+        oldDelegate.maskColor != maskColor;
   }
 }

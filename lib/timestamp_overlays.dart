@@ -23,9 +23,9 @@ extension CameraAspectRatioExt on CameraAspectRatio {
       case CameraAspectRatio.ratio1x1:
         return 1.0;
       case CameraAspectRatio.ratio5x4:
-        return 5.0 / 4.0;
+        return 4.0 / 5.0;
       case CameraAspectRatio.ratio16x9:
-        return 16.0 / 9.0;
+        return 9.0 / 16.0;
     }
   }
 
@@ -34,9 +34,9 @@ extension CameraAspectRatioExt on CameraAspectRatio {
       case CameraAspectRatio.ratio1x1:
         return '1:1';
       case CameraAspectRatio.ratio5x4:
-        return '5:4';
+        return '4:5';
       case CameraAspectRatio.ratio16x9:
-        return '16:9';
+        return '9:16';
     }
   }
 }
@@ -45,11 +45,15 @@ extension CameraAspectRatioExt on CameraAspectRatio {
 class TimestampOverlayWidget extends StatefulWidget {
   final TimestampDesign design;
   final double opacity;
+  final DateTime? baseTime;
+  final bool isLive;
 
   const TimestampOverlayWidget({
     super.key,
     required this.design,
     this.opacity = 1.0,
+    this.baseTime,
+    this.isLive = true,
   });
 
   @override
@@ -62,8 +66,10 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
   @override
   void initState() {
     super.initState();
-    _now = DateTime.now();
-    _tick();
+    _now = widget.baseTime ?? DateTime.now();
+    if (widget.isLive) {
+      _tick();
+    }
   }
 
   void _tick() {
@@ -300,30 +306,34 @@ class TimestampThumbnail extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-        width: 88,
-        height: 88,
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.deepOrange.withOpacity(0.12)
-              : Colors.black.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? Colors.deepOrange : Colors.black12,
-            width: isSelected ? 2.0 : 1.0,
+        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+        child: AspectRatio(
+          aspectRatio: 1.0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.white.withOpacity(0.25)
+                  : Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.zero,
+              border: Border.all(
+                color: isSelected ? Colors.deepOrange : Colors.white24,
+                width: isSelected ? 2.5 : 1.0,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : [],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.zero,
+              child: _thumbnail(design),
+            ),
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.deepOrange.withOpacity(0.15),
-                    blurRadius: 8,
-                  ),
-                ]
-              : [],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: _thumbnail(design),
         ),
       ),
     );
@@ -331,14 +341,23 @@ class TimestampThumbnail extends StatelessWidget {
 
   static Widget _thumbnail(TimestampDesign design) {
     final now = DateTime.now();
+    const shadow = [Shadow(blurRadius: 4, color: Colors.black54)];
+
     switch (design) {
       case TimestampDesign.none:
         return const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.block, color: Colors.black26, size: 28),
+            Icon(Icons.block, color: Colors.white60, size: 28),
             SizedBox(height: 4),
-            Text('None', style: TextStyle(color: Colors.black26, fontSize: 10)),
+            Text(
+              'None',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 10,
+                shadows: shadow,
+              ),
+            ),
           ],
         );
       case TimestampDesign.analogClock:
@@ -347,7 +366,7 @@ class TimestampThumbnail extends StatelessWidget {
             width: 54,
             height: 54,
             child: CustomPaint(
-              painter: _ClockPainter(now: now, color: Colors.black54),
+              painter: _ClockPainter(now: now, color: Colors.white),
             ),
           ),
         );
@@ -362,26 +381,29 @@ class TimestampThumbnail extends StatelessWidget {
                 Text(
                   'JAN 28,',
                   style: TextStyle(
-                    color: Colors.black87,
+                    color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1,
+                    shadows: shadow,
                   ),
                 ),
                 Text(
                   '2024',
                   style: TextStyle(
-                    color: Colors.black54,
+                    color: Colors.white70,
                     fontSize: 10,
                     letterSpacing: 1,
+                    shadows: shadow,
                   ),
                 ),
                 Text(
                   '10:30 AM',
                   style: TextStyle(
-                    color: Colors.black38,
+                    color: Colors.white60,
                     fontSize: 9,
                     letterSpacing: 0.8,
+                    shadows: shadow,
                   ),
                 ),
               ],
@@ -393,16 +415,17 @@ class TimestampThumbnail extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.grain, color: Colors.black38, size: 20),
+              Icon(Icons.grain, color: Colors.white70, size: 20),
               SizedBox(height: 4),
               Text(
                 'FILM\nGRAIN',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.black54,
+                  color: Colors.white70,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 2,
+                  shadows: shadow,
                 ),
               ),
             ],
@@ -417,11 +440,15 @@ class TimestampThumbnail extends StatelessWidget {
           'assets/images/sample_$index.jpg',
           fit: BoxFit.cover,
           errorBuilder: (ctx, _, __) => Container(
-            color: Colors.grey[200],
+            color: Colors.white.withOpacity(0.05),
             child: Center(
               child: Text(
                 'Sample $index',
-                style: TextStyle(color: Colors.grey[500], fontSize: 10),
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 10,
+                  shadows: shadow,
+                ),
               ),
             ),
           ),
