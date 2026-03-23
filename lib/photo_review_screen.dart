@@ -2,12 +2,12 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'timestamp_overlays.dart';
 import 'album_service.dart';
 import 'calendar_album_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
+import 'timestamp_metadata.dart';
 import 'ux_config.dart';
 
 class PhotoReviewScreen extends StatefulWidget {
@@ -16,6 +16,8 @@ class PhotoReviewScreen extends StatefulWidget {
   final String initialAlbum;
   final double aspectRatio;
   final DateTime captureTime;
+  final Alignment initialAlignment;
+  final int initialFontSizeIndex;
 
   const PhotoReviewScreen({
     super.key,
@@ -24,6 +26,8 @@ class PhotoReviewScreen extends StatefulWidget {
     required this.initialAlbum,
     required this.aspectRatio,
     required this.captureTime,
+    this.initialAlignment = CameraUX.defaultAlignment,
+    this.initialFontSizeIndex = 0,
   });
 
   @override
@@ -31,17 +35,29 @@ class PhotoReviewScreen extends StatefulWidget {
 }
 
 class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
+
   late TimestampDesign _selectedDesign;
+  late Alignment _selectedAlignment;
+  late double _selectedFontSize;
+  late int _fontSizeIndex;
   late String _selectedAlbum;
   List<String> _availableAlbums = [];
   bool _isSaving = false;
+
   File? _latestPhoto;
+
   final GlobalKey _repaintKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _selectedDesign = widget.initialDesign;
+    _selectedAlignment = widget.initialAlignment;
+    _fontSizeIndex = widget.initialFontSizeIndex;
+    
+    final steps = TimestampMetadata.getFontSizeSteps(_selectedDesign);
+    _selectedFontSize = steps[_fontSizeIndex.clamp(0, steps.length - 1)];
+
     _selectedAlbum = widget.initialAlbum;
     _loadAlbums();
   }
@@ -49,12 +65,14 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
   Future<void> _loadAlbums() async {
     final albums = await AlbumService.getAlbums();
     final allPhotos = await AlbumService.getAllPhotos(albumName: '전체');
-    setState(() {
-      _availableAlbums = albums;
-      if (allPhotos.isNotEmpty) {
-        _latestPhoto = allPhotos.first;
-      }
-    });
+    if (mounted) {
+      setState(() {
+        _availableAlbums = albums;
+        if (allPhotos.isNotEmpty) {
+          _latestPhoto = allPhotos.first;
+        }
+      });
+    }
   }
 
   Future<void> _savePhoto() async {
@@ -84,13 +102,16 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
         await AlbumService.savePhoto(bytes, _selectedAlbum);
 
         if (mounted) {
-          Navigator.pushReplacement(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) =>
                   CalendarAlbumScreen(initialAlbum: _selectedAlbum),
             ),
           );
+          if (mounted) {
+            Navigator.pop(context, result is String ? result : _selectedAlbum);
+          }
         }
       }
     } catch (e) {
@@ -113,15 +134,8 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
         fit: StackFit.expand,
         children: [
           _buildImageWithOverlay(),
-          _buildTopBar(iconColor: UXConfig.getTopIconColor(widget.aspectRatio)),
+          _buildTopBar(iconColor: CameraUX.getTopIconColor(widget.aspectRatio)),
           _buildBottomControls(isFullAuto: widget.aspectRatio == 9.0 / 16.0),
-          if (_isSaving)
-            Container(
-              color: Colors.black45,
-              child: const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
-            ),
         ],
       ),
     );
@@ -168,7 +182,21 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
 
         final topPadding = MediaQuery.of(context).padding.top;
         final topMenuH = topPadding + 60;
-        final bottomUIH = 286; // 20 + 64 + 12 + 138 + 12 + 40
+
+        // Synchronized with CameraScreen's layout logic
+        final pickerToShutterGap = (CameraUX.gapPickerToShutterTop -
+                (SharedUX.containerHeight -
+                    (SharedUX.shutterPosition +
+                        SharedUX.centerButtonSize)))
+            .clamp(0.0, double.infinity);
+
+        final bottomUIH = SharedUX.stackBottomOffset +
+            SharedUX.containerHeight +
+            pickerToShutterGap +
+            CameraUX.timestampPickerHeight +
+            CameraUX.gapRatioToPicker +
+            CameraUX.ratioButtonsHeight; // Synchronized height
+
         final availableH = screenH - topMenuH - bottomUIH;
 
         final bool isFullAuto = widget.aspectRatio == 9.0 / 16.0;
@@ -176,7 +204,8 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
         final clearTop =
             (isFullAuto ||
                 widget.aspectRatio == 4.0 / 5.0 ||
-                (widget.aspectRatio - 0.8).abs() < 0.01)
+                (widget.aspectRatio - 0.8).abs() < 0.01 ||
+                (widget.aspectRatio - 1.0).abs() < 0.01)
             ? topMenuH
             : topMenuH + (availableH - clearH) / 2;
         final clearLeft = (screenW - clearW) / 2;
@@ -199,12 +228,15 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                         Positioned.fill(
                           child: TimestampOverlayWidget(
                             design: _selectedDesign,
+                            alignment: _selectedAlignment,
+                            fontSize: _selectedFontSize,
+                            opacity: 1.0,
                             baseTime: widget.captureTime,
                             isLive: false,
                           ),
-                        ),
-                    ],
-                  ),
+                      ),
+                  ],
+                ),
                 ),
               ),
             ),
@@ -216,7 +248,20 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
               child: Container(
                 padding: const EdgeInsets.only(right: 12, bottom: 12),
                 alignment: Alignment.bottomRight,
-                child: _hoverButton(icon: Icons.open_with),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _hoverButton(
+                      icon: Icons.open_with, 
+                      onTap: _cycleAlignment,
+                    ),
+                    const SizedBox(height: 12),
+                    _hoverButton(
+                      label: "${_fontSizeIndex + 1}A", 
+                      onTap: _cycleFontSize,
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -225,31 +270,67 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
     );
   }
 
-  Widget _hoverButton({IconData? icon}) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.black.withOpacity(0.4),
-        border: Border.all(color: Colors.white24, width: 1),
+  Widget _hoverButton({IconData? icon, String? label, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withOpacity(0.4),
+          border: Border.all(color: Colors.white24, width: 1),
+        ),
+        child: Center(
+          child: icon != null 
+              ? Icon(icon, color: Colors.white, size: 20)
+              : Text(
+                  label!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+        ),
       ),
-      child: Center(child: Icon(icon, color: Colors.white, size: 20)),
     );
   }
 
+  void _cycleFontSize() {
+    setState(() {
+      final steps = TimestampMetadata.getFontSizeSteps(_selectedDesign);
+      _fontSizeIndex = (_fontSizeIndex + 1) % steps.length;
+      _selectedFontSize = steps[_fontSizeIndex];
+    });
+  }
+
+  void _cycleAlignment() {
+    setState(() {
+      final index = CameraUX.alignments.indexOf(_selectedAlignment);
+      final nextIndex = (index + 1) % CameraUX.alignments.length;
+      _selectedAlignment = CameraUX.alignments[nextIndex];
+    });
+  }
+
   Widget _buildBottomControls({required bool isFullAuto}) {
+    final pickerToShutterGap = (CameraUX.gapPickerToShutterTop -
+            (SharedUX.containerHeight -
+                (SharedUX.shutterPosition +
+                    SharedUX.centerButtonSize)))
+        .clamp(0.0, double.infinity);
+
     return Positioned(
-      bottom: 20,
+      bottom: SharedUX.stackBottomOffset,
       left: 0,
       right: 0,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildAlbumSelector(isOverlay: !isFullAuto),
-          const SizedBox(height: 12),
+          const SizedBox(height: CameraUX.gapRatioToPicker),
           _buildTimestampPicker(),
-          const SizedBox(height: 12),
+          SizedBox(height: pickerToShutterGap),
           _buildFloatingMenu(isOverlay: !isFullAuto),
         ],
       ),
@@ -258,11 +339,16 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
 
   Widget _buildFloatingMenu({required bool isOverlay}) {
     return CustomBottomNavBar(
-      onLeftActionPressed: () {
-        Navigator.push(
+      onLeftActionPressed: () async {
+        final result = await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const CalendarAlbumScreen()),
+          MaterialPageRoute(
+            builder: (context) => CalendarAlbumScreen(initialAlbum: _selectedAlbum),
+          ),
         );
+        if (mounted && result is String) {
+          Navigator.pop(context, result);
+        }
       },
       onRightActionPressed: () {
         // TODO: Open Gallery
@@ -276,7 +362,8 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
 
   Widget _buildAlbumSelector({required bool isOverlay}) {
     return SizedBox(
-      height: 40,
+      height: ReviewUX.albumSelectorHeight,
+
       child: Center(
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
@@ -289,16 +376,16 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
             return GestureDetector(
               onTap: () => setState(() => _selectedAlbum = album),
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
+                margin: const EdgeInsets.symmetric(horizontal: ReviewUX.albumButtonMarginHorizontal),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                  horizontal: ReviewUX.albumButtonHorizontalPadding,
+                  vertical: ReviewUX.albumButtonVerticalPadding,
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? (isOverlay ? const Color(0xFF333333) : Colors.black87)
-                      : Colors.black.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(10),
+                      ? ReviewUX.albumButtonSelectedBg
+                      : ReviewUX.albumButtonBg,
+                  borderRadius: BorderRadius.circular(ReviewUX.albumButtonBorderRadius),
                   border: Border.all(
                     color: isSelected ? Colors.white24 : Colors.transparent,
                   ),
@@ -308,15 +395,15 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                     album,
                     style: TextStyle(
                       color: isSelected
-                          ? const Color(0xFFFFD700)
-                          : Colors.white70,
-                      fontSize: 13,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.w500,
+                          ? ReviewUX.albumButtonSelectedText
+                          : ReviewUX.albumButtonText,
+                      fontSize: ReviewUX.albumButtonFontSize,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     ),
+
                   ),
                 ),
+
               ),
             );
           },
@@ -327,7 +414,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
 
   Widget _buildTimestampPicker() {
     return SizedBox(
-      height: 138,
+      height: CameraUX.timestampPickerHeight,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -339,7 +426,12 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
             child: TimestampThumbnail(
               design: design,
               isSelected: _selectedDesign == design,
-              onTap: () => setState(() => _selectedDesign = design),
+              onTap: () => setState(() {
+                _selectedDesign = design;
+                _selectedAlignment = CameraUX.defaultAlignment;
+                _fontSizeIndex = TimestampMetadata.getDefaultFontSizeIndex(design);
+                _selectedFontSize = TimestampMetadata.getDefaultFontSize(design);
+              }),
             ),
           );
         },

@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 class AlbumService {
   static Future<Directory> get _photosRoot async {
@@ -20,18 +22,49 @@ class AlbumService {
         .whereType<Directory>()
         .map((e) => e.path.split(Platform.pathSeparator).last)
         .toList();
+
+    // Default '일상' folder
     if (!albums.contains('일상')) {
       await Directory('${root.path}/일상').create();
       albums.add('일상');
+      // Set default color for '일상' if not exists
+      final colors = await getAlbumColors();
+      if (!colors.containsKey('일상')) {
+        await saveAlbumColor('일상', 0xFFEDED6D); // Soft Yellow for '일상'
+      }
     }
     return albums;
   }
 
-  static Future<void> createAlbum(String name) async {
+  static Future<Map<String, int>> getAlbumColors() async {
+    final root = await _photosRoot;
+    final file = File('${root.path}/album_colors.json');
+    if (!await file.exists()) return {};
+    try {
+      final content = await file.readAsString();
+      final Map<String, dynamic> json = jsonDecode(content);
+      return json.map((key, value) => MapEntry(key, value as int));
+    } catch (e) {
+      return {};
+    }
+  }
+
+  static Future<void> saveAlbumColor(String name, int colorValue) async {
+    final root = await _photosRoot;
+    final file = File('${root.path}/album_colors.json');
+    Map<String, int> colors = await getAlbumColors();
+    colors[name] = colorValue;
+    await file.writeAsString(jsonEncode(colors));
+  }
+
+  static Future<void> createAlbum(String name, {int? colorValue}) async {
     final root = await _photosRoot;
     final dir = Directory('${root.path}/$name');
     if (!await dir.exists()) {
       await dir.create();
+    }
+    if (colorValue != null) {
+      await saveAlbumColor(name, colorValue);
     }
   }
 
@@ -42,9 +75,16 @@ class AlbumService {
       await albumDir.create();
     }
 
-    final filename = 'photo_${DateTime.now().millisecondsSinceEpoch}.png';
+    // Compress PNG → JPEG quality 85 for ~5-10x size reduction
+    final compressed = await FlutterImageCompress.compressWithList(
+      bytes,
+      quality: 85,
+      format: CompressFormat.jpeg,
+    );
+
+    final filename = 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
     final file = File('${albumDir.path}/$filename');
-    await file.writeAsBytes(bytes);
+    await file.writeAsBytes(compressed);
   }
 
   static Future<Map<DateTime, Set<String>>> getPhotoDotsForMonth(

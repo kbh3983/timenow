@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'timestamp_overlays.dart';
+import 'timestamp_metadata.dart';
 import 'calendar_album_screen.dart';
 import 'album_service.dart';
 import 'photo_review_screen.dart';
@@ -29,7 +30,9 @@ class _CameraScreenState extends State<CameraScreen>
   CameraController? _controller;
   int _selectedCameraIndex = 0;
   CameraAspectRatio _aspectRatio = CameraAspectRatio.ratio1x1;
-  TimestampDesign _selectedDesign = TimestampDesign.dateText;
+  TimestampDesign _currentDesign = TimestampDesign.custom01;
+  Alignment _currentAlignment = CameraUX.defaultAlignment;
+  double _overlayOpacity = 1.0;
   String _currentAlbum = '일상';
   bool _isCapturing = false;
 
@@ -39,6 +42,10 @@ class _CameraScreenState extends State<CameraScreen>
   Timer? _captureTimer;
 
   double _currentZoom = 1.0;
+  double _baseZoom = 1.0;
+  double _minZoom = 1.0;
+  double _maxZoom = 8.0;
+  double _timestampFontSize = 14.0;
   final GlobalKey _repaintKey = GlobalKey();
   final GlobalKey _rawRepaintKey = GlobalKey();
   File? _latestPhoto;
@@ -53,17 +60,20 @@ class _CameraScreenState extends State<CameraScreen>
     WidgetsBinding.instance.addObserver(this);
     _initCamera();
     _loadAlbums();
+    // Initialize font size and index based on default design
+    _fontSizeIndex = TimestampMetadata.getDefaultFontSizeIndex(_currentDesign);
+    _timestampFontSize = TimestampMetadata.getDefaultFontSize(_currentDesign);
   }
 
-  Future<void> _toggleZoom() async {
-    if (_controller == null || !_controller!.value.isInitialized) return;
-    final newZoom = _currentZoom == 1.0 ? 2.0 : 1.0;
-    try {
-      await _controller!.setZoomLevel(newZoom);
-      setState(() => _currentZoom = newZoom);
-    } catch (e) {
-      debugPrint("Zoom error: $e");
-    }
+  List<double> get _currentFontSizes => TimestampMetadata.getFontSizeSteps(_currentDesign);
+  int _fontSizeIndex = 0;
+
+  void _cycleFontSize() {
+    setState(() {
+      final steps = _currentFontSizes;
+      _fontSizeIndex = (_fontSizeIndex + 1) % steps.length;
+      _timestampFontSize = steps[_fontSizeIndex];
+    });
   }
 
   Future<void> _loadAlbums() async {
@@ -112,7 +122,17 @@ class _CameraScreenState extends State<CameraScreen>
       return;
     }
     if (!mounted) return;
-    setState(() => _controller = controller);
+    double minZoom = 1.0;
+    double maxZoom = 8.0;
+    try {
+      minZoom = await controller.getMinZoomLevel();
+      maxZoom = await controller.getMaxZoomLevel();
+    } catch (_) {}
+    setState(() {
+      _controller = controller;
+      _minZoom = minZoom;
+      _maxZoom = maxZoom;
+    });
   }
 
   Future<void> _flipCamera() async {
@@ -161,7 +181,7 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   void _cycleTimer() {
-    final cycle = UXConfig.kTimerCycle;
+    final cycle = CameraUX.timerCycle;
     final currentIndex = cycle.indexOf(_timerSeconds);
     final nextIndex = (currentIndex + 1) % cycle.length;
     final nextSeconds = cycle[nextIndex];
@@ -177,6 +197,14 @@ class _CameraScreenState extends State<CameraScreen>
       if (mounted) {
         setState(() => _timerStatusText = null);
       }
+    });
+  }
+
+  void _toggleAlignment() {
+    setState(() {
+      final index = CameraUX.alignments.indexOf(_currentAlignment);
+      final nextIndex = (index + 1) % CameraUX.alignments.length;
+      _currentAlignment = CameraUX.alignments[nextIndex];
     });
   }
 
@@ -211,17 +239,24 @@ class _CameraScreenState extends State<CameraScreen>
             MaterialPageRoute(
               builder: (context) => PhotoReviewScreen(
                 imageFile: file,
-                initialDesign: _selectedDesign,
+                initialDesign: _currentDesign,
                 initialAlbum: _currentAlbum,
                 aspectRatio: _aspectRatio.value,
                 captureTime: now,
+                initialAlignment: _currentAlignment,
+                initialFontSizeIndex: _fontSizeIndex,
               ),
             ),
           );
 
-          if (result == true && mounted) {
-            _showSavedSnackbar();
-            _loadAlbums();
+          if (mounted) {
+            if (result == true) {
+              _showSavedSnackbar();
+              _loadAlbums();
+            } else if (result is String && result != "전체") {
+              setState(() => _currentAlbum = result);
+              _loadAlbums();
+            }
           }
         }
       }
@@ -262,7 +297,7 @@ class _CameraScreenState extends State<CameraScreen>
     );
 
     final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
-    final Color topIconColor = UXConfig.getTopIconColor(_aspectRatio.value);
+    final Color topIconColor = CameraUX.getTopIconColor(_aspectRatio.value);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -284,16 +319,24 @@ class _CameraScreenState extends State<CameraScreen>
 
           // Bottom UI Stack
           Positioned(
-            bottom: 20,
+            bottom: SharedUX.stackBottomOffset,
             left: 0,
             right: 0,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 _ratioButtons(isOverlay: !isFullAuto),
-                const SizedBox(height: 12),
+                const SizedBox(height: CameraUX.gapRatioToPicker),
                 _timestampPicker(),
-                const SizedBox(height: 12),
+                // Calculate the visual gap so it feels direct from the shutter button top
+                // Use clamp to prevent negative height which causes the "red screen" layout error
+                SizedBox(
+                  height: (CameraUX.gapPickerToShutterTop -
+                          (SharedUX.containerHeight -
+                              (SharedUX.shutterPosition +
+                                  SharedUX.centerButtonSize)))
+                      .clamp(0.0, double.infinity),
+                ),
                 _bottomControls(isOverlay: !isFullAuto),
               ],
             ),
@@ -359,17 +402,29 @@ class _CameraScreenState extends State<CameraScreen>
         // Centering logic: Center between top bar and bottom ratio buttons
         final topPadding = MediaQuery.of(context).padding.top;
         final topMenuH = topPadding + 60;
-        final bottomUIH =
-            286; // 20 (pos) + 64 (ctrls) + 12 (gap) + 138 (picker) + 12 (gap) + 40 (ratio)
+        final pickerToShutterGap = (CameraUX.gapPickerToShutterTop -
+                (SharedUX.containerHeight -
+                    (SharedUX.shutterPosition +
+                        SharedUX.centerButtonSize)))
+            .clamp(0.0, double.infinity);
+
+        final bottomUIH = SharedUX.stackBottomOffset +
+            SharedUX.containerHeight +
+            pickerToShutterGap +
+            CameraUX.timestampPickerHeight +
+            CameraUX.gapRatioToPicker +
+            CameraUX.ratioButtonsHeight; // pos + ctrls + gap + picker + gap + ratio
         final availableH = screenH - topMenuH - bottomUIH;
 
         // Vertically center clearH within availableH (except for 9:16 which starts from top)
         final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
 
         final clearTop =
-            (isFullAuto || _aspectRatio == CameraAspectRatio.ratio5x4)
-            ? topMenuH
-            : topMenuH + (availableH - clearH) / 2;
+            (isFullAuto ||
+                    _aspectRatio == CameraAspectRatio.ratio5x4 ||
+                    _aspectRatio == CameraAspectRatio.ratio1x1)
+                ? topMenuH
+                : topMenuH + (availableH - clearH) / 2;
         final clearLeft = (screenW - clearW) / 2;
 
         // 1:1 specific coordinates for fixed hover buttons
@@ -382,10 +437,18 @@ class _CameraScreenState extends State<CameraScreen>
           clearH1x1 = screenH;
           clearW1x1 = screenH * ratio1x1;
         }
-        final clearTop1x1 = topMenuH + (availableH - clearH1x1) / 2;
+        final clearTop1x1 = topMenuH;
         final clearLeft1x1 = (screenW - clearW1x1) / 2;
 
-        return Stack(
+        return GestureDetector(
+          onScaleStart: (_) => _baseZoom = _currentZoom,
+          onScaleUpdate: (d) async {
+            if (_controller == null || !_controller!.value.isInitialized) return;
+            final z = (_baseZoom * d.scale).clamp(_minZoom, _maxZoom);
+            try { await _controller!.setZoomLevel(z); } catch (_) {}
+            if (mounted) setState(() => _currentZoom = z);
+          },
+          child: Stack(
           children: [
             // Full background preview (non-captured)
             Positioned.fill(
@@ -423,11 +486,13 @@ class _CameraScreenState extends State<CameraScreen>
                           ],
                         ),
                       ),
-                      if (_selectedDesign != TimestampDesign.none)
+                      if (_currentDesign != TimestampDesign.none)
                         Positioned.fill(
                           child: TimestampOverlayWidget(
-                            design: _selectedDesign,
-                            opacity: 1.0, // Fixed opacity
+                            design: _currentDesign,
+                            alignment: _currentAlignment,
+                            opacity: _overlayOpacity,
+                            fontSize: _timestampFontSize,
                           ),
                         ),
                     ],
@@ -445,7 +510,8 @@ class _CameraScreenState extends State<CameraScreen>
               child: _buildHoverButtons(),
             ),
           ],
-        );
+          ),  // end Stack
+        );  // end GestureDetector
       },
     );
   }
@@ -459,10 +525,13 @@ class _CameraScreenState extends State<CameraScreen>
         children: [
           _hoverButton(
             icon: Icons.open_with,
-            onTap: () {}, // Future feature: timestamp interval
+            onTap: _toggleAlignment,
           ),
           const SizedBox(height: 12),
-          _hoverButton(label: "${_currentZoom.toInt()}x", onTap: _toggleZoom),
+          _hoverButton(
+            label: "${_fontSizeIndex + 1}A", 
+            onTap: _cycleFontSize,
+          ),
         ],
       ),
     );
@@ -502,7 +571,18 @@ class _CameraScreenState extends State<CameraScreen>
         builder: (context, constraints) {
           final screenH = constraints.maxHeight;
           final topMenuH = topPadding + 60;
-          final bottomUIH = 258;
+          final pickerToShutterGap = (CameraUX.gapPickerToShutterTop -
+                  (SharedUX.containerHeight -
+                      (SharedUX.shutterPosition +
+                          SharedUX.centerButtonSize)))
+              .clamp(0.0, double.infinity);
+
+          final bottomUIH = SharedUX.stackBottomOffset +
+              SharedUX.containerHeight +
+              pickerToShutterGap +
+              CameraUX.timestampPickerHeight +
+              CameraUX.gapRatioToPicker +
+              CameraUX.ratioButtonsHeight;
           final availableH = screenH - topMenuH - bottomUIH;
 
           // Same centering calculation for the mask
@@ -510,26 +590,26 @@ class _CameraScreenState extends State<CameraScreen>
           final screenW = constraints.maxWidth;
           final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
 
-          double clearW, clearH;
+          double clearH;
           if (screenW / targetRatio <= screenH) {
-            clearW = screenW;
             clearH = screenW / targetRatio;
           } else {
             clearH = screenH;
-            clearW = screenH * targetRatio;
           }
 
           final clearTop =
-              (isFullAuto || _aspectRatio == CameraAspectRatio.ratio5x4)
-              ? topMenuH
-              : topMenuH + (availableH - clearH) / 2;
+              (isFullAuto ||
+                      _aspectRatio == CameraAspectRatio.ratio5x4 ||
+                      _aspectRatio == CameraAspectRatio.ratio1x1)
+                  ? topMenuH
+                  : topMenuH + (availableH - clearH) / 2;
 
           return CustomPaint(
             size: Size(constraints.maxWidth, constraints.maxHeight),
             painter: _CameraMaskPainter(
               aspectRatio: _aspectRatio.value,
               topOffset: clearTop,
-              maskColor: Colors.black.withOpacity(UXConfig.kCameraMaskOpacity),
+              maskColor: Colors.black.withOpacity(CameraUX.maskOpacity),
             ),
           );
         },
@@ -634,19 +714,23 @@ class _CameraScreenState extends State<CameraScreen>
   String get _timerImagePath {
     switch (_timerSeconds) {
       case 3:
-        return UXConfig.kTimerIcon3s;
+        return CameraUX.timerIcon3s;
       case 5:
-        return UXConfig.kTimerIcon5s;
+        return CameraUX.timerIcon5s;
       case 7:
-        return UXConfig.kTimerIcon7s;
+        return CameraUX.timerIcon7s;
       default:
-        return UXConfig.kTimerIconOff;
+        return CameraUX.timerIconOff;
     }
   }
 
   Widget _ratioButtons({required bool isOverlay}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: CameraUX.ratioButtonContainerHorizontal,
+        vertical: CameraUX.ratioButtonContainerVertical,
+      ),
+
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
@@ -656,9 +740,10 @@ class _CameraScreenState extends State<CameraScreen>
             onTap: () => setState(() => _aspectRatio = ratio),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: 58,
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              margin: const EdgeInsets.symmetric(horizontal: CameraUX.ratioButtonMarginHorizontal),
+              width: CameraUX.ratioButtonWidth,
+              padding: const EdgeInsets.symmetric(vertical: CameraUX.ratioButtonPaddingVertical),
+
               decoration: BoxDecoration(
                 color: selected
                     ? const Color(0xFF333333)
@@ -687,11 +772,24 @@ class _CameraScreenState extends State<CameraScreen>
 
   Widget _bottomControls({required bool isOverlay}) {
     return CustomBottomNavBar(
-      onLeftActionPressed: () {
-        Navigator.push(
+      onLeftActionPressed: () async {
+        final result = await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const CalendarAlbumScreen()),
+          MaterialPageRoute(
+            builder: (context) => CalendarAlbumScreen(initialAlbum: _currentAlbum),
+          ),
         );
+        if (result != null && result is String && mounted) {
+          if (result != "전체") {
+            setState(() {
+              _currentAlbum = result;
+              _currentAlignment = CameraUX.defaultAlignment;
+            });
+          } else {
+            setState(() => _currentAlignment = CameraUX.defaultAlignment);
+          }
+          _loadAlbums();
+        }
       },
       onRightActionPressed: () {
         // TODO: Open Gallery
@@ -704,7 +802,7 @@ class _CameraScreenState extends State<CameraScreen>
 
   Widget _timestampPicker() {
     return SizedBox(
-      height: 138,
+      height: CameraUX.timestampPickerHeight,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -715,8 +813,14 @@ class _CameraScreenState extends State<CameraScreen>
             margin: const EdgeInsets.symmetric(horizontal: 2),
             child: TimestampThumbnail(
               design: design,
-              isSelected: _selectedDesign == design,
-              onTap: () => setState(() => _selectedDesign = design),
+              isSelected: _currentDesign == design,
+              onTap: () => setState(() {
+                _currentDesign = design;
+                _currentAlignment = CameraUX.defaultAlignment;
+                // Reset font size and index to metadata defaults for the new design
+                _fontSizeIndex = TimestampMetadata.getDefaultFontSizeIndex(design);
+                _timestampFontSize = TimestampMetadata.getDefaultFontSize(design);
+              }),
             ),
           );
         },

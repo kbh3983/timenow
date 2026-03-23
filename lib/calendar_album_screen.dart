@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'album_service.dart';
 import 'ux_config.dart';
+import 'photo_detail_screen.dart';
 
 enum CalendarViewMode { calendar, grid }
 
@@ -20,6 +22,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   String _selectedAlbum = '전체';
   List<String> _albums = ['일상'];
   bool _isExpanded = false;
+  bool _isMovingUp = false; // Track scroll direction for semi-auto snap
   double _transitionExtent = 0.0; // 0.0 for month, 1.0 for week
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
@@ -30,6 +33,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
 
   Map<DateTime, Set<String>> _photoDots = {};
   List<File> _dayPhotos = [];
+  Map<String, int> _albumColors = {};
 
   @override
   void initState() {
@@ -42,6 +46,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
 
   Future<void> _loadData() async {
     final albums = await AlbumService.getAlbums();
+    final albumColors = await AlbumService.getAlbumColors();
     final dots = await AlbumService.getPhotoDotsForMonth(
       _focusedDay,
       albumName: _selectedAlbum,
@@ -66,6 +71,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     if (mounted) {
       setState(() {
         _albums = albums;
+        _albumColors = albumColors;
         _photoDots = dots;
         _dayPhotos = photos;
         _allPhotosGrouped = grouped;
@@ -85,6 +91,25 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             : Stack(
                 children: [_buildCalendarContent(), _buildDraggableSheet()],
               ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        child: FloatingActionButton(
+          onPressed: () => Navigator.pop(context, _selectedAlbum),
+          backgroundColor: const Color(0xFF222222),
+          elevation: 8,
+          shape: const CircleBorder(),
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white24, width: 2),
+            ),
+            child: const Icon(Icons.add, color: Colors.white, size: 32),
+          ),
+        ),
       ),
     );
   }
@@ -108,8 +133,10 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                   : _selectedAlbum,
               style: const TextStyle(
                 color: Colors.black,
+                fontSize: CalendarUX.albumTitleFontSize,
                 fontWeight: FontWeight.bold,
               ),
+
             ),
             const Icon(Icons.keyboard_arrow_down, color: Colors.black),
           ],
@@ -183,7 +210,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                   _buildMonthHeader(),
                   _buildWeekdayHeader(),
                   _buildMonthGrid(),
-                  _buildRecordStatus(),
                 ],
               ),
             ),
@@ -205,7 +231,10 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
           ),
           Text(
             DateFormat('yyyy.MM').format(_focusedDay),
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              fontSize: CalendarUX.monthHeaderFontSize,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right, color: Colors.grey),
@@ -230,65 +259,12 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     _loadData();
   }
 
-  Widget _buildRecordStatus() {
-    final count = _photoDots.values.fold(
-      0,
-      (sum, albums) => sum + albums.length,
-    );
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '기록 현황',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              RichText(
-                text: TextSpan(
-                  style: const TextStyle(color: Colors.black, fontSize: 14),
-                  children: [
-                    const TextSpan(text: '이번 달에 총 '),
-                    TextSpan(
-                      text: '${count}번',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                    const TextSpan(text: '의 기록을 남겼어요! 화이팅!'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          // Character Placeholder - In real app use an Image asset
-          Container(
-            width: 60,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: Icon(Icons.face, size: 40, color: Colors.green),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildWeekdayHeader() {
     final weekdays = ['일', '월', '화', '수', '목', '금', '토'];
     return Padding(
       padding: EdgeInsets.symmetric(
-        vertical: UXConfig.kCalendarWeekdayVerticalPadding,
-        horizontal: 16,
+        vertical: CalendarUX.weekdayVerticalPadding,
+        horizontal: CalendarUX.calendarHorizontalPadding,
       ),
       child: Row(
         children: weekdays
@@ -322,12 +298,11 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: CalendarUX.calendarHorizontalPadding),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        mainAxisSpacing: UXConfig.kCalendarWeekSpacing,
-        childAspectRatio:
-            1.3, // Allows items to be wider than tall, bringing rows closer
+        mainAxisSpacing: CalendarUX.weekSpacing,
+        childAspectRatio: CalendarUX.calendarGridAspectRatio,
       ),
       itemCount: daysInMonth + firstDayOffset,
       itemBuilder: (context, index) {
@@ -357,7 +332,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(
         vertical: 4,
-        horizontal: 16,
+        horizontal: CalendarUX.calendarHorizontalPadding,
       ), // Reduced vertical padding, added horizontal
       child: Row(
         children: List.generate(7, (index) {
@@ -380,14 +355,17 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   }
 
   Color _getAlbumColor(String albumName) {
-    if (albumName == '일상') return Colors.red;
+    if (_albumColors.containsKey(albumName)) {
+      return Color(_albumColors[albumName]!);
+    }
+    if (albumName == '일상') return const Color(0xFFEDED6D);
     if (albumName.toLowerCase() == 'workout') return Colors.blue;
-    // Map other common names or fallback pseudo-random but deterministic color
+
+    // Fallback pseudo-random but deterministic color
     final hash = albumName.hashCode;
     final r = (hash & 0xFF0000) >> 16;
     final g = (hash & 0x00FF00) >> 8;
     final b = (hash & 0x0000FF);
-    // ensure the color is not too light so it's visible on white
     return Color.fromARGB(
       255,
       r > 200 ? 200 : r,
@@ -415,7 +393,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       height: mini ? 32 : 36,
       decoration: BoxDecoration(
         color: isSelected
-            ? UXConfig.kCalendarSelectedDayColor
+            ? CalendarUX.selectedDayColor
             : Colors.transparent,
         shape: BoxShape.circle,
       ),
@@ -428,6 +406,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                 : (date.month != _focusedDay.month
                       ? Colors.grey[300]
                       : (isHoliday ? Colors.red : Colors.black)),
+            fontSize: CalendarUX.calendarDayFontSize,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -436,9 +415,15 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
 
     if (mini) return dayCircle;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [dayCircle, const SizedBox(height: 2), _buildDots(dots)],
+    return ClipRect(
+      child: OverflowBox(
+        alignment: Alignment.topCenter,
+        maxHeight: double.infinity,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [dayCircle, const SizedBox(height: 2), _buildDots(dots)],
+        ),
+      ),
     );
   }
 
@@ -449,38 +434,80 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       children: colors
           .take(5)
           .map(
-            (color) => Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
+            (color) {
+              // Create a darker version of the same color for the border
+              final hsl = HSLColor.fromColor(color);
+              final borderColor = hsl.withLightness(
+                (hsl.lightness - CalendarUX.calendarDotDarkenAmount).clamp(0.0, 1.0)
+              ).toColor();
+
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 1),
+                width: CalendarUX.calendarDotSize,
+                height: CalendarUX.calendarDotSize,
+                decoration: BoxDecoration(
+                  color: color, 
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: borderColor,
+                    width: CalendarUX.calendarDotBorderWidth,
+                  ),
+                ),
+              );
+            },
           )
           .toList(),
     );
   }
 
   Widget _buildDraggableSheet() {
-    return DraggableScrollableSheet(
-      controller: _sheetController,
-      initialChildSize: 0.35,
-      minChildSize: 0.35,
-      maxChildSize: 0.95,
-      snap: true,
-      snapSizes: const [0.35, 0.95],
-      builder: (context, scrollController) {
-        return NotificationListener<DraggableScrollableNotification>(
-          onNotification: (notification) {
-            setState(() {
-              // Map extent [0.35, 0.95] to [0.0, 1.0] transition
-              _transitionExtent = ((notification.extent - 0.35) / 0.6).clamp(
-                0.0,
-                1.0,
+    return Listener(
+      onPointerUp: (event) {
+        if (!_sheetController.isAttached) return;
+        final currentSize = _sheetController.size;
+        const minS = CalendarUX.initialSheetSize;
+        const maxS = 0.95;
+
+        // If it's somewhere in the middle, snap it based on direction
+        if (currentSize > minS && currentSize < maxS) {
+          final targetSize = _isMovingUp ? maxS : minS;
+          // Use Future.microtask to avoid conflicting with ongoing scroll physics
+          Future.microtask(() {
+            if (_sheetController.isAttached) {
+              _sheetController.animateTo(
+                targetSize,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
               );
-              _isExpanded = _transitionExtent > 0.5;
-            });
-            return true;
-          },
+            }
+          });
+        }
+      },
+      child: DraggableScrollableSheet(
+        controller: _sheetController,
+        initialChildSize: CalendarUX.initialSheetSize,
+        minChildSize: CalendarUX.initialSheetSize,
+        maxChildSize: 0.95,
+        // Disable native snap to prevent conflicts with our custom snapping listener
+        snap: false,
+        builder: (context, scrollController) {
+          return NotificationListener<DraggableScrollableNotification>(
+            onNotification: (notification) {
+              setState(() {
+                // Track moving direction based on whether extent is increasing
+                const double minS = CalendarUX.initialSheetSize;
+                const double maxS = 0.95;
+                
+                final newExtent = ((notification.extent - minS) / (maxS - minS)).clamp(0.0, 1.0);
+                if (newExtent != _transitionExtent) {
+                  _isMovingUp = newExtent > _transitionExtent;
+                }
+                
+                _transitionExtent = newExtent;
+                _isExpanded = _transitionExtent > 0.5;
+              });
+              return true;
+            },
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -507,32 +534,109 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                     ),
                   ),
                 Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: _dayPhotos.length,
-                    itemBuilder: (context, index) {
-                      return _buildRecordEntry(index);
-                    },
-                  ),
+                  child: _dayPhotos.isEmpty
+                      ? _buildEmptyState(scrollController)
+                      : ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          itemCount: _dayPhotos.length,
+                          itemBuilder: (context, index) {
+                            return _buildRecordEntry(index);
+                          },
+                        ),
                 ),
               ],
             ),
           ),
         );
       },
+    ),
     );
   }
 
   Widget _buildHandle() {
     if (_isExpanded) return const SizedBox.shrink();
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      width: 40,
-      height: 4,
-      decoration: BoxDecoration(
-        color: Colors.grey[400],
-        borderRadius: BorderRadius.circular(2),
+    return GestureDetector(
+      onTap: () {
+        if (_sheetController.isAttached) {
+          _sheetController.animateTo(
+            0.95,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        width: double.infinity,
+        child: Center(
+          child: Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(ScrollController scrollController) {
+    final albumColor = _getAlbumColor(_selectedAlbum);
+    return SingleChildScrollView(
+      controller: scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 80),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: albumColor.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.photo_library_outlined,
+                  size: 64,
+                  color: albumColor,
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                '아직 기록이 없어요',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '+ 버튼을 눌러\n첫 번째 기록을 시작해 보세요!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.black54,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -540,7 +644,10 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   Widget _buildRecordEntry(int index) {
     if (index >= _dayPhotos.length) return const SizedBox.shrink();
     final photoFile = _dayPhotos[index];
-    final timeStr = DateFormat('hh:mm a').format(photoFile.statSync().changed);
+    final timeStr = DateFormat(
+      'hh:mm a',
+      'en_US',
+    ).format(photoFile.statSync().changed);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 32),
@@ -551,7 +658,11 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               Icon(
                 Icons.circle,
                 size: 8,
-                color: index % 2 == 0 ? Colors.yellow : Colors.blue,
+                color: _getAlbumColor(
+                  _selectedAlbum == '전체'
+                      ? photoFile.parent.path.split(Platform.pathSeparator).last
+                      : _selectedAlbum,
+                ),
               ),
               const SizedBox(width: 8),
               Text(
@@ -560,11 +671,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.ios_share, size: 20, color: Colors.grey),
-                onPressed: () {},
               ),
             ],
           ),
@@ -580,42 +686,77 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   }
 
   Widget _buildStackedPhoto(File topPhoto) {
-    return Stack(
-      alignment: Alignment.bottomCenter,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          width: 200,
-          height: 250,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black12)],
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PhotoDetailScreen(photoFile: topPhoto),
           ),
-        ),
-        Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          width: 220,
-          height: 250,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black12)],
+        );
+        if (result == true) {
+          _loadData(); // Refresh if photo was deleted
+        }
+      },
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            width: 200,
+            height: 250,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(blurRadius: 4, color: Colors.black12),
+              ],
+            ),
           ),
-        ),
-        _buildSinglePhoto(topPhoto),
-      ],
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            width: 220,
+            height: 250,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(blurRadius: 4, color: Colors.black12),
+              ],
+            ),
+          ),
+          _buildSinglePhoto(topPhoto, tapEnabled: false),
+        ],
+      ),
     );
   }
 
-  Widget _buildSinglePhoto(File file) {
-    return Container(
-      width: double.infinity,
-      height: 350,
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(12),
-        image: DecorationImage(image: FileImage(file), fit: BoxFit.cover),
+  Widget _buildSinglePhoto(File file, {bool tapEnabled = true}) {
+    return GestureDetector(
+      onTap: tapEnabled
+          ? () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PhotoDetailScreen(photoFile: file),
+                ),
+              );
+              if (result == true) {
+                _loadData(); // Refresh if photo was deleted
+              }
+            }
+          : null,
+      child: Hero(
+        tag: file.path,
+        child: Container(
+          width: double.infinity,
+          height: 350,
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(12),
+            image: DecorationImage(image: FileImage(file), fit: BoxFit.cover),
+          ),
+        ),
       ),
     );
   }
@@ -625,7 +766,50 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       ..sort((a, b) => b.compareTo(a));
 
     if (sortedMonths.isEmpty) {
-      return const Center(child: Text('사진이 없습니다.'));
+      // Reuse the same motivating empty state spirit for grid view
+      final albumColor = _getAlbumColor(_selectedAlbum);
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: albumColor.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.photo_library_outlined,
+                  size: 64,
+                  color: albumColor,
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                '아직 기록이 없어요',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '+ 버튼을 눌러\n첫 번째 기록을 시작해 보세요!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.black54,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return CustomScrollView(
@@ -679,32 +863,78 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   void _showAlbumSelector() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildAlbumOption(context, '전체'),
-                  ..._albums.map((album) => _buildAlbumOption(context, album)),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.add),
-                    title: const Text('폴더 추가'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showAddFolderDialog();
-                    },
-                  ),
-                ],
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '폴더 선택',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
-            );
-          },
+              const SizedBox(height: 20),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildAlbumOption(context, '전체'),
+                      ..._albums.map(
+                        (album) => _buildAlbumOption(context, album),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Divider(height: 32),
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAddFolderBottomSheet();
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        '새 폴더 만들기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         );
       },
     );
@@ -712,58 +942,277 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
 
   Widget _buildAlbumOption(BuildContext context, String name) {
     final isSelected = _selectedAlbum == name;
-    return ListTile(
-      title: Center(
-        child: Text(
-          name,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            color: isSelected ? Colors.black : Colors.grey,
-          ),
-        ),
-      ),
+    final Color color = name == '전체' ? Colors.grey : _getAlbumColor(name);
+
+    return InkWell(
       onTap: () {
         setState(() => _selectedAlbum = name);
         _loadData();
         Navigator.pop(context);
       },
-      trailing: isSelected
-          ? const Icon(Icons.check, color: Colors.black)
-          : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.08) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Text(
+              name,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Colors.black : Colors.black54,
+              ),
+            ),
+            const Spacer(),
+            if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
+          ],
+        ),
+      ),
     );
   }
 
-  void _showAddFolderDialog() {
+  void _showAddFolderBottomSheet() {
     String newAlbumName = '';
-    showDialog(
+    int selectedColorValue = 0xFF81C784; // Default Soft Green
+
+    final List<int> palette = [
+      0xFFEEEAE2,
+      0xFFD9ED72,
+      0xFFAFDE62,
+      0xFFFFCB74,
+      0xFFFFB7B2,
+      0xFFBEE6FF,
+      0xFF63B0F2,
+      0xFFADADFA,
+      0xFF8D775C,
+    ];
+
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       builder: (context) {
-        return AlertDialog(
-          title: const Text('새 폴더 추가'),
-          content: TextField(
-            autofocus: true,
-            decoration: const InputDecoration(hintText: '폴더 이름을 입력하세요'),
-            onChanged: (value) => newAlbumName = value,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () async {
-                if (newAlbumName.trim().isNotEmpty) {
-                  final name = newAlbumName.trim();
-                  await AlbumService.createAlbum(name);
-                  await _loadData();
-                  setState(() => _selectedAlbum = name);
-                  if (mounted) Navigator.pop(context);
-                }
-              },
-              child: const Text('추가'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 24,
+                right: 24,
+                top: 32,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '새 폴더 만들기',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: '폴더 이름을 입력하세요 (예: 운동, 독서)',
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.all(20),
+                    ),
+                    onChanged: (value) => newAlbumName = value,
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '폴더 색상',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              backgroundColor: Colors.white,
+                              surfaceTintColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                              title: const Text(
+                                '색상 테마 선택',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(height: 16),
+                                  HueRingPicker(
+                                    pickerColor: Color(selectedColorValue),
+                                    onColorChanged: (color) {
+                                      setModalState(
+                                        () => selectedColorValue = color.value,
+                                      );
+                                    },
+                                    enableAlpha: false,
+                                    displayThumbColor: true,
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text(
+                                    '취소',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(selectedColorValue),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: const Text('적용하기'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.colorize, size: 18),
+                        label: const Text('직접 선택'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 50,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: palette.length,
+                      itemBuilder: (context, index) {
+                        final colorValue = palette[index];
+                        final isColorSelected =
+                            selectedColorValue == colorValue;
+                        return GestureDetector(
+                          onTap: () => setModalState(
+                            () => selectedColorValue = colorValue,
+                          ),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 12),
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Color(colorValue),
+                              shape: BoxShape.circle,
+                              border: isColorSelected
+                                  ? Border.all(color: Colors.black87, width: 2)
+                                  : null,
+                              boxShadow: [
+                                if (isColorSelected)
+                                  BoxShadow(
+                                    color: Color(colorValue).withOpacity(0.4),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                              ],
+                            ),
+                            child: isColorSelected
+                                ? const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 20,
+                                  )
+                                : null,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final name = newAlbumName.trim();
+                        if (name.isEmpty) return;
+                        if (_albums.contains(name)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('이미 존재하는 폴더 이름입니다.')),
+                          );
+                          return;
+                        }
+
+                        await AlbumService.createAlbum(
+                          name,
+                          colorValue: selectedColorValue,
+                        );
+                        setState(() => _selectedAlbum = name);
+                        await _loadData();
+                        if (mounted) Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(selectedColorValue),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        '폴더 만들기',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            );
+          },
         );
       },
     );
