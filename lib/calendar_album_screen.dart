@@ -591,47 +591,45 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   }
 
   Widget _buildEmptyState(ScrollController scrollController) {
-    final albumColor = _getAlbumColor(_selectedAlbum);
     return SingleChildScrollView(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 80),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 20),
               Container(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: albumColor.withOpacity(0.12),
+                  color: Colors.grey[100],
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.photo_library_outlined,
-                  size: 64,
-                  color: albumColor,
+                  size: 28,
+                  color: Colors.grey[350],
                 ),
               ),
-              const SizedBox(height: 32),
-              const Text(
+              const SizedBox(height: 16),
+              Text(
                 '아직 기록이 없어요',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[400],
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                '+ 버튼을 눌러\n첫 번째 기록을 시작해 보세요!',
+              const SizedBox(height: 6),
+              Text(
+                '+ 버튼을 눌러 첫 기록을 남겨보세요',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.black54,
-                  height: 1.5,
+                  fontSize: 13,
+                  color: Colors.grey[350],
+                  height: 1.4,
                 ),
               ),
             ],
@@ -766,8 +764,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       ..sort((a, b) => b.compareTo(a));
 
     if (sortedMonths.isEmpty) {
-      // Reuse the same motivating empty state spirit for grid view
-      final albumColor = _getAlbumColor(_selectedAlbum);
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -775,35 +771,35 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: albumColor.withOpacity(0.12),
+                  color: Colors.grey[100],
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.photo_library_outlined,
-                  size: 64,
-                  color: albumColor,
+                  size: 28,
+                  color: Colors.grey[350],
                 ),
               ),
-              const SizedBox(height: 32),
-              const Text(
+              const SizedBox(height: 16),
+              Text(
                 '아직 기록이 없어요',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[400],
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                '+ 버튼을 눌러\n첫 번째 기록을 시작해 보세요!',
+              const SizedBox(height: 6),
+              Text(
+                '+ 버튼을 눌러 첫 기록을 남겨보세요',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.black54,
-                  height: 1.5,
+                  fontSize: 13,
+                  color: Colors.grey[350],
+                  height: 1.4,
                 ),
               ),
             ],
