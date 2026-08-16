@@ -123,6 +123,51 @@ class AlbumService {
     return dots;
   }
 
+  /// Returns the most recent photo file for each date in the given month.
+  static Future<Map<DateTime, File>> getPhotoThumbnailsForMonth(
+    DateTime month, {
+    String? albumName,
+  }) async {
+    final root = await _photosRoot;
+    final Map<DateTime, List<File>> dateFiles = {};
+
+    List<Directory> targetDirs = [];
+    if (albumName == null || albumName == '전체') {
+      final entities = await root.list().toList();
+      targetDirs = entities.whereType<Directory>().toList();
+    } else {
+      targetDirs = [Directory('${root.path}/$albumName')];
+    }
+
+    for (var dir in targetDirs) {
+      if (!await dir.exists()) continue;
+      final files = await dir.list().toList();
+      for (var file in files) {
+        if (file is File) {
+          final stats = await file.stat();
+          final date = DateTime(
+            stats.changed.year,
+            stats.changed.month,
+            stats.changed.day,
+          );
+          if (date.year == month.year && date.month == month.month) {
+            dateFiles.putIfAbsent(date, () => []).add(file);
+          }
+        }
+      }
+    }
+
+    // For each date, pick the most recent file
+    final Map<DateTime, File> result = {};
+    for (var entry in dateFiles.entries) {
+      entry.value.sort(
+        (a, b) => b.statSync().changed.compareTo(a.statSync().changed),
+      );
+      result[entry.key] = entry.value.first;
+    }
+    return result;
+  }
+
   static Future<List<File>> getPhotosByDate(
     DateTime date, {
     String? albumName,

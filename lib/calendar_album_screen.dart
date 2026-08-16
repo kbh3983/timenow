@@ -32,6 +32,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   int _totalPhotoCount = 0;
 
   Map<DateTime, Set<String>> _photoDots = {};
+  Map<DateTime, File> _photoThumbnails = {};
   List<File> _dayPhotos = [];
   Map<String, int> _albumColors = {};
 
@@ -48,6 +49,10 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     final albums = await AlbumService.getAlbums();
     final albumColors = await AlbumService.getAlbumColors();
     final dots = await AlbumService.getPhotoDotsForMonth(
+      _focusedDay,
+      albumName: _selectedAlbum,
+    );
+    final thumbnails = await AlbumService.getPhotoThumbnailsForMonth(
       _focusedDay,
       albumName: _selectedAlbum,
     );
@@ -73,6 +78,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
         _albums = albums;
         _albumColors = albumColors;
         _photoDots = dots;
+        _photoThumbnails = thumbnails;
         _dayPhotos = photos;
         _allPhotosGrouped = grouped;
         _totalPhotoCount = allPhotos.length;
@@ -380,83 +386,70 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     bool isToday, {
     bool mini = false,
   }) {
-    final albums = _photoDots[DateTime(date.year, date.month, date.day)] ?? {};
-    final dots = albums.map(_getAlbumColor).toList();
+    final dateKey = DateTime(date.year, date.month, date.day);
+    final thumbnailFile = _photoThumbnails[dateKey];
+    final hasPhoto = thumbnailFile != null;
 
     // Check if it's Sunday (weekday == 7)
     final bool isSunday = date.weekday == DateTime.sunday;
-    // Add holiday logic here if needed (for now, just Sunday is red)
     final bool isHoliday = isSunday;
 
-    final dayCircle = Container(
-      width: mini ? 32 : 36,
-      height: mini ? 32 : 36,
+    // Determine text color based on state
+    Color textColor;
+    if (hasPhoto) {
+      textColor = Colors.white;
+    } else if (date.month != _focusedDay.month) {
+      textColor = Colors.grey[300]!;
+    } else if (isHoliday) {
+      textColor = Colors.red;
+    } else {
+      textColor = Colors.black;
+    }
+
+    final cellSize = mini ? 32.0 : 42.0;
+    final albumColor = _getAlbumColor(_selectedAlbum);
+
+    return Container(
+      width: cellSize,
+      height: cellSize,
       decoration: BoxDecoration(
-        color: isSelected
-            ? CalendarUX.selectedDayColor
-            : Colors.transparent,
-        shape: BoxShape.circle,
+        border: isSelected
+            ? Border.all(color: albumColor, width: 2.0)
+            : null,
+        color: Colors.transparent,
       ),
-      child: Center(
-        child: Text(
-          '${date.day}',
-          style: TextStyle(
-            color: isSelected
-                ? Colors.white
-                : (date.month != _focusedDay.month
-                      ? Colors.grey[300]
-                      : (isHoliday ? Colors.red : Colors.black)),
-            fontSize: CalendarUX.calendarDayFontSize,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-
-    if (mini) return dayCircle;
-
-    return ClipRect(
-      child: OverflowBox(
-        alignment: Alignment.topCenter,
-        maxHeight: double.infinity,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [dayCircle, const SizedBox(height: 2), _buildDots(dots)],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDots(List<Color> colors) {
-    if (colors.isEmpty) return const SizedBox(height: 4);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: colors
-          .take(5)
-          .map(
-            (color) {
-              // Create a darker version of the same color for the border
-              final hsl = HSLColor.fromColor(color);
-              final borderColor = hsl.withLightness(
-                (hsl.lightness - CalendarUX.calendarDotDarkenAmount).clamp(0.0, 1.0)
-              ).toColor();
-
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 1),
-                width: CalendarUX.calendarDotSize,
-                height: CalendarUX.calendarDotSize,
-                decoration: BoxDecoration(
-                  color: color, 
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: borderColor,
-                    width: CalendarUX.calendarDotBorderWidth,
-                  ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Thumbnail background
+          if (hasPhoto)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.55,
+                child: Image.file(
+                  thumbnailFile,
+                  fit: BoxFit.cover,
+                  cacheWidth: 120,
                 ),
-              );
-            },
-          )
-          .toList(),
+              ),
+            ),
+          // Day number
+          Text(
+            '${date.day}',
+            style: TextStyle(
+              color: textColor,
+              fontSize: mini ? 14 : CalendarUX.calendarDayFontSize,
+              fontWeight: (isSelected || hasPhoto) ? FontWeight.bold : FontWeight.normal,
+              shadows: hasPhoto
+                  ? const [
+                      Shadow(offset: Offset(0, 0.5), blurRadius: 3, color: Colors.black54),
+                    ]
+                  : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
