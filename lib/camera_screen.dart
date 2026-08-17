@@ -16,6 +16,7 @@ import 'album_service.dart';
 import 'photo_review_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'ux_config.dart';
+import 'gallery_picker_screen.dart';
 
 class CameraScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -320,7 +321,7 @@ class _CameraScreenState extends State<CameraScreen>
 
           // Bottom UI Stack
           Positioned(
-            bottom: SharedUX.stackBottomOffset,
+            bottom: SharedUX.stackBottomOffset + MediaQuery.of(context).padding.bottom,
             left: 0,
             right: 0,
             child: Column(
@@ -403,6 +404,7 @@ class _CameraScreenState extends State<CameraScreen>
 
         // Centering logic: Center between top bar and bottom ratio buttons
         final topPadding = MediaQuery.of(context).padding.top;
+        final bottomPadding = MediaQuery.of(context).padding.bottom;
         final topMenuH = topPadding + 60;
         final pickerToShutterGap =
             (CameraUX.gapPickerToShutterTop -
@@ -412,6 +414,7 @@ class _CameraScreenState extends State<CameraScreen>
 
         final bottomUIH =
             SharedUX.stackBottomOffset +
+            bottomPadding +
             SharedUX.containerHeight +
             pickerToShutterGap +
             CameraUX.timestampPickerHeight +
@@ -567,6 +570,7 @@ class _CameraScreenState extends State<CameraScreen>
 
   Widget _buildCameraMask() {
     final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return IgnorePointer(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -581,6 +585,7 @@ class _CameraScreenState extends State<CameraScreen>
 
           final bottomUIH =
               SharedUX.stackBottomOffset +
+              bottomPadding +
               SharedUX.containerHeight +
               pickerToShutterGap +
               CameraUX.timestampPickerHeight +
@@ -799,8 +804,56 @@ class _CameraScreenState extends State<CameraScreen>
           _loadAlbums();
         }
       },
-      onRightActionPressed: () {
-        // TODO: Open Gallery
+      onRightActionPressed: () async {
+        final GalleryResult? galleryResult = await Navigator.push<GalleryResult>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const GalleryPickerScreen(),
+          ),
+        );
+        if (galleryResult != null && mounted) {
+          var result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PhotoReviewScreen(
+                imageFile: galleryResult.file,
+                initialDesign: _currentDesign,
+                initialAlbum: _currentAlbum,
+                aspectRatio: _aspectRatio.value,
+                captureTime: galleryResult.creationTime,
+                initialAlignment: _currentAlignment,
+                initialFontSizeIndex: _fontSizeIndex,
+              ),
+            ),
+          );
+          // If review screen returns another GalleryResult, open review with it
+          while (result is GalleryResult && mounted) {
+            final gr = result;
+            result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PhotoReviewScreen(
+                  imageFile: gr.file,
+                  initialDesign: _currentDesign,
+                  initialAlbum: _currentAlbum,
+                  aspectRatio: _aspectRatio.value,
+                  captureTime: gr.creationTime,
+                  initialAlignment: _currentAlignment,
+                  initialFontSizeIndex: _fontSizeIndex,
+                ),
+              ),
+            );
+          }
+          if (mounted) {
+            if (result == true) {
+              _showSavedSnackbar();
+              _loadAlbums();
+            } else if (result is String && result != "전체") {
+              setState(() => _currentAlbum = result);
+              _loadAlbums();
+            }
+          }
+        }
       },
       onCenterActionPressed: _onCapturePressed,
       rightThumbnail: _latestPhoto,

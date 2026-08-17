@@ -9,6 +9,7 @@ import 'calendar_album_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'timestamp_metadata.dart';
 import 'ux_config.dart';
+import 'gallery_picker_screen.dart';
 
 class PhotoReviewScreen extends StatefulWidget {
   final File imageFile;
@@ -99,7 +100,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
         await Gal.putImage(tempPath, album: 'Timenow');
 
         // 3. Save to App Album
-        await AlbumService.savePhoto(bytes, _selectedAlbum);
+        await AlbumService.savePhoto(bytes, _selectedAlbum, originalDate: widget.captureTime);
 
         if (mounted) {
           final result = await Navigator.push(
@@ -350,8 +351,16 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
           Navigator.pop(context, result);
         }
       },
-      onRightActionPressed: () {
-        // TODO: Open Gallery
+      onRightActionPressed: () async {
+        final GalleryResult? galleryResult = await Navigator.push<GalleryResult>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const GalleryPickerScreen(),
+          ),
+        );
+        if (galleryResult != null && mounted) {
+          Navigator.pop(context, galleryResult);
+        }
       },
       onCenterActionPressed: _savePhoto,
       rightThumbnail: _latestPhoto,

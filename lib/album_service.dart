@@ -15,6 +15,21 @@ class AlbumService {
     return root;
   }
 
+  /// Extract DateTime from photo filename (photo_XXXXX.jpg → DateTime).
+  /// Falls back to file modified time if filename parsing fails.
+  static DateTime _getPhotoDate(File file) {
+    final name = file.path.split(Platform.pathSeparator).last;
+    final match = RegExp(r'photo_(\d+)\.').firstMatch(name);
+    if (match != null) {
+      final ms = int.tryParse(match.group(1)!);
+      if (ms != null) {
+        return DateTime.fromMillisecondsSinceEpoch(ms);
+      }
+    }
+    // Fallback to file modified time
+    return file.statSync().modified;
+  }
+
   static Future<List<String>> getAlbums() async {
     final root = await _photosRoot;
     final entities = await root.list().toList();
@@ -68,7 +83,7 @@ class AlbumService {
     }
   }
 
-  static Future<void> savePhoto(Uint8List bytes, String albumName) async {
+  static Future<void> savePhoto(Uint8List bytes, String albumName, {DateTime? originalDate}) async {
     final root = await _photosRoot;
     final albumDir = Directory('${root.path}/$albumName');
     if (!await albumDir.exists()) {
@@ -82,7 +97,8 @@ class AlbumService {
       format: CompressFormat.jpeg,
     );
 
-    final filename = 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final timestamp = originalDate ?? DateTime.now();
+    final filename = 'photo_${timestamp.millisecondsSinceEpoch}.jpg';
     final file = File('${albumDir.path}/$filename');
     await file.writeAsBytes(compressed);
   }
@@ -108,11 +124,11 @@ class AlbumService {
       final files = await dir.list().toList();
       for (var file in files) {
         if (file is File) {
-          final stats = await file.stat();
+          final photoDate = _getPhotoDate(file);
           final date = DateTime(
-            stats.changed.year,
-            stats.changed.month,
-            stats.changed.day,
+            photoDate.year,
+            photoDate.month,
+            photoDate.day,
           );
           if (date.year == month.year && date.month == month.month) {
             dots.putIfAbsent(date, () => {}).add(currentAlbumName);
@@ -144,11 +160,11 @@ class AlbumService {
       final files = await dir.list().toList();
       for (var file in files) {
         if (file is File) {
-          final stats = await file.stat();
+          final photoDate = _getPhotoDate(file);
           final date = DateTime(
-            stats.changed.year,
-            stats.changed.month,
-            stats.changed.day,
+            photoDate.year,
+            photoDate.month,
+            photoDate.day,
           );
           if (date.year == month.year && date.month == month.month) {
             dateFiles.putIfAbsent(date, () => []).add(file);
@@ -161,7 +177,7 @@ class AlbumService {
     final Map<DateTime, File> result = {};
     for (var entry in dateFiles.entries) {
       entry.value.sort(
-        (a, b) => b.statSync().changed.compareTo(a.statSync().changed),
+        (a, b) => _getPhotoDate(b).compareTo(_getPhotoDate(a)),
       );
       result[entry.key] = entry.value.first;
     }
@@ -188,11 +204,11 @@ class AlbumService {
       final files = await dir.list().toList();
       for (var file in files) {
         if (file is File) {
-          final stats = await file.stat();
+          final photoDate = _getPhotoDate(file);
           final fileDate = DateTime(
-            stats.changed.year,
-            stats.changed.month,
-            stats.changed.day,
+            photoDate.year,
+            photoDate.month,
+            photoDate.day,
           );
           if (DateUtils.isSameDay(fileDate, date)) {
             result.add(file);
@@ -202,7 +218,7 @@ class AlbumService {
     }
 
     // Sort by timestamp (newest first)
-    result.sort((a, b) => b.statSync().changed.compareTo(a.statSync().changed));
+    result.sort((a, b) => _getPhotoDate(b).compareTo(_getPhotoDate(a)));
     return result;
   }
 
@@ -229,7 +245,7 @@ class AlbumService {
     }
 
     // Sort by timestamp (newest first)
-    result.sort((a, b) => b.statSync().changed.compareTo(a.statSync().changed));
+    result.sort((a, b) => _getPhotoDate(b).compareTo(_getPhotoDate(a)));
     return result;
   }
 }
