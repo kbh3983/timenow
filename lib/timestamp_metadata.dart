@@ -51,10 +51,10 @@ class TimestampMetadata {
     TimestampDesign.custom03: TimestampDesignConfig(
       designName: '고무인자',
       fontFamily: CameraUX.stampFont03,
-      defaultFontSize: 26.0,
+      defaultFontSize: 25.0,
       dateFormat: 'yyyy.MM.dd',
       timeFormat: 'a hh:mm',
-      fontSizeSteps: [20.0, 25.0, 30.0],
+      fontSizeSteps: [22.0, 25.0, 28.0],
       defaultFontSizeIndex: 1, // Start with 25.0
     ),
     TimestampDesign.none: TimestampDesignConfig(designName: '없음'),
@@ -115,12 +115,15 @@ class TimestampMetadata {
     final dateFormat = getDateFormat(design);
     final timeFormat = getTimeFormat(design);
 
-    // Korean values
+    // English or Korean values
     final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
     final weekday = weekdays[now.weekday - 1];
-    final period = now.hour < 12 ? '오전' : '오후';
+    final isEnglishPeriod = (design == TimestampDesign.custom03);
+    final period = isEnglishPeriod
+        ? (now.hour < 12 ? 'AM' : 'PM')
+        : (now.hour < 12 ? '오전' : '오후');
 
-    // Replace Korean placeholder tokens before passing to DateFormat
+    // Replace placeholder tokens before passing to DateFormat
     String resolveFormat(String fmt) {
       // Replace (E) with the actual weekday
       String s = fmt.replaceAll('(E)', '($weekday)');

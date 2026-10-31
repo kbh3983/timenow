@@ -31,7 +31,7 @@ class _CameraScreenState extends State<CameraScreen>
   CameraController? _controller;
   int _selectedCameraIndex = 0;
   CameraAspectRatio _aspectRatio = CameraAspectRatio.ratio1x1;
-  TimestampDesign _currentDesign = TimestampDesign.custom01;
+  TimestampDesign _currentDesign = TimestampDesign.custom03;
   Alignment _currentAlignment = CameraUX.defaultAlignment;
   final double _overlayOpacity = 1.0;
   String _currentAlbum = '일상';

@@ -6,9 +6,9 @@ import 'ux_config.dart';
 
 // ───── Timestamp Design Types ─────
 enum TimestampDesign {
+  custom03,
   custom01,
   custom02,
-  custom03,
   none,
   analogClock,
   dateText,
@@ -453,13 +453,24 @@ class TimestampThumbnail extends StatelessWidget {
               const Icon(Icons.image, color: Colors.white),
         );
       case TimestampDesign.custom03:
-        return Image.asset(
-          CameraUX.stampImage03,
-          color: Colors.white,
-          colorBlendMode: BlendMode.srcIn,
-          fit: BoxFit.contain,
-          errorBuilder: (ctx, _, _) =>
-              const Icon(Icons.image, color: Colors.white),
+        final text = TimestampMetadata.getFormattedDateTime(design, now);
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontFamily: CameraUX.stampFont03,
+                  color: Colors.white,
+                  fontSize: 11,
+                  height: 1.0,
+                  shadows: shadow,
+                ),
+              ),
+            ),
+          ),
         );
       case TimestampDesign.analogClock:
         return Center(
@@ -916,7 +927,7 @@ class _Custom03Stamp extends StatelessWidget {
   const _Custom03Stamp({
     required this.now,
     required this.alignment,
-    this.fontSize = 14.0,
+    this.fontSize = 25.0,
   });
 
   @override
@@ -939,9 +950,10 @@ class _Custom03Stamp extends StatelessWidget {
           style: TextStyle(
             color: Colors.white,
             fontSize: fontSize,
+            height: 1.0,
             fontWeight: FontWeight.w400,
             fontFamily: CameraUX.stampFont03,
-            letterSpacing: -0.5,
+            letterSpacing: 0.0,
             shadows: shadows,
           ),
         ),
