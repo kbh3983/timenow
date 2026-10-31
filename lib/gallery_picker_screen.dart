@@ -76,7 +76,9 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
     final albums = await PhotoManager.getAssetPathList(
       type: RequestType.image,
       hasAll: true,
+      onlyAll: false, // 명시적으로 전체 폴더 검색
       filterOption: FilterOptionGroup(
+        containsPathModified: true, // 일부 단말기 앨범 누락 방지
         orders: [
           const OrderOption(type: OrderOptionType.createDate, asc: false),
         ],
@@ -156,10 +158,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
     if (file != null && mounted) {
       Navigator.pop(
         context,
-        GalleryResult(
-          file: file,
-          creationTime: asset.createDateTime,
-        ),
+        GalleryResult(file: file, creationTime: asset.createDateTime),
       );
     }
   }
@@ -195,11 +194,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.chevron_left,
-              color: Colors.white,
-              size: 28,
-            ),
+            icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
           ),
           const Expanded(
             child: Text(
@@ -297,9 +292,10 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
       );
     }
 
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return GridView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.all(2),
+      padding: EdgeInsets.fromLTRB(2, 2, 2, 2 + bottomPadding),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 2,
@@ -308,7 +304,6 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
       ),
       itemCount: _photos.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        // Loading indicator at the bottom
         if (index >= _photos.length) {
           return const Center(
             child: Padding(
@@ -340,10 +335,7 @@ class _PhotoThumbnailTile extends StatefulWidget {
   final AssetEntity asset;
   final VoidCallback onTap;
 
-  const _PhotoThumbnailTile({
-    required this.asset,
-    required this.onTap,
-  });
+  const _PhotoThumbnailTile({required this.asset, required this.onTap});
 
   @override
   State<_PhotoThumbnailTile> createState() => _PhotoThumbnailTileState();

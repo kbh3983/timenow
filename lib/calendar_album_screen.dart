@@ -21,9 +21,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   DateTime _selectedDay = DateTime.now();
   String _selectedAlbum = '전체';
   List<String> _albums = ['일상'];
-  bool _isExpanded = false;
-  bool _isMovingUp = false; // Track scroll direction for semi-auto snap
-  double _transitionExtent = 0.0; // 0.0 for month, 1.0 for week
+  final ValueNotifier<bool> _isExpanded = ValueNotifier(false);
+  final ValueNotifier<double> _transitionExtent = ValueNotifier(0.0);
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
 
@@ -92,6 +91,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: SafeArea(
+        bottom: false,
         child: _viewMode == CalendarViewMode.grid
             ? _buildPhotoGridView()
             : Stack(
@@ -100,7 +100,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Container(
-        margin: const EdgeInsets.only(bottom: 20),
+        margin: EdgeInsets.only(bottom: 20 + MediaQuery.of(context).padding.bottom),
         child: FloatingActionButton(
           onPressed: () => Navigator.pop(context, _selectedAlbum),
           backgroundColor: const Color(0xFF222222),
@@ -123,6 +123,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent, // 스크롤 시 회색 틴트 제거
+      scrolledUnderElevation: 0,
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -150,14 +152,19 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       ),
       centerTitle: true,
       actions: [
-        IconButton(
-          icon: Icon(
-            _viewMode == CalendarViewMode.grid
-                ? Icons.calendar_today
-                : (_isExpanded ? Icons.grid_view : Icons.grid_view),
-            color: Colors.black,
-          ),
-          onPressed: _toggleView,
+        ValueListenableBuilder<bool>(
+          valueListenable: _isExpanded,
+          builder: (context, expanded, child) {
+            return IconButton(
+              icon: Icon(
+                _viewMode == CalendarViewMode.grid
+                    ? Icons.calendar_today
+                    : (expanded ? Icons.grid_view : Icons.grid_view),
+                color: Colors.black,
+              ),
+              onPressed: _toggleView,
+            );
+          }
         ),
       ],
     );
@@ -167,15 +174,15 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     if (_viewMode == CalendarViewMode.grid) {
       setState(() {
         _viewMode = CalendarViewMode.calendar;
-        _isExpanded = false;
-        _transitionExtent = 0.0;
       });
+      _isExpanded.value = false;
+      _transitionExtent.value = 0.0;
       // Removed animateTo(0.35) because the sheet is not yet attached
       // and will render at initialChildSize (0.35) by default.
       return;
     }
 
-    if (_isExpanded) {
+    if (_isExpanded.value) {
       // If already week view (expanded), go to grid view
       setState(() {
         _viewMode = CalendarViewMode.grid;
@@ -193,8 +200,14 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   }
 
   Widget _buildCalendarContent() {
-    return Opacity(
-      opacity: (1.0 - _transitionExtent).clamp(0.0, 1.0),
+    return ValueListenableBuilder<double>(
+      valueListenable: _transitionExtent,
+      builder: (context, extent, child) {
+        return Opacity(
+          opacity: (1.0 - extent).clamp(0.0, 1.0),
+          child: child,
+        );
+      },
       child: ClipRect(
         child: SingleChildScrollView(
           physics: const NeverScrollableScrollPhysics(),
@@ -454,101 +467,99 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   }
 
   Widget _buildDraggableSheet() {
-    return Listener(
-      onPointerUp: (event) {
-        if (!_sheetController.isAttached) return;
-        final currentSize = _sheetController.size;
-        const minS = CalendarUX.initialSheetSize;
-        const maxS = 0.95;
-
-        // If it's somewhere in the middle, snap it based on direction
-        if (currentSize > minS && currentSize < maxS) {
-          final targetSize = _isMovingUp ? maxS : minS;
-          // Use Future.microtask to avoid conflicting with ongoing scroll physics
-          Future.microtask(() {
-            if (_sheetController.isAttached) {
-              _sheetController.animateTo(
-                targetSize,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-              );
-            }
-          });
-        }
-      },
-      child: DraggableScrollableSheet(
-        controller: _sheetController,
-        initialChildSize: CalendarUX.initialSheetSize,
-        minChildSize: CalendarUX.initialSheetSize,
-        maxChildSize: 0.95,
-        // Disable native snap to prevent conflicts with our custom snapping listener
-        snap: false,
-        builder: (context, scrollController) {
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: CalendarUX.initialSheetSize,
+      minChildSize: CalendarUX.initialSheetSize,
+      maxChildSize: 1.0,
+      snap: false,
+      builder: (context, scrollController) {
           return NotificationListener<DraggableScrollableNotification>(
             onNotification: (notification) {
-              setState(() {
-                // Track moving direction based on whether extent is increasing
-                const double minS = CalendarUX.initialSheetSize;
-                const double maxS = 0.95;
-                
-                final newExtent = ((notification.extent - minS) / (maxS - minS)).clamp(0.0, 1.0);
-                if (newExtent != _transitionExtent) {
-                  _isMovingUp = newExtent > _transitionExtent;
-                }
-                
-                _transitionExtent = newExtent;
-                _isExpanded = _transitionExtent > 0.5;
-              });
+              const double minS = CalendarUX.initialSheetSize;
+              const double maxS = 1.0;
+              final newExtent = ((notification.extent - minS) / (maxS - minS)).clamp(0.0, 1.0);
+              if (_transitionExtent.value != newExtent) {
+                _transitionExtent.value = newExtent;
+                _isExpanded.value = newExtent > 0.5;
+              }
               return true;
             },
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(_isExpanded ? 0 : 32),
-              ),
-              boxShadow: _isExpanded
-                  ? null
-                  : [const BoxShadow(blurRadius: 15, color: Colors.black12)],
-            ),
-            child: Column(
-              children: [
-                _buildHandle(),
-                // Show Week Strip at the top of the sheet when transition starts
-                if (_transitionExtent > 0.05)
-                  Opacity(
-                    opacity: _transitionExtent,
-                    child: SizedBox(
-                      height: _transitionExtent * 50, // More realistic height
-                      child: SingleChildScrollView(
-                        physics: const NeverScrollableScrollPhysics(),
-                        child: _buildWeekStrip(),
-                      ),
+            child: ValueListenableBuilder<double>(
+              valueListenable: _transitionExtent,
+              builder: (context, extent, child) {
+                final expanded = extent > 0.5;
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(expanded ? 0 : 32),
                     ),
+                    boxShadow: expanded
+                        ? null
+                        : [const BoxShadow(blurRadius: 15, color: Colors.black12)],
                   ),
-                Expanded(
-                  child: _dayPhotos.isEmpty
-                      ? _buildEmptyState(scrollController)
-                      : ListView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          itemCount: _dayPhotos.length,
-                          itemBuilder: (context, index) {
-                            return _buildRecordEntry(index);
-                          },
+                  child: Column(
+                    children: [
+                      _buildHandle(expanded),
+                      if (extent > 0.05)
+                        Opacity(
+                          opacity: extent,
+                          child: ClipRect(
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              heightFactor: extent,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // 상단 메뉴와 달력 사이의 구분선
+                                  if (expanded)
+                                    Container(
+                                      height: 1,
+                                      color: Colors.grey[200],
+                                      width: double.infinity,
+                                    ),
+                                  _buildWeekStrip(),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                ),
-              ],
+                      child!,
+                    ],
+                  ),
+                );
+              },
+              child: Expanded(
+                child: _dayPhotos.isEmpty
+                    ? _buildEmptyState(scrollController)
+                    : ListView.builder(
+                        controller: scrollController,
+                        padding: EdgeInsets.only(
+                          left: 24,
+                          right: 24,
+                          bottom: MediaQuery.of(context).padding.bottom + 80, // Space for FAB
+                        ),
+                        itemCount: _dayPhotos.length,
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return ValueListenableBuilder<bool>(
+                              valueListenable: _isExpanded,
+                              builder: (context, expanded, child) => _buildRecordEntry(index, expanded),
+                            );
+                          }
+                          return _buildRecordEntry(index, _isExpanded.value);
+                        },
+                      ),
+              ),
             ),
-          ),
-        );
+          );
       },
-    ),
     );
   }
 
-  Widget _buildHandle() {
-    if (_isExpanded) return const SizedBox.shrink();
+  Widget _buildHandle(bool expanded) {
+    if (expanded) return const SizedBox.shrink();
     return GestureDetector(
       onTap: () {
         if (_sheetController.isAttached) {
@@ -632,7 +643,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     );
   }
 
-  Widget _buildRecordEntry(int index) {
+  Widget _buildRecordEntry(int index, bool expanded) {
     if (index >= _dayPhotos.length) return const SizedBox.shrink();
     final photoFile = _dayPhotos[index];
     final timeStr = DateFormat(
@@ -667,7 +678,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
           ),
           const SizedBox(height: 12),
           // Stacked effect ONLY when NOT expanded and it's the first photo
-          if (!_isExpanded && index == 0 && _dayPhotos.length > 1)
+          if (!expanded && index == 0 && _dayPhotos.length > 1)
             _buildStackedPhoto(photoFile)
           else
             _buildSinglePhoto(photoFile),
@@ -693,9 +704,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
         alignment: Alignment.bottomCenter,
         children: [
           Container(
-            margin: const EdgeInsets.only(bottom: 20),
-            width: 200,
-            height: 250,
+            margin: const EdgeInsets.only(bottom: 24, left: 48, right: 48),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -705,9 +714,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             ),
           ),
           Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            width: 220,
-            height: 250,
+            margin: const EdgeInsets.only(bottom: 12, left: 24, right: 24),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -739,13 +746,15 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
           : null,
       child: Hero(
         tag: file.path,
-        child: Container(
-          width: double.infinity,
-          height: 350,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(image: FileImage(file), fit: BoxFit.cover),
+        child: AspectRatio(
+          aspectRatio: 1.0,
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(12),
+              image: DecorationImage(image: FileImage(file), fit: BoxFit.cover),
+            ),
           ),
         ),
       ),
@@ -845,7 +854,11 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Image.file(file, fit: BoxFit.cover),
+      child: Image.file(
+        file, 
+        fit: BoxFit.cover,
+        cacheWidth: 300, // 그리드뷰에서는 저해상도로 디코딩하여 스크롤 버벅임 해결
+      ),
     );
   }
 

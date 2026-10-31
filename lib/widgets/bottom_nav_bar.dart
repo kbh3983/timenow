@@ -58,7 +58,7 @@ class CustomBottomNavBar extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            bottom: SharedUX.iconsPosition,
+            bottom: SharedUX.iconsPosition - 12.0, // adjusted for expanded hit area
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: SharedUX.sidePadding,
@@ -103,10 +103,13 @@ class CustomBottomNavBar extends StatelessWidget {
     required List<Shadow> shadow,
   }) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onPressed,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           Icon(
             icon,
             color: Colors.white,
@@ -127,6 +130,7 @@ class CustomBottomNavBar extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -135,10 +139,13 @@ class CustomBottomNavBar extends StatelessWidget {
     required List<Shadow> shadow,
   }) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onPressed,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
           if (rightThumbnail != null)
             Container(
               width: SharedUX.navThumbnailSize,
@@ -169,7 +176,7 @@ class CustomBottomNavBar extends StatelessWidget {
             ),
           const SizedBox(height: 6),
           Text(
-            '갤러리',
+            '선택',
             style: TextStyle(
               color: Colors.white70,
               fontSize: SharedUX.navLabelSize,
@@ -180,6 +187,7 @@ class CustomBottomNavBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

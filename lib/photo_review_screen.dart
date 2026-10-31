@@ -322,7 +322,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
         .clamp(0.0, double.infinity);
 
     return Positioned(
-      bottom: SharedUX.stackBottomOffset,
+      bottom: SharedUX.stackBottomOffset + MediaQuery.of(context).padding.bottom,
       left: 0,
       right: 0,
       child: Column(
