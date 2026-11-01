@@ -18,74 +18,145 @@ class TimestampDesignConfig {
   const TimestampDesignConfig({
     required this.designName,
     this.fontFamily,
-    this.defaultFontSize = 22.0,
+    this.defaultFontSize = 25.0,
     this.color = CameraUX.defaultColor,
     this.shadows = CameraUX.defaultShadows,
     this.dateFormat,
     this.timeFormat,
     this.fontSizeSteps,
-    this.defaultFontSizeIndex = 0,
+    this.defaultFontSizeIndex = 1,
   });
 }
 
 class TimestampMetadata {
   static const Map<TimestampDesign, TimestampDesignConfig> designs = {
-    TimestampDesign.custom01: TimestampDesignConfig(
-      designName: '감성 한글',
-      fontFamily: 'NanumSquareB',
-      defaultFontSize: 16.0,
-      dateFormat: 'yyyy년 MM월 dd일 (E)',
+    TimestampDesign.n1_1: TimestampDesignConfig(
+      designName: 'n1_1',
+      fontFamily: CameraUX.fontRubberNippleFactory,
+      defaultFontSize: 20.0,
+      dateFormat: 'yyyy.MM.dd',
       timeFormat: 'a hh:mm',
-      fontSizeSteps: [16.0, 20.0, 24.0],
-      defaultFontSizeIndex: 1, // Start with 20.0
+      fontSizeSteps: [17.0, 20.0, 23.0],
+      defaultFontSizeIndex: 1,
     ),
-    TimestampDesign.custom02: TimestampDesignConfig(
-      designName: '이서윤체',
-      fontFamily: CameraUX.stampFont02,
+    TimestampDesign.n1_2: TimestampDesignConfig(
+      designName: 'n1_2',
+      fontFamily: CameraUX.fontNixieOne,
+      defaultFontSize: 25.0,
+      dateFormat: 'yyyy/MM/dd',
+      timeFormat: 'a hh:mm',
+      fontSizeSteps: [21.0, 25.0, 29.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.n2_1: TimestampDesignConfig(
+      designName: 'n2_1',
+      fontFamily: CameraUX.fontCafe24OnePrettyNight,
+      defaultFontSize: 32.0,
+      dateFormat: 'yyyy년 MM월 dd일 (E)',
+      timeFormat: 'a h:mm',
+      fontSizeSteps: [26.0, 32.0, 38.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.n2_2: TimestampDesignConfig(
+      designName: 'n2_2',
+      fontFamily: CameraUX.fontNanumAmsterdam,
+      defaultFontSize: 30.0,
+      dateFormat: 'yyyy년 MM월 dd일',
+      timeFormat: 'a hh:mm',
+      fontSizeSteps: [24.0, 30.0, 36.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.n3_1: TimestampDesignConfig(
+      designName: 'n3_1',
+      fontFamily: CameraUX.fontNanumBarunpen,
+      defaultFontSize: 22.5,
+      dateFormat: 'dd MMM, yyyy',
+      timeFormat: 'a hh:mm',
+      fontSizeSteps: [18.0, 22.5, 28.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.n3_2: TimestampDesignConfig(
+      designName: 'n3_2',
+      fontFamily: CameraUX.fontCafe24Simplehae,
+      defaultFontSize: 22.0,
+      dateFormat: 'yyyy',
+      timeFormat: 'a hh:mm',
+      fontSizeSteps: [18.0, 22.0, 26.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.s1_1: TimestampDesignConfig(
+      designName: 's1_1',
+      fontFamily: CameraUX.fontTvnFunStory,
       defaultFontSize: 24.0,
-      dateFormat: 'yyyy/MM/dd (E)',
+      dateFormat: 'yyyy.MM.dd.E',
       timeFormat: 'a hh:mm',
       fontSizeSteps: [20.0, 24.0, 28.0],
-      defaultFontSizeIndex: 1, // Start with 24.0
+      defaultFontSizeIndex: 1,
     ),
-    TimestampDesign.custom03: TimestampDesignConfig(
-      designName: '고무인자',
-      fontFamily: CameraUX.stampFont03,
-      defaultFontSize: 25.0,
-      dateFormat: 'yyyy.MM.dd',
+    TimestampDesign.s1_2: TimestampDesignConfig(
+      designName: 's1_2',
+      fontFamily: CameraUX.fontCafe24Shiningstar,
+      defaultFontSize: 26.0,
+      dateFormat: 'yyyy.MM.dd.E',
       timeFormat: 'a hh:mm',
-      fontSizeSteps: [22.0, 25.0, 28.0],
-      defaultFontSizeIndex: 1, // Start with 25.0
+      fontSizeSteps: [22.0, 26.0, 30.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.s2_1: TimestampDesignConfig(
+      designName: 's2_1',
+      fontFamily: CameraUX.fontNanumBarunpen,
+      defaultFontSize: 25.0,
+      dateFormat: 'yyyy/MM/dd',
+      timeFormat: 'a hh:mm',
+      fontSizeSteps: [20.0, 25.0, 30.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.s2_2: TimestampDesignConfig(
+      designName: 's2_2',
+      fontFamily: CameraUX.fontNanumBarunpen,
+      defaultFontSize: 25.0,
+      dateFormat: 'yyyy MMM dd',
+      timeFormat: 'a hh:mm',
+      fontSizeSteps: [20.0, 25.0, 30.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.s3_1: TimestampDesignConfig(
+      designName: 's3_1',
+      fontFamily: CameraUX.fontTvnFunStory,
+      defaultFontSize: 32.0,
+      dateFormat: 'yyyy',
+      timeFormat: 'a hh:mm',
+      fontSizeSteps: [26.0, 32.0, 38.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.s3_2: TimestampDesignConfig(
+      designName: 's3_2',
+      fontFamily: CameraUX.fontTvnFunStory,
+      defaultFontSize: 26.0,
+      dateFormat: 'yy/MM/dd',
+      timeFormat: 'a hh:mm',
+      fontSizeSteps: [22.0, 26.0, 30.0],
+      defaultFontSizeIndex: 1,
+    ),
+    TimestampDesign.style1: TimestampDesignConfig(
+      designName: 'style1',
+      fontFamily: CameraUX.fontRondalBold,
+      defaultFontSize: 34.0,
+      dateFormat: 'EEEE',
+      timeFormat: 'a hh:mm',
+      fontSizeSteps: [28.0, 34.0, 40.0],
+      defaultFontSizeIndex: 1,
     ),
     TimestampDesign.none: TimestampDesignConfig(designName: '없음'),
-    TimestampDesign.analogClock: TimestampDesignConfig(designName: '아날로그'),
-    TimestampDesign.dateText: TimestampDesignConfig(
-      designName: '심플',
-      dateFormat: 'MMM dd, yyyy',
-      timeFormat: 'hh:mm a',
-    ),
-    TimestampDesign.filmGrain: TimestampDesignConfig(
-      designName: '필름',
-      dateFormat: 'MMM dd',
-    ),
-    TimestampDesign.sample0: TimestampDesignConfig(
-      designName: '뷰파인더',
-      timeFormat: 'HH:mm:ss',
-    ),
-    TimestampDesign.sample1: TimestampDesignConfig(
-      designName: '타자기',
-      dateFormat: 'yyyy.MM.dd',
-    ),
-    TimestampDesign.sample2: TimestampDesignConfig(
-      designName: '모던 볼드',
-      dateFormat: 'EEEE\nMMMM dd',
-    ),
-    TimestampDesign.sample3: TimestampDesignConfig(
-      designName: '네온',
-      dateFormat: 'yyyy년 M월 d일 (E)',
-      timeFormat: 'a h:mm',
-    ),
   };
+
+  static bool isEnglishDesign(TimestampDesign design) {
+    return design == TimestampDesign.n1_1 ||
+        design == TimestampDesign.n1_2 ||
+        design == TimestampDesign.n3_1 ||
+        design == TimestampDesign.n3_2 ||
+        design == TimestampDesign.style1;
+  }
 
   static String? getFontFamily(TimestampDesign design) {
     return designs[design]?.fontFamily;
@@ -115,24 +186,25 @@ class TimestampMetadata {
     final dateFormat = getDateFormat(design);
     final timeFormat = getTimeFormat(design);
 
-    // English or Korean values
-    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final weekday = weekdays[now.weekday - 1];
-    final isEnglishPeriod = (design == TimestampDesign.custom03);
-    final period = isEnglishPeriod
+    final weekdaysKr = ['월', '화', '수', '목', '금', '토', '일'];
+    final weekdayKr = weekdaysKr[now.weekday - 1];
+
+    final isEng = isEnglishDesign(design);
+    final period = isEng
         ? (now.hour < 12 ? 'AM' : 'PM')
         : (now.hour < 12 ? '오전' : '오후');
 
-    // Replace placeholder tokens before passing to DateFormat
     String resolveFormat(String fmt) {
-      // Replace (E) with the actual weekday
-      String s = fmt.replaceAll('(E)', '($weekday)');
-      // If format starts with 'a ' (AM/PM prefix), handle separately
-      if (s.startsWith('a ')) {
-        final rest = s.substring(2); // e.g. 'hh:mm'
-        return '$period ${DateFormat(rest).format(now)}';
+      String s = fmt;
+      if (!isEng) {
+        s = s.replaceAll('(E)', '($weekdayKr)');
+        s = s.replaceAll('.E', '.$weekdayKr');
       }
-      return DateFormat(s).format(now);
+      if (s.startsWith('a ')) {
+        final rest = s.substring(2);
+        return '$period ${DateFormat(rest, isEng ? 'en_US' : 'ko_KR').format(now)}';
+      }
+      return DateFormat(s, isEng ? 'en_US' : 'ko_KR').format(now);
     }
 
     final dateStr = resolveFormat(dateFormat);
@@ -142,12 +214,12 @@ class TimestampMetadata {
   }
 
   static List<double> getFontSizeSteps(TimestampDesign design) {
-    return designs[design]?.fontSizeSteps ?? [14.0, 22.0, 24.0];
+    return designs[design]?.fontSizeSteps ?? [18.0, 25.0, 30.0];
   }
 
   static double getDefaultFontSize(TimestampDesign design) {
     final conf = designs[design];
-    if (conf == null) return 14.0;
+    if (conf == null) return 25.0;
     if (conf.fontSizeSteps != null && conf.fontSizeSteps!.isNotEmpty) {
       final idx = conf.defaultFontSizeIndex.clamp(
         0,
@@ -159,6 +231,6 @@ class TimestampMetadata {
   }
 
   static int getDefaultFontSizeIndex(TimestampDesign design) {
-    return designs[design]?.defaultFontSizeIndex ?? 0;
+    return designs[design]?.defaultFontSizeIndex ?? 1;
   }
 }

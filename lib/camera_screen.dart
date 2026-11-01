@@ -1,12 +1,9 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'timestamp_overlays.dart';
@@ -14,9 +11,17 @@ import 'timestamp_metadata.dart';
 import 'calendar_album_screen.dart';
 import 'album_service.dart';
 import 'photo_review_screen.dart';
+import 'video_review_screen.dart';
+import 'services/video_processing_service.dart';
+import 'services/timestamp_access_manager.dart';
+import 'services/timestamp_deck_manager.dart';
+import 'widgets/unlock_timestamp_dialog.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'ux_config.dart';
 import 'gallery_picker_screen.dart';
+import 'stamp_management_screen.dart';
+
+enum CameraCaptureMode { photo, video }
 
 class CameraScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -31,11 +36,20 @@ class _CameraScreenState extends State<CameraScreen>
   CameraController? _controller;
   int _selectedCameraIndex = 0;
   CameraAspectRatio _aspectRatio = CameraAspectRatio.ratio1x1;
-  TimestampDesign _currentDesign = TimestampDesign.custom03;
+  TimestampDesign _currentDesign = TimestampDesign.n1_1;
   Alignment _currentAlignment = CameraUX.defaultAlignment;
   final double _overlayOpacity = 1.0;
   String _currentAlbum = '일상';
   bool _isCapturing = false;
+
+  // Video recording state
+  CameraCaptureMode _captureMode = CameraCaptureMode.photo;
+  bool _isRecording = false;
+  DateTime? _recordingStartTime;
+  int _recordDurationSeconds = 0;
+  Timer? _recordDurationTimer;
+  bool _isProcessingVideo = false;
+  String _processingStatus = '';
 
   FlashMode _flashMode = FlashMode.off;
   int _timerSeconds = 0;
@@ -47,8 +61,6 @@ class _CameraScreenState extends State<CameraScreen>
   double _minZoom = 1.0;
   double _maxZoom = 8.0;
   double _timestampFontSize = 14.0;
-  final GlobalKey _repaintKey = GlobalKey();
-  final GlobalKey _rawRepaintKey = GlobalKey();
   File? _latestPhoto;
 
   // Timer Status Overlay State
@@ -94,6 +106,8 @@ class _CameraScreenState extends State<CameraScreen>
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
     _captureTimer?.cancel();
+    _recordDurationTimer?.cancel();
+    _statusOverlayTimer?.cancel();
     super.dispose();
   }
 
@@ -110,18 +124,31 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _initCamera() async {
     if (widget.cameras.isEmpty) return;
     final camera = widget.cameras[_selectedCameraIndex];
-    final controller = CameraController(
+    // ResolutionPreset.max → full-sensor 4:3 output (same as stock camera).
+    CameraController controller = CameraController(
       camera,
-      ResolutionPreset.high,
-      enableAudio: false,
+      ResolutionPreset.max,
+      enableAudio: true,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
     try {
       await controller.initialize();
       await controller.setFlashMode(_flashMode);
     } catch (e) {
-      debugPrint('Camera init error: $e');
-      return;
+      debugPrint('Camera init with audio failed, retrying without audio: $e');
+      try {
+        controller = CameraController(
+          camera,
+          ResolutionPreset.max,
+          enableAudio: false,
+          imageFormatGroup: ImageFormatGroup.jpeg,
+        );
+        await controller.initialize();
+        await controller.setFlashMode(_flashMode);
+      } catch (e2) {
+        debugPrint('Camera init error: $e2');
+        return;
+      }
     }
     if (!mounted) return;
     double minZoom = 1.0;
@@ -219,46 +246,39 @@ class _CameraScreenState extends State<CameraScreen>
     setState(() => _isCapturing = true);
 
     try {
-      final boundary =
-          _rawRepaintKey.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
+      // Native full-resolution sensor capture (respects flash & zoom).
+      // The review screen center-crops it to the selected ratio (BoxFit.cover),
+      // which matches exactly what the preview hole shows.
+      final isFront =
+          _controller!.description.lensDirection == CameraLensDirection.front;
+      final xFile = await _controller!.takePicture();
+      final file = File(xFile.path);
 
-      if (boundary != null) {
-        final image = await boundary.toImage(pixelRatio: 3.0);
-        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-        final bytes = byteData!.buffer.asUint8List();
-
-        final dir = await getTemporaryDirectory();
-        final path =
-            '${dir.path}/timenow_raw_${DateTime.now().millisecondsSinceEpoch}.png';
-        final file = File(path);
-        await file.writeAsBytes(bytes);
+      if (mounted) {
+        final now = DateTime.now();
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PhotoReviewScreen(
+              imageFile: file,
+              initialDesign: _currentDesign,
+              initialAlbum: _currentAlbum,
+              aspectRatio: _aspectRatio.value,
+              captureTime: now,
+              initialAlignment: _currentAlignment,
+              initialFontSizeIndex: _fontSizeIndex,
+              mirrorHorizontally: isFront,
+            ),
+          ),
+        );
 
         if (mounted) {
-          final now = DateTime.now();
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PhotoReviewScreen(
-                imageFile: file,
-                initialDesign: _currentDesign,
-                initialAlbum: _currentAlbum,
-                aspectRatio: _aspectRatio.value,
-                captureTime: now,
-                initialAlignment: _currentAlignment,
-                initialFontSizeIndex: _fontSizeIndex,
-              ),
-            ),
-          );
-
-          if (mounted) {
-            if (result == true) {
-              _showSavedSnackbar();
-              _loadAlbums();
-            } else if (result is String && result != "전체") {
-              setState(() => _currentAlbum = result);
-              _loadAlbums();
-            }
+          if (result == true) {
+            _showSavedSnackbar();
+            _loadAlbums();
+          } else if (result is String && result != "전체") {
+            setState(() => _currentAlbum = result);
+            _loadAlbums();
           }
         }
       }
@@ -274,14 +294,131 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  void _showSavedSnackbar() {
+  Future<void> _startVideoRecording() async {
+    if (_controller == null ||
+        !_controller!.value.isInitialized ||
+        _isRecording ||
+        _isProcessingVideo) {
+      return;
+    }
+    try {
+      await _controller!.startVideoRecording();
+      _recordingStartTime = DateTime.now();
+      _recordDurationSeconds = 0;
+      _recordDurationTimer?.cancel();
+      _recordDurationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (mounted) {
+          setState(() {
+            _recordDurationSeconds++;
+          });
+        }
+      });
+      setState(() {
+        _isRecording = true;
+      });
+      HapticFeedback.heavyImpact();
+    } catch (e) {
+      debugPrint('Error starting video recording: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('동영상 촬영 시작 실패: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _stopVideoRecording() async {
+    if (_controller == null || !_isRecording) return;
+    _recordDurationTimer?.cancel();
+    HapticFeedback.mediumImpact();
+
+    try {
+      final xFile = await _controller!.stopVideoRecording();
+      final rawVideoFile = File(xFile.path);
+      final startTime = _recordingStartTime ?? DateTime.now();
+
+      setState(() {
+        _isRecording = false;
+        _isProcessingVideo = true;
+        _processingStatus = '타임스탬프 영상 처리 중...';
+      });
+
+      final endTime = DateTime.now();
+      final recordedDuration = endTime.difference(startTime);
+
+      final processedVideo =
+          await VideoProcessingService().processVideoWithTimestamp(
+        rawVideoFile: rawVideoFile,
+        startTime: startTime,
+        duration: recordedDuration,
+        design: _currentDesign,
+        alignment: _currentAlignment,
+        fontSize: _timestampFontSize,
+        aspectRatio: _aspectRatio,
+      );
+
+      // Clean up raw temp file if different
+      if (processedVideo.path != rawVideoFile.path &&
+          await rawVideoFile.exists()) {
+        try {
+          await rawVideoFile.delete();
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        setState(() {
+          _isProcessingVideo = false;
+        });
+
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoReviewScreen(
+              videoFile: processedVideo,
+              initialAlbum: _currentAlbum,
+              captureTime: startTime,
+            ),
+          ),
+        );
+
+        if (mounted) {
+          if (result == true) {
+            _showSavedSnackbar(isVideo: true);
+            _loadAlbums();
+          } else if (result is String && result != "전체") {
+            setState(() => _currentAlbum = result);
+            _loadAlbums();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error stopping/processing video: $e');
+      if (mounted) {
+        setState(() {
+          _isRecording = false;
+          _isProcessingVideo = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('영상 처리 중 오류가 발생했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  String _formatDuration(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  void _showSavedSnackbar({bool isVideo = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
+        content: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Photo saved to gallery!'),
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(isVideo ? '동영상이 저장되었습니다!' : '사진이 저장되었습니다!'),
           ],
         ),
         backgroundColor: Colors.black87,
@@ -301,17 +438,14 @@ class _CameraScreenState extends State<CameraScreen>
     final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
     final Color topIconColor = CameraUX.getTopIconColor(_aspectRatio.value);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0F1013),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Camera Preview with localized RepaintBoundary for cropping
+          // 1. Camera Preview with localized RepaintBoundary and ClipRect for precise ratio viewport
           _cameraPreviewWithTimestamp(),
 
-          // 2. Translucent Mask for Aspect Ratio
-          _buildCameraMask(),
-
-          // 3. UI Overlays
+          // 2. UI Overlays (Top bar)
           Positioned(
             top: 0,
             left: 0,
@@ -319,9 +453,55 @@ class _CameraScreenState extends State<CameraScreen>
             child: _topBar(iconColor: topIconColor),
           ),
 
+          // Recording Timer Indicator
+          if (_isRecording)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 60,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.65),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFFF3B30).withOpacity(0.6),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFF3B30),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatDuration(_recordDurationSeconds),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
           // Bottom UI Stack
           Positioned(
-            bottom: SharedUX.stackBottomOffset + MediaQuery.of(context).padding.bottom,
+            bottom: SharedUX.stackBottomOffset +
+                MediaQuery.of(context).padding.bottom,
             left: 0,
             right: 0,
             child: Column(
@@ -330,16 +510,8 @@ class _CameraScreenState extends State<CameraScreen>
                 _ratioButtons(isOverlay: !isFullAuto),
                 const SizedBox(height: CameraUX.gapRatioToPicker),
                 _timestampPicker(),
-                // Calculate the visual gap so it feels direct from the shutter button top
-                // Use clamp to prevent negative height which causes the "red screen" layout error
-                SizedBox(
-                  height:
-                      (CameraUX.gapPickerToShutterTop -
-                              (SharedUX.containerHeight -
-                                  (SharedUX.shutterPosition +
-                                      SharedUX.centerButtonSize)))
-                          .clamp(0.0, double.infinity),
-                ),
+                const SizedBox(height: 4),
+                _modeSwitch(),
                 _bottomControls(isOverlay: !isFullAuto),
               ],
             ),
@@ -381,6 +553,59 @@ class _CameraScreenState extends State<CameraScreen>
                 ),
               ),
             ),
+
+          // Video Processing Modal Overlay
+          if (_isProcessingVideo)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.75),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 24,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E2026),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFFFD700),
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          _processingStatus.isNotEmpty
+                              ? _processingStatus
+                              : '영상 처리 중...',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          '타임스탬프를 영상에 합성하고 있습니다',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -392,66 +617,36 @@ class _CameraScreenState extends State<CameraScreen>
         final screenW = constraints.maxWidth;
         final screenH = constraints.maxHeight;
 
-        final targetRatio = _aspectRatio.value;
-        double clearW, clearH;
-        if (screenW / targetRatio <= screenH) {
-          clearW = screenW;
-          clearH = screenW / targetRatio;
-        } else {
-          clearH = screenH;
-          clearW = screenH * targetRatio;
-        }
-
-        // Centering logic: Center between top bar and bottom ratio buttons
         final topPadding = MediaQuery.of(context).padding.top;
-        final bottomPadding = MediaQuery.of(context).padding.bottom;
         final topMenuH = topPadding + 60;
-        final pickerToShutterGap =
-            (CameraUX.gapPickerToShutterTop -
-                    (SharedUX.containerHeight -
-                        (SharedUX.shutterPosition + SharedUX.centerButtonSize)))
-                .clamp(0.0, double.infinity);
-
-        final bottomUIH =
-            SharedUX.stackBottomOffset +
-            bottomPadding +
-            SharedUX.containerHeight +
-            pickerToShutterGap +
-            CameraUX.timestampPickerHeight +
-            CameraUX.gapRatioToPicker +
-            CameraUX
-                .ratioButtonsHeight; // pos + ctrls + gap + picker + gap + ratio
-        final availableH = screenH - topMenuH - bottomUIH;
-
-        // Vertically center clearH within availableH (except for 9:16 which starts from top)
         final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
 
-        final clearTop =
-            (isFullAuto ||
-                _aspectRatio == CameraAspectRatio.ratio5x4 ||
-                _aspectRatio == CameraAspectRatio.ratio1x1)
-            ? topMenuH
-            : topMenuH + (availableH - clearH) / 2;
-        final clearLeft = (screenW - clearW) / 2;
+        double clearW = screenW;
+        double clearH;
+        double clearTop;
+        double clearLeft = 0;
 
-        // 1:1 specific coordinates for fixed hover buttons
-        final ratio1x1 = CameraAspectRatio.ratio1x1.value;
-        double clearW1x1, clearH1x1;
-        if (screenW / ratio1x1 <= screenH) {
-          clearW1x1 = screenW;
-          clearH1x1 = screenW / ratio1x1;
+        if (isFullAuto) {
+          clearW = screenW;
+          clearH = screenH; // Full-screen 9:16 viewport
+          clearTop = 0;
+        } else if (_aspectRatio == CameraAspectRatio.ratio5x4) {
+          clearW = screenW;
+          clearH = screenW * 1.25; // 4:5 viewport
+          clearTop = topMenuH;
         } else {
-          clearH1x1 = screenH;
-          clearW1x1 = screenH * ratio1x1;
+          // ratio1x1
+          clearW = screenW;
+          clearH = screenW; // 1:1 square viewport
+          clearTop = topMenuH;
         }
-        final clearTop1x1 = topMenuH;
-        final clearLeft1x1 = (screenW - clearW1x1) / 2;
 
         return GestureDetector(
           onScaleStart: (_) => _baseZoom = _currentZoom,
           onScaleUpdate: (d) async {
-            if (_controller == null || !_controller!.value.isInitialized)
+            if (_controller == null || !_controller!.value.isInitialized) {
               return;
+            }
             final z = (_baseZoom * d.scale).clamp(_minZoom, _maxZoom);
             try {
               await _controller!.setZoomLevel(z);
@@ -459,43 +654,29 @@ class _CameraScreenState extends State<CameraScreen>
             if (mounted) setState(() => _currentZoom = z);
           },
           child: Stack(
+            fit: StackFit.expand,
             children: [
-              // Full background preview (non-captured)
-              Positioned.fill(
-                child: OverflowBox(
-                  maxHeight: screenH,
-                  maxWidth: screenW,
-                  child: _cameraPreview(),
-                ),
-              ),
+              // 1. Gesture detector hit-test area for pinch-to-zoom
+              const Positioned.fill(child: ColoredBox(color: Colors.transparent)),
 
-              // Captured area (Clear hole + Timestamp)
+              // 2. Viewfinder container with strict ClipRect (Pure black background outside)
               Positioned(
-                top: clearTop,
                 left: clearLeft,
-                child: RepaintBoundary(
-                  key: _repaintKey,
-                  child: SizedBox(
-                    width: clearW,
-                    height: clearH,
+                top: clearTop,
+                width: clearW,
+                height: clearH,
+                child: ClipRect(
+                  child: Container(
+                    color: Colors.black,
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
+                        // Live sensor preview with ratio-specific FOV, zoom, and framing
                         RepaintBoundary(
-                          key: _rawRepaintKey,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Positioned(
-                                top: -clearTop,
-                                left: -clearLeft,
-                                width: screenW,
-                                height: screenH,
-                                child: _cameraPreview(),
-                              ),
-                            ],
-                          ),
+                          child: _buildRatioCameraPreview(clearW, clearH, _aspectRatio),
                         ),
+
+                        // Timestamp overlay inside the viewfinder
                         if (_currentDesign != TimestampDesign.none)
                           Positioned.fill(
                             child: TimestampOverlayWidget(
@@ -511,33 +692,101 @@ class _CameraScreenState extends State<CameraScreen>
                 ),
               ),
 
-              // Hover buttons (fixed to 1:1 position)
+              // 3. Hover buttons (Alignment & Font Size) - Fixed at 1:1 viewport bottom-right across all ratios
               Positioned(
-                top: clearTop1x1,
-                left: clearLeft1x1,
-                width: clearW1x1,
-                height: clearH1x1,
+                right: 12,
+                top: topMenuH + screenW - 110,
                 child: _buildHoverButtons(),
               ),
             ],
-          ), // end Stack
-        ); // end GestureDetector
+          ),
+        );
       },
     );
   }
 
+  Widget _buildRatioCameraPreview(double boxW, double boxH, CameraAspectRatio ratio) {
+    if (_controller == null || !_controller!.value.isInitialized) {
+      return Container(
+        color: const Color(0xFF0F1013),
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.camera_alt_outlined, color: Colors.white24, size: 48),
+              SizedBox(height: 12),
+              Text(
+                'Camera Preview',
+                style: TextStyle(color: Colors.white24, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final sensorRatio = 1 / _controller!.value.aspectRatio;
+    final boxRatio = boxW / boxH;
+
+    double previewW;
+    double previewH;
+
+    final bool isSensor16x9 = sensorRatio < 0.65;
+
+    if (isSensor16x9) {
+      // For 16:9 sensor devices:
+      // Stock camera framing: 4:5 has widest field of view, 1:1 is centered square, 9:16 is full screen
+      if (ratio == CameraAspectRatio.ratio16x9) {
+        previewW = boxW;
+        previewH = boxH;
+      } else if (ratio == CameraAspectRatio.ratio5x4) {
+        previewH = boxH;
+        previewW = boxH * sensorRatio * 1.15;
+        if (previewW < boxW) previewW = boxW;
+      } else {
+        previewW = boxW * 1.05;
+        previewH = previewW / sensorRatio;
+      }
+    } else {
+      // For 4:3 sensor devices (stock camera standard native sensor):
+      // 4:5 -> Wide angle (full sensor width)
+      // 1:1 -> Center square crop
+      // 9:16 -> Vertical full bleed with horizontal crop-zoom (1.33x)
+      if (boxRatio < sensorRatio) {
+        // Taller than sensor (e.g. 9:16 on 4:3 sensor) -> matches height, crops sides (Zoom-in feel!)
+        previewH = boxH;
+        previewW = boxH * sensorRatio;
+      } else {
+        // Wider than sensor (e.g. 4:5 or 1:1 on 4:3 sensor) -> matches width, crops top/bottom
+        previewW = boxW;
+        previewH = boxW / sensorRatio;
+      }
+    }
+
+    final previewLeft = (boxW - previewW) / 2;
+    final previewTop = (boxH - previewH) / 2;
+
+    return Stack(
+      children: [
+        Positioned(
+          left: previewLeft,
+          top: previewTop,
+          width: previewW,
+          height: previewH,
+          child: CameraPreview(_controller!),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHoverButtons() {
-    return Container(
-      padding: const EdgeInsets.only(right: 12, bottom: 12),
-      alignment: Alignment.bottomRight,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _hoverButton(icon: Icons.open_with, onTap: _toggleAlignment),
-          const SizedBox(height: 12),
-          _hoverButton(label: "${_fontSizeIndex + 1}A", onTap: _cycleFontSize),
-        ],
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _hoverButton(icon: Icons.open_with, onTap: _toggleAlignment),
+        const SizedBox(height: 10),
+        _hoverButton(label: "${_fontSizeIndex + 1}A", onTap: _cycleFontSize),
+      ],
     );
   }
 
@@ -549,8 +798,14 @@ class _CameraScreenState extends State<CameraScreen>
         height: 44,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.black.withOpacity(0.4),
-          border: Border.all(color: Colors.white24, width: 1),
+          color: Colors.black.withValues(alpha: 0.5),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 4,
+            ),
+          ],
         ),
         child: Center(
           child: icon != null
@@ -568,85 +823,7 @@ class _CameraScreenState extends State<CameraScreen>
     );
   }
 
-  Widget _buildCameraMask() {
-    final topPadding = MediaQuery.of(context).padding.top;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    return IgnorePointer(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final screenH = constraints.maxHeight;
-          final topMenuH = topPadding + 60;
-          final pickerToShutterGap =
-              (CameraUX.gapPickerToShutterTop -
-                      (SharedUX.containerHeight -
-                          (SharedUX.shutterPosition +
-                              SharedUX.centerButtonSize)))
-                  .clamp(0.0, double.infinity);
-
-          final bottomUIH =
-              SharedUX.stackBottomOffset +
-              bottomPadding +
-              SharedUX.containerHeight +
-              pickerToShutterGap +
-              CameraUX.timestampPickerHeight +
-              CameraUX.gapRatioToPicker +
-              CameraUX.ratioButtonsHeight;
-          final availableH = screenH - topMenuH - bottomUIH;
-
-          // Same centering calculation for the mask
-          final targetRatio = _aspectRatio.value;
-          final screenW = constraints.maxWidth;
-          final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
-
-          double clearH;
-          if (screenW / targetRatio <= screenH) {
-            clearH = screenW / targetRatio;
-          } else {
-            clearH = screenH;
-          }
-
-          final clearTop =
-              (isFullAuto ||
-                  _aspectRatio == CameraAspectRatio.ratio5x4 ||
-                  _aspectRatio == CameraAspectRatio.ratio1x1)
-              ? topMenuH
-              : topMenuH + (availableH - clearH) / 2;
-
-          return CustomPaint(
-            size: Size(constraints.maxWidth, constraints.maxHeight),
-            painter: _CameraMaskPainter(
-              aspectRatio: _aspectRatio.value,
-              topOffset: clearTop,
-              maskColor: Colors.black.withOpacity(CameraUX.maskOpacity),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   // ─── Widgets ─────────────────────────────────────────────────────
-  Widget _cameraPreview() {
-    if (_controller == null || !_controller!.value.isInitialized) {
-      return Container(
-        color: const Color(0xFFF5F5F5),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.camera_alt_outlined, color: Colors.black26, size: 48),
-              SizedBox(height: 12),
-              Text(
-                'Camera Preview',
-                style: TextStyle(color: Colors.black26, fontSize: 14),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return CameraPreview(_controller!);
-  }
 
   Widget _topBar({required Color iconColor}) {
     final topPadding = MediaQuery.of(context).padding.top;
@@ -676,18 +853,36 @@ class _CameraScreenState extends State<CameraScreen>
               ),
             ],
           ),
-          // Flip Camera icon only
-          GestureDetector(
-            onTap: _flipCamera,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              child: SvgPicture.asset(
-                'assets/icons/camera_flip.svg',
-                colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
-                width: 24,
-                height: 24,
+          // Right action buttons: Stamp Management + Flip Camera
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _glassButton(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const StampManagementScreen(),
+                    ),
+                  );
+                },
+                icon: Icons.tune_rounded,
+                iconColor: iconColor,
               ),
-            ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: _flipCamera,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  child: SvgPicture.asset(
+                    'assets/icons/camera_flip.svg',
+                    colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                    width: 24,
+                    height: 24,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -855,99 +1050,201 @@ class _CameraScreenState extends State<CameraScreen>
           }
         }
       },
-      onCenterActionPressed: _onCapturePressed,
+      onCenterActionPressed: () {
+        if (_captureMode == CameraCaptureMode.photo) {
+          _onCapturePressed();
+        } else {
+          if (_isRecording) {
+            _stopVideoRecording();
+          } else {
+            _startVideoRecording();
+          }
+        }
+      },
       rightThumbnail: _latestPhoto,
-      isLoading: _isCapturing || _timerCountdown > 0,
+      isVideoMode: _captureMode == CameraCaptureMode.video,
+      isRecording: _isRecording,
+      isLoading: _isCapturing || _timerCountdown > 0 || _isProcessingVideo,
     );
   }
 
-  Widget _timestampPicker() {
-    return SizedBox(
-      height: CameraUX.timestampPickerHeight,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        itemCount: TimestampDesign.values.length,
-        itemBuilder: (context, index) {
-          final design = TimestampDesign.values[index];
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            child: TimestampThumbnail(
-              design: design,
-              isSelected: _currentDesign == design,
-              onTap: () => setState(() {
-                _currentDesign = design;
-                _currentAlignment = CameraUX.defaultAlignment;
-                // Reset font size and index to metadata defaults for the new design
-                _fontSizeIndex = TimestampMetadata.getDefaultFontSizeIndex(
-                  design,
-                );
-                _timestampFontSize = TimestampMetadata.getDefaultFontSize(
-                  design,
-                );
-              }),
-            ),
-          );
-        },
+  Widget _modeSwitch() {
+    return Container(
+      margin: const EdgeInsets.only(top: 2, bottom: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _modeButton(
+            label: '사진',
+            isSelected: _captureMode == CameraCaptureMode.photo,
+            onTap: () {
+              if (_isRecording || _isProcessingVideo) return;
+              HapticFeedback.selectionClick();
+              setState(() => _captureMode = CameraCaptureMode.photo);
+            },
+          ),
+          const SizedBox(width: 14),
+          _modeButton(
+            label: '동영상',
+            isSelected: _captureMode == CameraCaptureMode.video,
+            onTap: () {
+              if (_isRecording || _isProcessingVideo) return;
+              HapticFeedback.selectionClick();
+              setState(() => _captureMode = CameraCaptureMode.video);
+            },
+          ),
+        ],
       ),
     );
   }
-}
 
-class _CameraMaskPainter extends CustomPainter {
-  final double aspectRatio;
-  final double topOffset;
-  final Color maskColor;
-
-  _CameraMaskPainter({
-    required this.aspectRatio,
-    required this.topOffset,
-    required this.maskColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final screenW = size.width;
-    final screenH = size.height;
-
-    double clearW, clearH;
-    if (screenW / aspectRatio <= screenH) {
-      clearW = screenW;
-      clearH = screenW / aspectRatio;
-    } else {
-      clearH = screenH;
-      clearW = screenH * aspectRatio;
-    }
-
-    // Alignment: Center horizontally, specific offset vertically
-    final clearRect = Rect.fromLTWH(
-      (screenW - clearW) / 2,
-      topOffset,
-      clearW,
-      clearH,
+  Widget _modeButton({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF2C2D35) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFFFFD700).withOpacity(0.7)
+                : Colors.white12,
+            width: 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? const Color(0xFFFFD700) : Colors.white60,
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            letterSpacing: -0.2,
+          ),
+        ),
+      ),
     );
-
-    final paint = Paint()..color = maskColor;
-
-    // Create a path for the whole screen
-    final maskPath = Path()..addRect(Rect.fromLTWH(0, 0, screenW, screenH));
-    // Create a path for the hole
-    final holePath = Path()..addRect(clearRect);
-
-    // Subtract the hole from the mask
-    final finalPath = Path.combine(
-      PathOperation.difference,
-      maskPath,
-      holePath,
-    );
-
-    canvas.drawPath(finalPath, paint);
   }
 
-  @override
-  bool shouldRepaint(covariant _CameraMaskPainter oldDelegate) {
-    return oldDelegate.aspectRatio != aspectRatio ||
-        oldDelegate.topOffset != topOffset ||
-        oldDelegate.maskColor != maskColor;
+  void _selectDesign(TimestampDesign design) {
+    setState(() {
+      _currentDesign = design;
+      _currentAlignment = CameraUX.defaultAlignment;
+      // Reset font size and index to metadata defaults for the new design
+      _fontSizeIndex = TimestampMetadata.getDefaultFontSizeIndex(design);
+      _timestampFontSize = TimestampMetadata.getDefaultFontSize(design);
+    });
+  }
+
+  void _onDesignTapped(TimestampDesign design) {
+    if (TimestampAccessManager().isUnlocked(design)) {
+      _selectDesign(design);
+    } else {
+      UnlockTimestampDialog.show(
+        context,
+        design: design,
+        onUnlocked: () {
+          _selectDesign(design);
+        },
+      );
+    }
+  }
+
+  Widget _timestampPicker() {
+    return ListenableBuilder(
+       listenable: TimestampDeckManager(),
+       builder: (context, _) {
+        final designs = TimestampDeckManager().getMainScreenDesigns();
+
+        return SizedBox(
+          height: CameraUX.timestampPickerHeight,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            // designs (최대 20개) + 맨 마지막 아이템: '스탬프 관리' 버튼
+            itemCount: designs.length + 1,
+            itemBuilder: (context, index) {
+              if (index < designs.length) {
+                final design = designs[index];
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  child: TimestampThumbnail(
+                    design: design,
+                    isSelected: _currentDesign == design,
+                    onTap: () => _onDesignTapped(design),
+                  ),
+                );
+              }
+
+              // 맨 오른쪽 끝: 스탬프 관리 화면 진입 버튼
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+                child: AspectRatio(
+                  aspectRatio: 1.0,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const StampManagementScreen(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B1D24),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFFC6FF00).withValues(alpha: 0.35),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFC6FF00).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.tune_rounded,
+                                color: Color(0xFFC6FF00),
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              '스탬프\n관리',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                height: 1.15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 }

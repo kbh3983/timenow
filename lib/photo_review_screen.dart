@@ -7,9 +7,13 @@ import 'timestamp_overlays.dart';
 import 'album_service.dart';
 import 'calendar_album_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
+import 'widgets/unlock_timestamp_dialog.dart';
+import 'services/timestamp_access_manager.dart';
+import 'services/timestamp_deck_manager.dart';
 import 'timestamp_metadata.dart';
 import 'ux_config.dart';
 import 'gallery_picker_screen.dart';
+import 'stamp_management_screen.dart';
 
 class PhotoReviewScreen extends StatefulWidget {
   final File imageFile;
@@ -20,6 +24,10 @@ class PhotoReviewScreen extends StatefulWidget {
   final Alignment initialAlignment;
   final int initialFontSizeIndex;
 
+  /// Front camera captures are not mirrored by the sensor; flip them so the
+  /// result matches what the user saw in the preview ("save as previewed").
+  final bool mirrorHorizontally;
+
   const PhotoReviewScreen({
     super.key,
     required this.imageFile,
@@ -29,6 +37,7 @@ class PhotoReviewScreen extends StatefulWidget {
     required this.captureTime,
     this.initialAlignment = CameraUX.defaultAlignment,
     this.initialFontSizeIndex = 0,
+    this.mirrorHorizontally = false,
   });
 
   @override
@@ -130,7 +139,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0F1013),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -170,46 +179,33 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
       builder: (context, constraints) {
         final screenW = constraints.maxWidth;
         final screenH = constraints.maxHeight;
-        final targetRatio = widget.aspectRatio;
-
-        double clearW, clearH;
-        if (screenW / targetRatio <= screenH) {
-          clearW = screenW;
-          clearH = screenW / targetRatio;
-        } else {
-          clearH = screenH;
-          clearW = screenH * targetRatio;
-        }
 
         final topPadding = MediaQuery.of(context).padding.top;
         final topMenuH = topPadding + 60;
 
-        // Synchronized with CameraScreen's layout logic
-        final pickerToShutterGap = (CameraUX.gapPickerToShutterTop -
-                (SharedUX.containerHeight -
-                    (SharedUX.shutterPosition +
-                        SharedUX.centerButtonSize)))
-            .clamp(0.0, double.infinity);
+        final bool isFullAuto = (widget.aspectRatio - (9.0 / 16.0)).abs() < 0.01;
+        final bool is4x5 = (widget.aspectRatio - (4.0 / 5.0)).abs() < 0.01 ||
+            (widget.aspectRatio - 0.8).abs() < 0.01;
 
-        final bottomUIH = SharedUX.stackBottomOffset +
-            SharedUX.containerHeight +
-            pickerToShutterGap +
-            CameraUX.timestampPickerHeight +
-            CameraUX.gapRatioToPicker +
-            CameraUX.ratioButtonsHeight; // Synchronized height
+        double clearW = screenW;
+        double clearH;
+        double clearTop;
+        double clearLeft = 0;
 
-        final availableH = screenH - topMenuH - bottomUIH;
-
-        final bool isFullAuto = widget.aspectRatio == 9.0 / 16.0;
-
-        final clearTop =
-            (isFullAuto ||
-                widget.aspectRatio == 4.0 / 5.0 ||
-                (widget.aspectRatio - 0.8).abs() < 0.01 ||
-                (widget.aspectRatio - 1.0).abs() < 0.01)
-            ? topMenuH
-            : topMenuH + (availableH - clearH) / 2;
-        final clearLeft = (screenW - clearW) / 2;
+        if (isFullAuto) {
+          clearW = screenW;
+          clearH = screenH;
+          clearTop = 0;
+        } else if (is4x5) {
+          clearW = screenW;
+          clearH = screenW * 1.25;
+          clearTop = topMenuH;
+        } else {
+          // 1:1
+          clearW = screenW;
+          clearH = screenW;
+          clearTop = topMenuH;
+        }
 
         return Stack(
           children: [
@@ -221,23 +217,32 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                 child: SizedBox(
                   width: clearW,
                   height: clearH,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.file(widget.imageFile, fit: BoxFit.cover),
-                      if (_selectedDesign != TimestampDesign.none)
-                        Positioned.fill(
-                          child: TimestampOverlayWidget(
-                            design: _selectedDesign,
-                            alignment: _selectedAlignment,
-                            fontSize: _selectedFontSize,
-                            opacity: 1.0,
-                            baseTime: widget.captureTime,
-                            isLive: false,
+                  child: ClipRect(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Transform.flip(
+                          flipX: widget.mirrorHorizontally,
+                          child: Image.file(
+                            widget.imageFile,
+                            fit: BoxFit.cover,
+                            cacheWidth: 2400,
                           ),
-                      ),
-                  ],
-                ),
+                        ),
+                        if (_selectedDesign != TimestampDesign.none)
+                          Positioned.fill(
+                            child: TimestampOverlayWidget(
+                              design: _selectedDesign,
+                              alignment: _selectedAlignment,
+                              fontSize: _selectedFontSize,
+                              opacity: 1.0,
+                              baseTime: widget.captureTime,
+                              isLive: false,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -253,12 +258,12 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _hoverButton(
-                      icon: Icons.open_with, 
+                      icon: Icons.open_with,
                       onTap: _cycleAlignment,
                     ),
                     const SizedBox(height: 12),
                     _hoverButton(
-                      label: "${_fontSizeIndex + 1}A", 
+                      label: "${_fontSizeIndex + 1}A",
                       onTap: _cycleFontSize,
                     ),
                   ],
@@ -421,30 +426,117 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
     );
   }
 
-  Widget _buildTimestampPicker() {
-    return SizedBox(
-      height: CameraUX.timestampPickerHeight,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: TimestampDesign.values.length,
-        itemBuilder: (context, index) {
-          final design = TimestampDesign.values[index];
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            child: TimestampThumbnail(
-              design: design,
-              isSelected: _selectedDesign == design,
-              onTap: () => setState(() {
-                _selectedDesign = design;
-                _selectedAlignment = CameraUX.defaultAlignment;
-                _fontSizeIndex = TimestampMetadata.getDefaultFontSizeIndex(design);
-                _selectedFontSize = TimestampMetadata.getDefaultFontSize(design);
-              }),
-            ),
-          );
+  void _selectDesign(TimestampDesign design) {
+    setState(() {
+      _selectedDesign = design;
+      _selectedAlignment = CameraUX.defaultAlignment;
+      _fontSizeIndex = TimestampMetadata.getDefaultFontSizeIndex(design);
+      _selectedFontSize = TimestampMetadata.getDefaultFontSize(design);
+    });
+  }
+
+  void _onDesignTapped(TimestampDesign design) {
+    if (TimestampAccessManager().isUnlocked(design)) {
+      _selectDesign(design);
+    } else {
+      UnlockTimestampDialog.show(
+        context,
+        design: design,
+        onUnlocked: () {
+          _selectDesign(design);
         },
-      ),
+      );
+    }
+  }
+
+  Widget _buildTimestampPicker() {
+    return ListenableBuilder(
+      listenable: TimestampDeckManager(),
+      builder: (context, _) {
+        final designs = TimestampDeckManager().getMainScreenDesigns();
+
+        return SizedBox(
+          height: CameraUX.timestampPickerHeight,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            // designs (최대 20개) + 맨 마지막 아이템: '스탬프 관리' 버튼
+            itemCount: designs.length + 1,
+            itemBuilder: (context, index) {
+              if (index < designs.length) {
+                final design = designs[index];
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  child: TimestampThumbnail(
+                    design: design,
+                    isSelected: _selectedDesign == design,
+                    onTap: () => _onDesignTapped(design),
+                  ),
+                );
+              }
+
+              // 맨 오른쪽 끝: 스탬프 관리 화면 진입 버튼
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: AspectRatio(
+                  aspectRatio: 1.0,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const StampManagementScreen(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1B1D24),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: const Color(0xFFC6FF00).withValues(alpha: 0.35),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFC6FF00).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.tune_rounded,
+                                color: Color(0xFFC6FF00),
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              '스탬프\n관리',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                height: 1.15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

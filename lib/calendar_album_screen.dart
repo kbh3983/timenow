@@ -21,8 +21,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   DateTime _selectedDay = DateTime.now();
   String _selectedAlbum = '전체';
   List<String> _albums = ['일상'];
-  final ValueNotifier<bool> _isExpanded = ValueNotifier(false);
-  final ValueNotifier<double> _transitionExtent = ValueNotifier(0.0);
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
 
@@ -30,8 +28,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   Map<String, List<File>> _allPhotosGrouped = {};
   int _totalPhotoCount = 0;
 
-  Map<DateTime, Set<String>> _photoDots = {};
+  MonthAlbumData? _monthData;
   Map<DateTime, File> _photoThumbnails = {};
+  Map<DateTime, int> _photoCounts = {};
   List<File> _dayPhotos = [];
   Map<String, int> _albumColors = {};
 
@@ -47,48 +46,65 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   Future<void> _loadData() async {
     final albums = await AlbumService.getAlbums();
     final albumColors = await AlbumService.getAlbumColors();
-    final dots = await AlbumService.getPhotoDotsForMonth(
+    final monthData = await AlbumService.getMonthAlbumData(
       _focusedDay,
       albumName: _selectedAlbum,
     );
-    final thumbnails = await AlbumService.getPhotoThumbnailsForMonth(
-      _focusedDay,
-      albumName: _selectedAlbum,
-    );
-    final photos = await AlbumService.getPhotosByDate(
-      _selectedDay,
-      albumName: _selectedAlbum,
-    );
-
-    // Load all photos for grid view and grouping
-    final allPhotos = await AlbumService.getAllPhotos(
-      albumName: _selectedAlbum,
-    );
-    final Map<String, List<File>> grouped = {};
-    for (var file in allPhotos) {
-      final stats = file.statSync();
-      final date = stats.changed;
-      final key = "${date.year}.${date.month.toString().padLeft(2, '0')}";
-      grouped.putIfAbsent(key, () => []).add(file);
-    }
+    final dateKey = DateTime(_selectedDay.year, _selectedDay.month, _selectedDay.day);
+    final dayPhotos = monthData.photosByDate[dateKey] ?? [];
 
     if (mounted) {
       setState(() {
         _albums = albums;
         _albumColors = albumColors;
-        _photoDots = dots;
-        _photoThumbnails = thumbnails;
-        _dayPhotos = photos;
-        _allPhotosGrouped = grouped;
-        _totalPhotoCount = allPhotos.length;
+        _monthData = monthData;
+        _photoThumbnails = monthData.thumbnails;
+        _photoCounts = monthData.counts;
+        _dayPhotos = dayPhotos;
       });
+    }
+
+    _loadGridPhotos();
+  }
+
+  Future<void> _loadGridPhotos() async {
+    final grouped = await AlbumService.getAllPhotosGrouped(
+      albumName: _selectedAlbum,
+    );
+    int total = 0;
+    for (var list in grouped.values) {
+      total += list.length;
+    }
+    if (mounted) {
+      setState(() {
+        _allPhotosGrouped = grouped;
+        _totalPhotoCount = total;
+      });
+    }
+  }
+
+  void _onDaySelected(DateTime date) {
+    final dateKey = DateTime(date.year, date.month, date.day);
+    if (date.year == _focusedDay.year && date.month == _focusedDay.month) {
+      // Same month: 0ms instant in-memory switch!
+      setState(() {
+        _selectedDay = date;
+        _dayPhotos = _monthData?.photosByDate[dateKey] ?? [];
+      });
+    } else {
+      // Month changed: update focused day and load
+      setState(() {
+        _selectedDay = date;
+        _focusedDay = date;
+      });
+      _loadData();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF0F1013),
       appBar: _buildAppBar(),
       body: SafeArea(
         bottom: false,
@@ -98,139 +114,155 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                 children: [_buildCalendarContent(), _buildDraggableSheet()],
               ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Container(
-        margin: EdgeInsets.only(bottom: 20 + MediaQuery.of(context).padding.bottom),
-        child: FloatingActionButton(
-          onPressed: () => Navigator.pop(context, _selectedAlbum),
-          backgroundColor: const Color(0xFF222222),
-          elevation: 8,
-          shape: const CircleBorder(),
-          child: Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white24, width: 2),
-            ),
-            child: const Icon(Icons.add, color: Colors.white, size: 32),
-          ),
-        ),
-      ),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final pointColor = _getAlbumNeonPointColor(_selectedAlbum);
+
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF0F1013),
       surfaceTintColor: Colors.transparent, // 스크롤 시 회색 틴트 제거
       scrolledUnderElevation: 0,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
         onPressed: () => Navigator.pop(context),
       ),
       title: GestureDetector(
         onTap: _showAlbumSelector,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _viewMode == CalendarViewMode.grid
-                  ? "$_selectedAlbum ($_totalPhotoCount)"
-                  : _selectedAlbum,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: CalendarUX.albumTitleFontSize,
-                fontWeight: FontWeight.bold,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(
+                  color: pointColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: pointColor.withValues(alpha: 0.7),
+                      blurRadius: 5,
+                    ),
+                  ],
+                ),
               ),
-
-            ),
-            const Icon(Icons.keyboard_arrow_down, color: Colors.black),
-          ],
+              Text(
+                _viewMode == CalendarViewMode.grid
+                    ? "$_selectedAlbum ($_totalPhotoCount)"
+                    : _selectedAlbum,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: CalendarUX.albumTitleFontSize,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(width: 2),
+              const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 22),
+            ],
+          ),
         ),
       ),
       centerTitle: true,
       actions: [
-        ValueListenableBuilder<bool>(
-          valueListenable: _isExpanded,
-          builder: (context, expanded, child) {
-            return IconButton(
-              icon: Icon(
-                _viewMode == CalendarViewMode.grid
-                    ? Icons.calendar_today
-                    : (expanded ? Icons.grid_view : Icons.grid_view),
-                color: Colors.black,
+        IconButton(
+          icon: Icon(
+            _viewMode == CalendarViewMode.grid
+                ? Icons.calendar_today_outlined
+                : Icons.grid_view_rounded,
+            color: Colors.white70,
+            size: 20,
+          ),
+          onPressed: _toggleView,
+          tooltip: _viewMode == CalendarViewMode.grid ? '달력 보기' : '모아보기',
+        ),
+        Padding(
+          padding: const EdgeInsets.only(right: 12, left: 2),
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context, _selectedAlbum),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+              decoration: BoxDecoration(
+                color: pointColor.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: pointColor.withValues(alpha: 0.55),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: pointColor.withValues(alpha: 0.18),
+                    blurRadius: 8,
+                    spreadRadius: 0,
+                  ),
+                ],
               ),
-              onPressed: _toggleView,
-            );
-          }
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.camera_alt_rounded,
+                    color: pointColor,
+                    size: 17,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '기록',
+                    style: TextStyle(
+                      color: pointColor,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
   void _toggleView() {
+    setState(() {
+      _viewMode = _viewMode == CalendarViewMode.grid
+          ? CalendarViewMode.calendar
+          : CalendarViewMode.grid;
+    });
     if (_viewMode == CalendarViewMode.grid) {
-      setState(() {
-        _viewMode = CalendarViewMode.calendar;
-      });
-      _isExpanded.value = false;
-      _transitionExtent.value = 0.0;
-      // Removed animateTo(0.35) because the sheet is not yet attached
-      // and will render at initialChildSize (0.35) by default.
-      return;
-    }
-
-    if (_isExpanded.value) {
-      // If already week view (expanded), go to grid view
-      setState(() {
-        _viewMode = CalendarViewMode.grid;
-      });
-    } else {
-      // If month view, expand to week view
-      if (_sheetController.isAttached) {
-        _sheetController.animateTo(
-          0.95,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-      }
+      _loadGridPhotos();
     }
   }
 
   Widget _buildCalendarContent() {
-    return ValueListenableBuilder<double>(
-      valueListenable: _transitionExtent,
-      builder: (context, extent, child) {
-        return Opacity(
-          opacity: (1.0 - extent).clamp(0.0, 1.0),
-          child: child,
-        );
-      },
-      child: ClipRect(
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: GestureDetector(
-            onHorizontalDragEnd: (details) {
-              if (details.primaryVelocity != null) {
-                if (details.primaryVelocity! < -300) {
-                  _goToNextMonth();
-                } else if (details.primaryVelocity! > 300) {
-                  _goToPrevMonth();
-                }
+    return RepaintBoundary(
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        child: GestureDetector(
+          onHorizontalDragEnd: (details) {
+            if (details.primaryVelocity != null) {
+              if (details.primaryVelocity! < -300) {
+                _goToNextMonth();
+              } else if (details.primaryVelocity! > 300) {
+                _goToPrevMonth();
               }
-            },
-            child: Container(
-              color: Colors.transparent, // Capture taps over empty space
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildMonthHeader(),
-                  _buildWeekdayHeader(),
-                  _buildMonthGrid(),
-                ],
-              ),
+            }
+          },
+          child: Container(
+            color: Colors.transparent, // Capture taps over empty space
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildMonthHeader(),
+                _buildWeekdayHeader(),
+                _buildMonthGrid(),
+              ],
             ),
           ),
         ),
@@ -240,24 +272,28 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
 
   Widget _buildMonthHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left, color: Colors.grey),
+            icon: const Icon(Icons.chevron_left, color: Colors.white70, size: 22),
             onPressed: _goToPrevMonth,
+            splashRadius: 20,
           ),
           Text(
-            DateFormat('yyyy.MM').format(_focusedDay),
+            DateFormat('yyyy년 M월', 'ko_KR').format(_focusedDay),
             style: const TextStyle(
               fontSize: CalendarUX.monthHeaderFontSize,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: -0.2,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_right, color: Colors.grey),
+            icon: const Icon(Icons.chevron_right, color: Colors.white70, size: 22),
             onPressed: _goToNextMonth,
+            splashRadius: 20,
           ),
         ],
       ),
@@ -281,8 +317,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   Widget _buildWeekdayHeader() {
     final weekdays = ['일', '월', '화', '수', '목', '금', '토'];
     return Padding(
-      padding: EdgeInsets.symmetric(
-        vertical: CalendarUX.weekdayVerticalPadding,
+      padding: const EdgeInsets.symmetric(
+        vertical: 4,
         horizontal: CalendarUX.calendarHorizontalPadding,
       ),
       child: Row(
@@ -292,10 +328,10 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                 child: Center(
                   child: Text(
                     day,
-                    style: TextStyle(
-                      color: day == '일' ? Colors.red : Colors.grey,
+                    style: const TextStyle(
+                      color: Color(0xFF8E929B),
                       fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -313,11 +349,16 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     );
     final firstDayOffset =
         DateTime(_focusedDay.year, _focusedDay.month, 1).weekday % 7;
+    final prevMonth = DateTime(_focusedDay.year, _focusedDay.month - 1, 1);
+    final daysInPrevMonth = DateUtils.getDaysInMonth(
+      prevMonth.year,
+      prevMonth.month,
+    );
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: CalendarUX.calendarHorizontalPadding),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: CalendarUX.calendarHorizontalPadding),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
         mainAxisSpacing: CalendarUX.weekSpacing,
@@ -325,7 +366,19 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       ),
       itemCount: daysInMonth + firstDayOffset,
       itemBuilder: (context, index) {
-        if (index < firstDayOffset) return const SizedBox.shrink();
+        if (index < firstDayOffset) {
+          final prevDay = daysInPrevMonth - firstDayOffset + index + 1;
+          return Center(
+            child: Text(
+              '$prevDay',
+              style: const TextStyle(
+                color: Color(0xFF383B44),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          );
+        }
 
         final day = index - firstDayOffset + 1;
         final date = DateTime(_focusedDay.year, _focusedDay.month, day);
@@ -333,43 +386,10 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
         final isToday = DateUtils.isSameDay(date, DateTime.now());
 
         return GestureDetector(
-          onTap: () {
-            setState(() => _selectedDay = date);
-            _loadData();
-          },
+          onTap: () => _onDaySelected(date),
           child: _buildCalendarDay(date, isSelected, isToday),
         );
       },
-    );
-  }
-
-  Widget _buildWeekStrip() {
-    final firstDayOfWeek = _selectedDay.subtract(
-      Duration(days: _selectedDay.weekday % 7),
-    );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: 4,
-        horizontal: CalendarUX.calendarHorizontalPadding,
-      ), // Reduced vertical padding, added horizontal
-      child: Row(
-        children: List.generate(7, (index) {
-          final date = firstDayOfWeek.add(Duration(days: index));
-          final isSelected = DateUtils.isSameDay(date, _selectedDay);
-          final isToday = DateUtils.isSameDay(date, DateTime.now());
-
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() => _selectedDay = date);
-                _loadData();
-              },
-              child: _buildCalendarDay(date, isSelected, isToday, mini: true),
-            ),
-          );
-        }),
-      ),
     );
   }
 
@@ -380,7 +400,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     if (albumName == '일상') return const Color(0xFFEDED6D);
     if (albumName.toLowerCase() == 'workout') return Colors.blue;
 
-    // Fallback pseudo-random but deterministic color
     final hash = albumName.hashCode;
     final r = (hash & 0xFF0000) >> 16;
     final g = (hash & 0x00FF00) >> 8;
@@ -393,76 +412,134 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     );
   }
 
+  Color _getAlbumNeonPointColor(String albumName) {
+    if (albumName == '전체') {
+      return const Color(0xFFCCFF00); // 전체 앨범 기본 시그니처 네온 라임
+    }
+    final baseColor = _getAlbumColor(albumName);
+    final hsl = HSLColor.fromColor(baseColor);
+
+    // 앨범 고유의 색조(Hue)를 온전히 유지하면서,
+    // 채도를 1.0(최대)으로 극대화하고, 다크 배경에서 형광으로 발광하도록 명도를 최적화
+    double neonLightness = hsl.lightness;
+    if (neonLightness < 0.52) {
+      neonLightness = 0.60;
+    } else if (neonLightness > 0.72) {
+      neonLightness = 0.64;
+    }
+
+    return hsl
+        .withSaturation(1.0)
+        .withLightness(neonLightness)
+        .toColor();
+  }
+
   Widget _buildCalendarDay(
     DateTime date,
     bool isSelected,
     bool isToday, {
     bool mini = false,
   }) {
+    final pointColor = _getAlbumNeonPointColor(_selectedAlbum);
     final dateKey = DateTime(date.year, date.month, date.day);
     final thumbnailFile = _photoThumbnails[dateKey];
     final hasPhoto = thumbnailFile != null;
+    final photoCount = _photoCounts[dateKey] ?? (hasPhoto ? 1 : 0);
+    final bool isCurrentMonth = date.month == _focusedDay.month;
 
-    // Check if it's Sunday (weekday == 7)
-    final bool isSunday = date.weekday == DateTime.sunday;
-    final bool isHoliday = isSunday;
-
-    // Determine text color based on state
-    Color textColor;
-    if (hasPhoto) {
-      textColor = Colors.white;
-    } else if (date.month != _focusedDay.month) {
-      textColor = Colors.grey[300]!;
-    } else if (isHoliday) {
-      textColor = Colors.red;
-    } else {
-      textColor = Colors.black;
-    }
-
-    final cellSize = mini ? 32.0 : 42.0;
-    final albumColor = _getAlbumColor(_selectedAlbum);
+    final numberWidget = Text(
+      '${date.day}',
+      style: TextStyle(
+        fontWeight: FontWeight.w800,
+        fontSize: mini ? 10.5 : 12,
+        color: hasPhoto
+            ? Colors.white
+            : (isToday
+                ? pointColor
+                : (!isCurrentMonth
+                    ? const Color(0xFF383B44)
+                    : Colors.white)),
+        shadows: hasPhoto
+            ? const [Shadow(blurRadius: 4, color: Colors.black)]
+            : null,
+      ),
+    );
 
     return Container(
-      width: cellSize,
-      height: cellSize,
+      margin: EdgeInsets.all(mini ? 1.5 : 2.0),
       decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(mini ? 8 : 10),
         border: isSelected
-            ? Border.all(color: albumColor, width: 2.0)
+            ? Border.all(color: pointColor, width: 2.0)
+            : (isToday
+                ? Border.all(color: pointColor.withValues(alpha: 0.35), width: 1.2)
+                : null),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: pointColor.withValues(alpha: 0.25),
+                  blurRadius: 6,
+                  spreadRadius: 0,
+                )
+              ]
             : null,
-        color: Colors.transparent,
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Thumbnail background
-          if (hasPhoto)
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.55,
-                child: Image.file(
-                  thumbnailFile,
-                  fit: BoxFit.cover,
-                  cacheWidth: 120,
-                ),
+      child: !hasPhoto
+          ? Center(child: numberWidget)
+          : ClipRRect(
+              borderRadius: BorderRadius.circular(
+                isSelected ? (mini ? 6.0 : 8.0) : (mini ? 6.5 : 8.5),
+              ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildMediaThumbnail(
+                    thumbnailFile,
+                    fit: BoxFit.cover,
+                    cacheWidth: mini ? 70 : 110,
+                    cacheHeight: mini ? 70 : 110,
+                    showVideoIcon: true,
+                  ),
+                  Container(
+                    color: Colors.black.withValues(alpha: 0.15),
+                  ),
+                  Positioned(
+                    left: mini ? 3 : 5,
+                    top: mini ? 2 : 3,
+                    child: numberWidget,
+                  ),
+                  if (photoCount > 1)
+                    Positioned(
+                      right: mini ? 2 : 3,
+                      bottom: mini ? 2 : 3,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: mini ? 3 : 4.5,
+                          vertical: mini ? 0.5 : 1.0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: pointColor,
+                          borderRadius: BorderRadius.circular(mini ? 4 : 6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: pointColor.withValues(alpha: 0.35),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          '$photoCount',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: mini ? 8.5 : 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-          // Day number
-          Text(
-            '${date.day}',
-            style: TextStyle(
-              color: textColor,
-              fontSize: mini ? 14 : CalendarUX.calendarDayFontSize,
-              fontWeight: (isSelected || hasPhoto) ? FontWeight.bold : FontWeight.normal,
-              shadows: hasPhoto
-                  ? const [
-                      Shadow(offset: Offset(0, 0.5), blurRadius: 3, color: Colors.black54),
-                    ]
-                  : null,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -472,121 +549,92 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       initialChildSize: CalendarUX.initialSheetSize,
       minChildSize: CalendarUX.initialSheetSize,
       maxChildSize: 1.0,
-      snap: false,
+      snap: true,
+      snapSizes: const [CalendarUX.initialSheetSize, 1.0],
       builder: (context, scrollController) {
-          return NotificationListener<DraggableScrollableNotification>(
-            onNotification: (notification) {
-              const double minS = CalendarUX.initialSheetSize;
-              const double maxS = 1.0;
-              final newExtent = ((notification.extent - minS) / (maxS - minS)).clamp(0.0, 1.0);
-              if (_transitionExtent.value != newExtent) {
-                _transitionExtent.value = newExtent;
-                _isExpanded.value = newExtent > 0.5;
-              }
-              return true;
-            },
-            child: ValueListenableBuilder<double>(
-              valueListenable: _transitionExtent,
-              builder: (context, extent, child) {
-                final expanded = extent > 0.5;
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(expanded ? 0 : 32),
-                    ),
-                    boxShadow: expanded
-                        ? null
-                        : [const BoxShadow(blurRadius: 15, color: Colors.black12)],
-                  ),
-                  child: Column(
-                    children: [
-                      _buildHandle(expanded),
-                      if (extent > 0.05)
-                        Opacity(
-                          opacity: extent,
-                          child: ClipRect(
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              heightFactor: extent,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // 상단 메뉴와 달력 사이의 구분선
-                                  if (expanded)
-                                    Container(
-                                      height: 1,
-                                      color: Colors.grey[200],
-                                      width: double.infinity,
-                                    ),
-                                  _buildWeekStrip(),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      child!,
-                    ],
-                  ),
-                );
-              },
-              child: Expanded(
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF17191E),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: const Color(0xFF2A2D35).withValues(alpha: 0.6),
+                width: 0.8,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 20,
+                color: Colors.black.withValues(alpha: 0.4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              _buildHandle(),
+              Expanded(
                 child: _dayPhotos.isEmpty
                     ? _buildEmptyState(scrollController)
                     : ListView.builder(
                         controller: scrollController,
+                        physics: const ClampingScrollPhysics(),
                         padding: EdgeInsets.only(
-                          left: 24,
-                          right: 24,
-                          bottom: MediaQuery.of(context).padding.bottom + 80, // Space for FAB
+                          left: 20,
+                          right: 20,
+                          top: 4,
+                          bottom: MediaQuery.of(context).padding.bottom + 80,
                         ),
-                        itemCount: _dayPhotos.length,
+                        itemCount: _dayPhotos.length + 1,
                         itemBuilder: (context, index) {
                           if (index == 0) {
-                            return ValueListenableBuilder<bool>(
-                              valueListenable: _isExpanded,
-                              builder: (context, expanded, child) => _buildRecordEntry(index, expanded),
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 2, bottom: 14, left: 2),
+                              child: Text(
+                                DateFormat('yyyy.MM.dd (E)', 'ko_KR').format(_selectedDay),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF8E929B),
+                                  fontSize: 13.5,
+                                ),
+                              ),
                             );
                           }
-                          return _buildRecordEntry(index, _isExpanded.value);
+                          return _buildRecordEntry(index - 1);
                         },
                       ),
               ),
-            ),
-          );
+            ],
+          ),
+        );
       },
     );
   }
 
-  Widget _buildHandle(bool expanded) {
-    if (expanded) return const SizedBox.shrink();
+  Widget _buildHandle() {
     return GestureDetector(
       onTap: () {
         if (_sheetController.isAttached) {
+          final target = _sheetController.size > 0.6
+              ? CalendarUX.initialSheetSize
+              : 1.0;
           _sheetController.animateTo(
-            0.95,
-            duration: const Duration(milliseconds: 400),
+            target,
+            duration: const Duration(milliseconds: 350),
             curve: Curves.easeOutCubic,
           );
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         width: double.infinity,
+        color: Colors.transparent, // Expand tap area
         child: Center(
           child: Container(
-            width: 44,
+            width: 36,
             height: 5,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
+              color: const Color(0xFF2E323A),
               borderRadius: BorderRadius.circular(2.5),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
           ),
         ),
@@ -598,69 +646,83 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     return SingleChildScrollView(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.photo_library_outlined,
-                  size: 28,
-                  color: Colors.grey[350],
-                ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 36),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              DateFormat('yyyy.MM.dd (E)', 'ko_KR').format(_selectedDay),
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF8E929B),
+                fontSize: 13.5,
               ),
-              const SizedBox(height: 16),
-              Text(
-                '아직 기록이 없어요',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[400],
-                ),
+            ),
+            const SizedBox(height: 36),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.photo_library_outlined,
+                      size: 28,
+                      color: Colors.white.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '이 날은 기록이 없어요 📷',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '상단 "기록" 버튼을 눌러 첫 기록을 남겨보세요',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.38),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                '+ 버튼을 눌러 첫 기록을 남겨보세요',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey[350],
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildRecordEntry(int index, bool expanded) {
+  Widget _buildRecordEntry(int index) {
     if (index >= _dayPhotos.length) return const SizedBox.shrink();
     final photoFile = _dayPhotos[index];
-    final timeStr = DateFormat(
-      'hh:mm a',
-      'en_US',
-    ).format(photoFile.statSync().changed);
+    final photoDate = AlbumService.getPhotoDate(photoFile);
+    final period = photoDate.hour < 12 ? '오전' : '오후';
+    final timeStr = '$period ${DateFormat('h:mm').format(photoDate)}';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 32),
+      padding: const EdgeInsets.only(bottom: 28),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Icon(
                 Icons.circle,
                 size: 8,
-                color: _getAlbumColor(
+                color: _getAlbumNeonPointColor(
                   _selectedAlbum == '전체'
                       ? photoFile.parent.path.split(Platform.pathSeparator).last
                       : _selectedAlbum,
@@ -670,73 +732,31 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               Text(
                 timeStr,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // Stacked effect ONLY when NOT expanded and it's the first photo
-          if (!expanded && index == 0 && _dayPhotos.length > 1)
-            _buildStackedPhoto(photoFile)
-          else
-            _buildSinglePhoto(photoFile),
+          const SizedBox(height: 10),
+          _buildSinglePhoto(photoFile, index: index),
         ],
       ),
     );
   }
 
-  Widget _buildStackedPhoto(File topPhoto) {
-    return GestureDetector(
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PhotoDetailScreen(photoFile: topPhoto),
-          ),
-        );
-        if (result == true) {
-          _loadData(); // Refresh if photo was deleted
-        }
-      },
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          Container(
-            margin: const EdgeInsets.only(bottom: 24, left: 48, right: 48),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(blurRadius: 4, color: Colors.black12),
-              ],
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.only(bottom: 12, left: 24, right: 24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(blurRadius: 4, color: Colors.black12),
-              ],
-            ),
-          ),
-          _buildSinglePhoto(topPhoto, tapEnabled: false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSinglePhoto(File file, {bool tapEnabled = true}) {
+  Widget _buildSinglePhoto(File file, {bool tapEnabled = true, int index = 0}) {
     return GestureDetector(
       onTap: tapEnabled
           ? () async {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => PhotoDetailScreen(photoFile: file),
+                  builder: (context) => PhotoDetailScreen(
+                    photoFiles: _dayPhotos,
+                    initialIndex: index,
+                  ),
                 ),
               );
               if (result == true) {
@@ -751,10 +771,13 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(12),
-              image: DecorationImage(image: FileImage(file), fit: BoxFit.cover),
+              color: const Color(0xFF1E2026),
+              border: Border.all(
+                color: const Color(0xFF2A2D35),
+                width: 0.8,
+              ),
             ),
+            child: _buildMediaThumbnail(file, fit: BoxFit.cover),
           ),
         ),
       ),
@@ -775,32 +798,32 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: Colors.white.withValues(alpha: 0.06),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.photo_library_outlined,
                   size: 28,
-                  color: Colors.grey[350],
+                  color: Colors.white.withValues(alpha: 0.35),
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 '아직 기록이 없어요',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[400],
+                  color: Colors.white70,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                '+ 버튼을 눌러 첫 기록을 남겨보세요',
+                '상단 "기록" 버튼을 눌러 첫 기록을 남겨보세요',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey[350],
+                  color: Colors.white.withValues(alpha: 0.38),
                   height: 1.4,
                 ),
               ),
@@ -823,6 +846,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   letterSpacing: -0.5,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -837,7 +861,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                 childAspectRatio: 1.0,
               ),
               delegate: SliverChildBuilderDelegate((context, index) {
-                return _buildGridPhotoItem(monthPhotos[index]);
+                return _buildGridPhotoItem(monthPhotos[index], monthPhotos, index);
               }, childCount: monthPhotos.length),
             ),
           ),
@@ -847,151 +871,471 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     );
   }
 
-  Widget _buildGridPhotoItem(File file) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
+  Widget _buildGridPhotoItem(File file, List<File> monthPhotos, int index) {
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PhotoDetailScreen(
+              photoFiles: monthPhotos,
+              initialIndex: index,
+            ),
+          ),
+        );
+        if (result == true) {
+          _loadData();
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E2026),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: const Color(0xFF2A2D35).withValues(alpha: 0.6),
+            width: 0.8,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: _buildMediaThumbnail(file, fit: BoxFit.cover, cacheWidth: 300),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Image.file(
-        file, 
-        fit: BoxFit.cover,
-        cacheWidth: 300, // 그리드뷰에서는 저해상도로 디코딩하여 스크롤 버벅임 해결
-      ),
+    );
+  }
+
+  Widget _buildMediaThumbnail(
+    File file, {
+    BoxFit fit = BoxFit.cover,
+    int? cacheWidth,
+    int? cacheHeight,
+    bool showVideoIcon = true,
+  }) {
+    final isVideo = AlbumService.isVideo(file);
+    final thumbFile = isVideo ? File('${file.path}_thumb.jpg') : file;
+
+    Widget imageWidget;
+    if (isVideo && !thumbFile.existsSync()) {
+      imageWidget = FutureBuilder<File?>(
+        future: AlbumService.getVideoThumbnail(file),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && snapshot.data != null) {
+            return Image.file(
+              snapshot.data!,
+              fit: fit,
+              cacheWidth: cacheWidth,
+              cacheHeight: cacheHeight,
+            );
+          }
+          return Container(
+            color: const Color(0xFF1E2026),
+            child: const Center(
+              child: Icon(Icons.videocam_rounded, color: Colors.white38, size: 22),
+            ),
+          );
+        },
+      );
+    } else {
+      imageWidget = Image.file(
+        thumbFile,
+        fit: fit,
+        cacheWidth: cacheWidth,
+        cacheHeight: cacheHeight,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: const Color(0xFF1E2026),
+          child: const Icon(Icons.broken_image_rounded, color: Colors.white24),
+        ),
+      );
+    }
+
+    if (!isVideo || !showVideoIcon) return imageWidget;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        imageWidget,
+        Positioned(
+          bottom: 5,
+          right: 5,
+          child: Container(
+            padding: const EdgeInsets.all(3.5),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.7),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.35),
+                width: 0.8,
+              ),
+            ),
+            child: const Icon(
+              Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: 13,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   void _showAlbumSelector() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      showDragHandle: false,
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 200),
+        reverseDuration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
       ),
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '폴더 선택',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final bottomInset = MediaQuery.of(context).padding.bottom;
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF17191E),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                border: Border.all(
+                  color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+                  width: 1.0,
                 ),
               ),
-              const SizedBox(height: 20),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildAlbumOption(context, '전체'),
-                      ..._albums.map(
-                        (album) => _buildAlbumOption(context, album),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const Divider(height: 32),
-              InkWell(
-                onTap: () {
-                  Navigator.pop(context);
-                  _showAddFolderBottomSheet();
-                },
-                borderRadius: BorderRadius.circular(12),
+              child: SafeArea(
+                top: false,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + bottomInset),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.add,
-                          size: 20,
-                          color: Colors.grey,
+                      // Drag Handle
+                      Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2E323A),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
                       const Text(
-                        '새 폴더 만들기',
+                        '폴더 선택',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.3,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.4,
+                        ),
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            children: [
+                              _buildAlbumOption(context, '전체', setModalState),
+                              ..._albums.where((a) => a != '전체').map(
+                                (album) => _buildAlbumOption(context, album, setModalState),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const Divider(color: Color(0xFF2E323A), height: 24),
+                      InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showAddFolderBottomSheet();
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF22252C),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: const Color(0xFF2E323A).withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  size: 18,
+                                  color: Color(0xFFF4F6F8),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              const Text(
+                                '새 폴더 만들기',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFF4F6F8),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildAlbumOption(BuildContext context, String name) {
+  Widget _buildAlbumOption(
+    BuildContext context,
+    String name, [
+    StateSetter? setModalState,
+  ]) {
     final isSelected = _selectedAlbum == name;
-    final Color color = name == '전체' ? Colors.grey : _getAlbumColor(name);
+    final Color color = _getAlbumNeonPointColor(name);
+    final canDelete = name != '전체' && name != '일상';
 
-    return InkWell(
-      onTap: () {
-        setState(() => _selectedAlbum = name);
-        _loadData();
-        Navigator.pop(context);
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.08) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(0.3),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      decoration: BoxDecoration(
+        color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                setState(() => _selectedAlbum = name);
+                _loadData();
+                Navigator.pop(context);
+              },
+              borderRadius: BorderRadius.horizontal(
+                left: const Radius.circular(12),
+                right: canDelete ? Radius.zero : const Radius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.5),
+                            blurRadius: 5,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 16.5,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? Colors.white : Colors.white60,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(Icons.check_circle_rounded, color: color, size: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (canDelete)
+            IconButton(
+              tooltip: '폴더 삭제',
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.white.withValues(alpha: 0.38),
+                size: 20,
+              ),
+              splashRadius: 18,
+              onPressed: () => _confirmDeleteAlbum(name, setModalState),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteAlbum(String albumName, StateSetter? setModalState) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      showDragHandle: false,
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 200),
+        reverseDuration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+      ),
+      builder: (ctx) {
+        final bottomInset = MediaQuery.of(ctx).padding.bottom;
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF17191E),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(
+              color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+              width: 1.0,
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottomInset),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2E323A),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    '폴더 삭제',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '\'$albumName\' 폴더를 삭제하시겠습니까?\n사진은 기기 앨범에 안전하게 유지되며 폴더만 삭제됩니다.',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF9AA1AC),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            side: BorderSide(
+                              color: const Color(0xFF2E323A).withValues(alpha: 0.5),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(
+                              color: Color(0xFFF4F6F8),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 1,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFFF453A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text(
+                            '삭제',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
-            Text(
-              name,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.black : Colors.black54,
+          ),
+        );
+      },
+    );
+
+    if (confirmed == true && mounted) {
+      await AlbumService.deleteAlbum(albumName);
+
+      if (_selectedAlbum == albumName) {
+        _selectedAlbum = '전체';
+      }
+
+      await _loadData();
+
+      if (setModalState != null && mounted) {
+        setModalState(() {});
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '\'$albumName\' 폴더가 삭제되었습니다.',
+              style: const TextStyle(
+                color: Color(0xFFF4F6F8),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const Spacer(),
-            if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
-          ],
-        ),
-      ),
-    );
+            backgroundColor: const Color(0xFF22252C),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(
+                color: const Color(0xFF2E323A).withValues(alpha: 0.6),
+                width: 0.8,
+              ),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   void _showAddFolderBottomSheet() {
@@ -1013,205 +1357,480 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      showDragHandle: false,
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 200),
+        reverseDuration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
       ),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24,
-                right: 24,
-                top: 32,
+            final bottomPadding = MediaQuery.of(context).padding.bottom;
+            final keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
+            final hasText = newAlbumName.trim().isNotEmpty;
+
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF17191E),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                border: Border.all(
+                  color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+                  width: 1.0,
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '새 폴더 만들기',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: '폴더 이름을 입력하세요 (예: 운동, 독서)',
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.all(20),
-                    ),
-                    onChanged: (value) => newAlbumName = value,
-                  ),
-                  const SizedBox(height: 32),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        '폴더 색상',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black54,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: keyboardPadding > 0 ? keyboardPadding : bottomPadding,
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Drag Indicator
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2E323A),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
                         ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              backgroundColor: Colors.white,
-                              surfaceTintColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
+
+                        // Header
+                        const Text(
+                          '새 폴더 만들기',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.3,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          '사진을 분류할 새 폴더의 이름과 색상을 지정하세요',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF9AA1AC),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // TextField
+                        TextField(
+                          autofocus: true,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFFF4F6F8),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '폴더 이름 입력 (예: 운동, 독서, 여행)',
+                            hintStyle: TextStyle(
+                              fontSize: 13,
+                              color: const Color(0xFF9AA1AC).withValues(alpha: 0.6),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFF22252C),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                color: const Color(0xFF2E323A).withValues(alpha: 0.35),
                               ),
-                              title: const Text(
-                                '색상 테마 선택',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                color: const Color(0xFF2E323A).withValues(alpha: 0.35),
                               ),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                color: Color(selectedColorValue),
+                                width: 1.2,
+                              ),
+                            ),
+                          ),
+                          onChanged: (value) => setModalState(() => newAlbumName = value),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Color Header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              '폴더 색상 테마',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF9AA1AC),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                _showCustomColorPickerBottomSheet(
+                                  parentContext: context,
+                                  currentColorValue: selectedColorValue,
+                                  onColorSelected: (newColor) {
+                                    setModalState(() => selectedColorValue = newColor);
+                                  },
+                                );
+                              },
+                              child: const Row(
                                 children: [
-                                  const SizedBox(height: 16),
-                                  HueRingPicker(
-                                    pickerColor: Color(selectedColorValue),
-                                    onColorChanged: (color) {
-                                      setModalState(
-                                        () => selectedColorValue = color.value,
-                                      );
-                                    },
-                                    enableAlpha: false,
-                                    displayThumbColor: true,
-                                  ),
-                                  const SizedBox(height: 24),
-                                ],
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text(
-                                    '취소',
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(selectedColorValue),
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                  Icon(Icons.colorize, size: 14, color: Color(0xFF9AA1AC)),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '직접 선택',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF9AA1AC),
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  child: const Text('적용하기'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Palette Circles
+                        SizedBox(
+                          height: 36,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: palette.length,
+                            itemBuilder: (context, index) {
+                              final colorValue = palette[index];
+                              final isColorSelected = selectedColorValue == colorValue;
+                              return GestureDetector(
+                                onTap: () => setModalState(
+                                  () => selectedColorValue = colorValue,
+                                ),
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 10),
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: Color(colorValue),
+                                    shape: BoxShape.circle,
+                                    border: isColorSelected
+                                        ? Border.all(color: Colors.white, width: 2)
+                                        : null,
+                                    boxShadow: [
+                                      if (isColorSelected)
+                                        BoxShadow(
+                                          color: Color(colorValue).withValues(alpha: 0.5),
+                                          blurRadius: 6,
+                                          spreadRadius: 1,
+                                        ),
+                                    ],
+                                  ),
+                                  child: isColorSelected
+                                      ? const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 16,
+                                        )
+                                      : null,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Action Buttons (Cancel / Confirm matching runningapp style)
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 1,
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  side: BorderSide(
+                                    color: const Color(0xFF2E323A).withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text(
+                                  '취소',
+                                  style: TextStyle(
+                                    color: Color(0xFFF4F6F8),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 2,
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: hasText
+                                      ? Color(selectedColorValue)
+                                      : const Color(0xFF22252C),
+                                  foregroundColor: hasText
+                                      ? Colors.white
+                                      : const Color(0xFF9AA1AC),
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  final name = newAlbumName.trim();
+                                  if (name.isEmpty) return;
+                                  if (_albums.contains(name)) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('이미 존재하는 폴더 이름입니다.')),
+                                    );
+                                    return;
+                                  }
+
+                                  await AlbumService.createAlbum(
+                                    name,
+                                    colorValue: selectedColorValue,
+                                  );
+                                  setState(() => _selectedAlbum = name);
+                                  await _loadData();
+                                  if (context.mounted) Navigator.pop(context);
+                                },
+                                child: const Text(
+                                  '폴더 만들기',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showCustomColorPickerBottomSheet({
+    required BuildContext parentContext,
+    required int currentColorValue,
+    required ValueChanged<int> onColorSelected,
+  }) async {
+    FocusScope.of(parentContext).unfocus();
+    int tempColor = currentColorValue;
+    HSVColor currentHsvColor = HSVColor.fromColor(Color(currentColorValue));
+
+    await showModalBottomSheet(
+      context: parentContext,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      showDragHandle: false,
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 200),
+        reverseDuration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setPickerState) {
+            final bottomInset = MediaQuery.of(ctx).padding.bottom;
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF17191E),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                border: Border.all(
+                  color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+                  width: 1.0,
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + bottomInset),
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Drag Indicator
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2E323A),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+
+                        // Header
+                        Row(
+                          children: [
+                            Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                color: Color(tempColor),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color(tempColor).withValues(alpha: 0.5),
+                                    blurRadius: 6,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              '색상 선택',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.3,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Pure Ring & Area Picker (Zero HEX input field, exact 200px height)
+                        Center(
+                          child: SizedBox(
+                            width: 200,
+                            height: 200,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 200,
+                                  height: 200,
+                                  child: ColorPickerHueRing(
+                                    currentHsvColor,
+                                    (hsv) {
+                                      setPickerState(() {
+                                        currentHsvColor = hsv;
+                                        tempColor = hsv.toColor().toARGB32();
+                                      });
+                                    },
+                                    displayThumbColor: true,
+                                    strokeWidth: 18.0,
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 120,
+                                  height: 120,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: ColorPickerArea(
+                                      currentHsvColor,
+                                      (hsv) {
+                                        setPickerState(() {
+                                          currentHsvColor = hsv;
+                                          tempColor = hsv.toColor().toARGB32();
+                                        });
+                                      },
+                                      PaletteType.hsv,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                          );
-                        },
-                        icon: const Icon(Icons.colorize, size: 18),
-                        label: const Text('직접 선택'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 50,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: palette.length,
-                      itemBuilder: (context, index) {
-                        final colorValue = palette[index];
-                        final isColorSelected =
-                            selectedColorValue == colorValue;
-                        return GestureDetector(
-                          onTap: () => setModalState(
-                            () => selectedColorValue = colorValue,
                           ),
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 12),
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: Color(colorValue),
-                              shape: BoxShape.circle,
-                              border: isColorSelected
-                                  ? Border.all(color: Colors.black87, width: 2)
-                                  : null,
-                              boxShadow: [
-                                if (isColorSelected)
-                                  BoxShadow(
-                                    color: Color(colorValue).withOpacity(0.4),
-                                    blurRadius: 8,
-                                    spreadRadius: 2,
-                                  ),
-                              ],
-                            ),
-                            child: isColorSelected
-                                ? const Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: 20,
-                                  )
-                                : null,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final name = newAlbumName.trim();
-                        if (name.isEmpty) return;
-                        if (_albums.contains(name)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('이미 존재하는 폴더 이름입니다.')),
-                          );
-                          return;
-                        }
+                        ),
+                        const SizedBox(height: 20),
 
-                        await AlbumService.createAlbum(
-                          name,
-                          colorValue: selectedColorValue,
-                        );
-                        setState(() => _selectedAlbum = name);
-                        await _loadData();
-                        if (mounted) Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(selectedColorValue),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                        // Action Buttons (Cancel / Apply)
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 1,
+                              child: OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  side: BorderSide(
+                                    color: const Color(0xFF2E323A).withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text(
+                                  '취소',
+                                  style: TextStyle(
+                                    color: Color(0xFFF4F6F8),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 2,
+                              child: FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Color(tempColor),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  onColorSelected(tempColor);
+                                  Navigator.pop(ctx);
+                                },
+                                child: const Text(
+                                  '적용하기',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        '폴더 만들기',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
             );
           },

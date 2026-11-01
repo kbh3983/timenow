@@ -1,22 +1,27 @@
+// ignore_for_file: camel_case_types
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
+import 'services/timestamp_access_manager.dart';
 import 'timestamp_metadata.dart';
 import 'ux_config.dart';
 
 // ───── Timestamp Design Types ─────
 enum TimestampDesign {
-  custom03,
-  custom01,
-  custom02,
+  n1_1,
+  n1_2,
+  n2_1,
+  n2_2,
+  n3_1,
+  n3_2,
+  s1_1,
+  s1_2,
+  s2_1,
+  s2_2,
+  s3_1,
+  s3_2,
+  style1,
   none,
-  analogClock,
-  dateText,
-  filmGrain,
-  sample0,
-  sample1,
-  sample2,
-  sample3,
 }
 
 // ───── Aspect Ratio Types ─────
@@ -62,7 +67,7 @@ class TimestampOverlayWidget extends StatefulWidget {
     this.opacity = 1.0,
     this.baseTime,
     this.isLive = true,
-    this.fontSize = 14.0,
+    this.fontSize = 25.0,
   });
 
   @override
@@ -106,256 +111,61 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
     switch (widget.design) {
       case TimestampDesign.none:
         return const SizedBox.shrink();
-      case TimestampDesign.custom01:
-        return _Custom01Stamp(
-          now: _now,
-          alignment: widget.alignment,
-          fontSize: widget.fontSize,
-        );
-      case TimestampDesign.custom02:
-        return _Custom02Stamp(
-          now: _now,
-          alignment: widget.alignment,
-          fontSize: widget.fontSize,
-        );
-      case TimestampDesign.custom03:
-        return _Custom03Stamp(
-          now: _now,
-          alignment: widget.alignment,
-          fontSize: widget.fontSize,
-        );
-      case TimestampDesign.analogClock:
-        return _AnalogClockStamp(now: _now, alignment: widget.alignment);
-      case TimestampDesign.dateText:
-        return _DateTextStamp(now: _now, alignment: widget.alignment);
-      case TimestampDesign.filmGrain:
-        return _FilmGrainStamp(now: _now, alignment: widget.alignment);
-      case TimestampDesign.sample0:
-        return _Sample0Stamp(now: _now, alignment: widget.alignment);
-      case TimestampDesign.sample1:
-        return _Sample1Stamp(now: _now, alignment: widget.alignment);
-      case TimestampDesign.sample2:
-        return _Sample2Stamp(now: _now, alignment: widget.alignment);
-      case TimestampDesign.sample3:
-        return _Sample3Stamp(now: _now, alignment: widget.alignment);
+      case TimestampDesign.n1_1:
+        return _N1_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.n1_2:
+        return _N1_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.n2_1:
+        return _N2_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.n2_2:
+        return _N2_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.n3_1:
+        return _N3_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.n3_2:
+        return _N3_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.s1_1:
+        return _S1_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.s1_2:
+        return _S1_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.s2_1:
+        return _S2_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.s2_2:
+        return _S2_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.s3_1:
+        return _S3_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.s3_2:
+        return _S3_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+      case TimestampDesign.style1:
+        return _Style1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
     }
   }
 }
 
-// ───── Analog Clock Stamp ─────
-class _AnalogClockStamp extends StatelessWidget {
-  final DateTime now;
-  final Alignment alignment;
-  const _AnalogClockStamp({required this.now, required this.alignment});
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        width: 72,
-        height: 72,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.12),
-          border: Border.all(color: Colors.white60, width: 1.5),
-          boxShadow: TimestampMetadata.getShadows(TimestampDesign.analogClock)
-              ?.map(
-                (s) => BoxShadow(
-                  color: s.color,
-                  offset: s.offset,
-                  blurRadius: s.blurRadius,
-                ),
-              )
-              .toList(),
-        ),
-        child: CustomPaint(painter: _ClockPainter(now: now)),
-      ),
-    );
-  }
+// ───── Alignment Helpers ─────
+CrossAxisAlignment _getCrossAxis(Alignment alignment) {
+  if (alignment.x < -0.2) return CrossAxisAlignment.start;
+  if (alignment.x > 0.2) return CrossAxisAlignment.end;
+  return CrossAxisAlignment.center;
 }
 
-class _ClockPainter extends CustomPainter {
-  final DateTime now;
-  final Color color;
-  _ClockPainter({required this.now, this.color = Colors.white});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 4;
-    final paint = Paint()
-      ..color = color
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    // Hour ticks
-    for (int i = 0; i < 12; i++) {
-      final angle = i * 30 * math.pi / 180 - math.pi / 2;
-      final isMain = i % 3 == 0;
-      final outerR = radius * 0.9;
-      final innerR = radius * (isMain ? 0.70 : 0.80);
-      paint.strokeWidth = isMain ? 2.0 : 1.0;
-      canvas.drawLine(
-        Offset(
-          center.dx + innerR * math.cos(angle),
-          center.dy + innerR * math.sin(angle),
-        ),
-        Offset(
-          center.dx + outerR * math.cos(angle),
-          center.dy + outerR * math.sin(angle),
-        ),
-        paint,
-      );
-    }
-
-    // Hour hand
-    final hourAngle =
-        ((now.hour % 12) + now.minute / 60.0) * 30 * math.pi / 180 -
-        math.pi / 2;
-    paint.strokeWidth = 2.8;
-    canvas.drawLine(
-      center,
-      Offset(
-        center.dx + radius * 0.48 * math.cos(hourAngle),
-        center.dy + radius * 0.48 * math.sin(hourAngle),
-      ),
-      paint,
-    );
-
-    // Minute hand
-    final minAngle = now.minute * 6 * math.pi / 180 - math.pi / 2;
-    paint.strokeWidth = 1.8;
-    canvas.drawLine(
-      center,
-      Offset(
-        center.dx + radius * 0.72 * math.cos(minAngle),
-        center.dy + radius * 0.72 * math.sin(minAngle),
-      ),
-      paint,
-    );
-
-    // Center dot
-    canvas.drawCircle(
-      center,
-      3,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_ClockPainter old) => old.now != now;
+TextAlign _getTextAlign(Alignment alignment) {
+  if (alignment.x < -0.2) return TextAlign.left;
+  if (alignment.x > 0.2) return TextAlign.right;
+  return TextAlign.center;
 }
 
-// ───── Date Text Stamp ─────
-class _DateTextStamp extends StatelessWidget {
-  final DateTime now;
-  final Alignment alignment;
-  const _DateTextStamp({required this.now, required this.alignment});
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isLeft =
-        alignment == Alignment.topLeft || alignment == Alignment.bottomLeft;
-    final bool isCenter =
-        alignment == Alignment.topCenter ||
-        alignment == Alignment.bottomCenter ||
-        alignment == Alignment.center;
-
-    final shadows = TimestampMetadata.getShadows(TimestampDesign.dateText);
-
-    return Align(
-      alignment: alignment,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: isCenter
-              ? CrossAxisAlignment.center
-              : (isLeft ? CrossAxisAlignment.start : CrossAxisAlignment.end),
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              DateFormat(
-                TimestampMetadata.getDateFormat(TimestampDesign.dateText),
-              ).format(now).toUpperCase(),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
-                shadows: shadows,
-              ),
-            ),
-            Text(
-              DateFormat(
-                TimestampMetadata.getTimeFormat(TimestampDesign.dateText),
-              ).format(now),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 1.2,
-                shadows: shadows,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ───── Film Grain Stamp ─────
-class _FilmGrainStamp extends StatelessWidget {
-  final DateTime now;
-  final Alignment alignment;
-  const _FilmGrainStamp({required this.now, required this.alignment});
-
-  @override
-  Widget build(BuildContext context) {
-    final shadows = TimestampMetadata.getShadows(TimestampDesign.filmGrain);
-
-    return Align(
-      alignment: alignment,
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.42),
-          borderRadius: BorderRadius.circular(4),
-          boxShadow: shadows
-              ?.map(
-                (s) => BoxShadow(
-                  color: s.color,
-                  offset: s.offset,
-                  blurRadius: s.blurRadius,
-                ),
-              )
-              .toList(),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.grain, color: Colors.white70, size: 13),
-            const SizedBox(width: 6),
-            Text(
-              'FILM  ${DateFormat(TimestampMetadata.getDateFormat(TimestampDesign.filmGrain)).format(now).toUpperCase()}',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2.5,
-                shadows: shadows,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+Widget _wrapAlign({
+  required Alignment alignment,
+  required Widget child,
+  EdgeInsetsGeometry margin = const EdgeInsets.all(16),
+}) {
+  return Align(
+    alignment: alignment,
+    child: Container(
+      margin: margin,
+      child: child,
+    ),
+  );
 }
 
 // ───── Timestamp Picker Thumbnail ─────
@@ -363,53 +173,134 @@ class TimestampThumbnail extends StatelessWidget {
   final TimestampDesign design;
   final bool isSelected;
   final VoidCallback onTap;
+  final EdgeInsetsGeometry? margin;
+  final BorderRadius? borderRadius;
 
   const TimestampThumbnail({
     super.key,
     required this.design,
     required this.isSelected,
     required this.onTap,
+    this.margin,
+    this.borderRadius,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
-        child: AspectRatio(
-          aspectRatio: 1.0,
-          child: Container(
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Colors.white.withOpacity(0.25)
-                  : Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.zero,
-              border: Border.all(
-                color: isSelected ? Colors.deepOrange : Colors.white24,
-                width: isSelected ? 2.5 : 1.0,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+    return ListenableBuilder(
+      listenable: TimestampAccessManager(),
+      builder: (context, _) {
+        final isUnlocked = TimestampAccessManager().isUnlocked(design);
+        final isFree = TimestampAccessManager.freeDesigns.contains(design);
+        final badgeText = !isFree && isUnlocked
+            ? TimestampAccessManager().getRemainingBadgeText(design)
+            : null;
+        final isLocked = !isUnlocked;
+
+        final effectiveBorderRadius = borderRadius ?? BorderRadius.zero;
+
+        return GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: margin ?? const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            child: AspectRatio(
+              aspectRatio: 1.0,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withOpacity(0.25)
+                          : Colors.white.withOpacity(0.1),
+                      borderRadius: effectiveBorderRadius,
+                      border: Border.all(
+                        color: isSelected ? Colors.deepOrange : Colors.white24,
+                        width: isSelected ? 2.5 : 1.0,
                       ),
-                    ]
-                  : [],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.zero,
-              child: DefaultTextStyle.merge(
-                style: const TextStyle(fontFamily: 'Pretendard'),
-                child: _thumbnail(design),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: effectiveBorderRadius,
+                      child: Opacity(
+                        opacity: isLocked ? 0.65 : 1.0,
+                        child: DefaultTextStyle.merge(
+                          style: const TextStyle(fontFamily: 'Pretendard'),
+                          child: _thumbnail(design),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 잠금 아이콘
+                  if (isLocked)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.75),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.lock_rounded,
+                          size: 11,
+                          color: Color(0xFFC6FF00),
+                        ),
+                      ),
+                    ),
+
+                  // 잔여 일수 뱃지 (예: D-3, D-1)
+                  if (badgeText != null)
+                    Positioned(
+                      top: 3,
+                      right: 3,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFC6FF00),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 3,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -434,35 +325,39 @@ class TimestampThumbnail extends StatelessWidget {
             ),
           ],
         );
-      case TimestampDesign.custom01:
-        return Image.asset(
-          'assets/images/timestamp/timestamp_01.png',
-          color: Colors.white,
-          colorBlendMode: BlendMode.srcIn,
-          fit: BoxFit.contain,
-          errorBuilder: (ctx, _, _) =>
-              const Icon(Icons.image, color: Colors.white),
-        );
-      case TimestampDesign.custom02:
-        return Image.asset(
-          CameraUX.stampImage02,
-          color: Colors.white,
-          colorBlendMode: BlendMode.srcIn,
-          fit: BoxFit.contain,
-          errorBuilder: (ctx, _, _) =>
-              const Icon(Icons.image, color: Colors.white),
-        );
-      case TimestampDesign.custom03:
+
+      case TimestampDesign.n1_1:
         final text = TimestampMetadata.getFormattedDateTime(design, now);
         return Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
                 text,
                 style: TextStyle(
-                  fontFamily: CameraUX.stampFont03,
+                  fontFamily: CameraUX.fontRubberNippleFactory,
+                  color: Colors.white,
+                  fontSize: 10.5,
+                  height: 1.0,
+                  shadows: shadow,
+                ),
+              ),
+            ),
+          ),
+        );
+
+      case TimestampDesign.n1_2:
+        final text = TimestampMetadata.getFormattedDateTime(design, now);
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontFamily: CameraUX.fontNixieOne,
                   color: Colors.white,
                   fontSize: 11,
                   height: 1.0,
@@ -472,97 +367,478 @@ class TimestampThumbnail extends StatelessWidget {
             ),
           ),
         );
-      case TimestampDesign.analogClock:
+
+      case TimestampDesign.n2_1:
+        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+        final weekday = weekdays[now.weekday - 1];
+        final dateStr = '${DateFormat('yyyy년 MM월 dd일').format(now)} ($weekday)';
+        final period = now.hour < 12 ? '오전' : '오후';
+        final timeStr = '$period ${DateFormat('h:mm').format(now)}';
         return Center(
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: CustomPaint(
-              painter: _ClockPainter(now: now, color: Colors.white),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    dateStr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontCafe24OnePrettyNight,
+                      color: Colors.white,
+                      fontSize: 5.8,
+                      shadows: shadow,
+                    ),
+                  ),
+                  Text(
+                    timeStr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontCafe24OnePrettyNight,
+                      color: Colors.white,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.bold,
+                      shadows: shadow,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
-      case TimestampDesign.dateText:
+
+      case TimestampDesign.n2_2:
+        final dateStr = DateFormat('yyyy년 MM월 dd일').format(now);
+        final period = now.hour < 12 ? '오전' : '오후';
+        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
         return Center(
           child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'JAN 28,',
-                  style: TextStyle(
-                    color: TimestampMetadata.getColor(design),
-                    fontSize: 8,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.8,
-                    shadows: shadow,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    dateStr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontNanumAmsterdam,
+                      color: Colors.white,
+                      fontSize: 7.0,
+                      shadows: shadow,
+                    ),
                   ),
-                ),
-                Text(
-                  '2024',
-                  style: TextStyle(
-                    color: TimestampMetadata.getColor(design).withOpacity(0.8),
-                    fontSize: 8,
-                    letterSpacing: 0.8,
-                    shadows: shadow,
+                  Text(
+                    timeStr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontNanumAmsterdam,
+                      color: Colors.white,
+                      fontSize: 13.0,
+                      shadows: shadow,
+                    ),
                   ),
-                ),
-                Text(
-                  '10:30 AM',
-                  style: TextStyle(
-                    color: TimestampMetadata.getColor(design).withOpacity(0.7),
-                    fontSize: 7,
-                    letterSpacing: 0.5,
-                    shadows: shadow,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
-      case TimestampDesign.filmGrain:
+
+      case TimestampDesign.n3_1:
+        final dateStr = DateFormat('dd MMM, yyyy', 'en_US').format(now);
+        final dayStr = DateFormat('EEEE', 'en_US').format(now);
+        final period = now.hour < 12 ? 'AM' : 'PM';
+        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
         return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.grain,
-                color: TimestampMetadata.getColor(design).withOpacity(0.8),
-                size: 16,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(dayStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
+                ],
               ),
-              const SizedBox(height: 2),
-              Text(
-                'FILM\nGRAIN',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: TimestampMetadata.getColor(design).withOpacity(0.8),
-                  fontSize: 7,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  shadows: shadow,
-                ),
-              ),
-            ],
+            ),
           ),
         );
-      case TimestampDesign.sample0:
-      case TimestampDesign.sample1:
-      case TimestampDesign.sample2:
-      case TimestampDesign.sample3:
-        final name = TimestampMetadata.getName(design);
+
+      case TimestampDesign.n3_2:
+        final yearStr = DateFormat('yyyy').format(now);
+        final dateStr = DateFormat('MMMM dd', 'en_US').format(now);
+        final period = now.hour < 12 ? 'AM' : 'PM';
+        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(yearStr, style: TextStyle(fontFamily: CameraUX.fontCafe24Simplehae, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontCafe24Simplehae, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontCafe24Simplehae, fontSize: 8, color: Colors.white, shadows: shadow)),
+                ],
+              ),
+            ),
+          ),
+        );
+
+      case TimestampDesign.s1_1:
+        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+        final weekday = weekdays[now.weekday - 1];
+        final period = now.hour < 12 ? '오전' : '오후';
+        final text = '${DateFormat('yy.MM.dd').format(now)}.$weekday $period ${DateFormat('h:mm').format(now)}';
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox(
+                width: 130,
+                height: 30,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Image.asset(CameraUX.stampImg1, width: 130, height: 30, fit: BoxFit.fill, color: Colors.white),
+                    Text(
+                      text,
+                      style: TextStyle(fontFamily: CameraUX.fontTvnFunStory, fontSize: 9.5, color: Colors.white, shadows: shadow),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+      case TimestampDesign.s1_2:
+        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+        final weekday = weekdays[now.weekday - 1];
+        final period = now.hour < 12 ? '오전' : '오후';
+        final text = '${DateFormat('yy.MM.dd').format(now)}.$weekday $period ${DateFormat('h:mm').format(now)}';
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox(
+                width: 130,
+                height: 30,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Image.asset(CameraUX.stampImg2, width: 130, height: 30, fit: BoxFit.fill, color: Colors.white),
+                    Text(
+                      text,
+                      style: TextStyle(fontFamily: CameraUX.fontCafe24Shiningstar, fontSize: 10, color: Colors.white, shadows: shadow),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+      case TimestampDesign.s2_1:
+        final dateStr = DateFormat('yyyy/MM/dd').format(now);
+        final period = now.hour < 12 ? '오전' : '오후';
+        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(4),
-            child: Text(
-              name,
-              textAlign: TextAlign.center,
-              style: TextStyle(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 2.5),
+                    width: 52,
+                    height: 2.0,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(1),
+                      boxShadow: shadow != null
+                          ? shadow
+                              .map((s) => BoxShadow(
+                                    color: s.color,
+                                    offset: s.offset,
+                                    blurRadius: s.blurRadius,
+                                  ))
+                              .toList()
+                          : null,
+                    ),
+                  ),
+                  Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
+                ],
+              ),
+            ),
+          ),
+        );
+
+      case TimestampDesign.s2_2:
+        final period = now.hour < 12 ? '오전' : '오후';
+        final timeStr = '$period ${DateFormat('h:mm').format(now)}';
+        final dateStr = DateFormat('yyyy MMM dd', 'en_US').format(now);
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: Text(timeStr, style: const TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 7.5, color: Colors.black87, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 7.5, color: Colors.white, shadows: shadow)),
+                ],
+              ),
+            ),
+          ),
+        );
+
+      case TimestampDesign.s3_1:
+        final yearStr = DateFormat('yyyy').format(now);
+        final dateStr = DateFormat('MMMM dd', 'en_US').format(now);
+        final period = now.hour < 12 ? '오전' : '오후';
+        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+        Widget buildDivider() => Container(
+              margin: const EdgeInsets.symmetric(vertical: 2.0),
+              width: 52,
+              height: 1.2,
+              decoration: BoxDecoration(
                 color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                shadows: shadow,
+                borderRadius: BorderRadius.circular(1),
+                boxShadow: shadow
+                    ?.map((s) => BoxShadow(
+                          color: s.color,
+                          offset: s.offset,
+                          blurRadius: s.blurRadius,
+                        ))
+                    .toList(),
+              ),
+            );
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    yearStr,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontTvnFunStory,
+                      fontSize: 8,
+                      color: Colors.white,
+                      height: 1.0,
+                      shadows: shadow,
+                    ),
+                  ),
+                  buildDivider(),
+                  Text(
+                    dateStr,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontTvnFunStory,
+                      fontSize: 8,
+                      color: Colors.white,
+                      height: 1.0,
+                      shadows: shadow,
+                    ),
+                  ),
+                  buildDivider(),
+                  Text(
+                    timeStr,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontTvnFunStory,
+                      fontSize: 8,
+                      color: Colors.white,
+                      height: 1.0,
+                      shadows: shadow,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+      case TimestampDesign.s3_2:
+        final dateStr = DateFormat('yy/MM/dd').format(now);
+        final weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+        final weekdayStr = weekdays[now.weekday - 1];
+        final period = now.hour < 12 ? '오전' : '오후';
+        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    CameraUX.stampImg11,
+                    width: 38,
+                    height: 8.5,
+                    fit: BoxFit.fill,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    dateStr,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontTvnFunStory,
+                      fontSize: 6.0,
+                      color: Colors.white,
+                      height: 1.0,
+                      shadows: shadow,
+                    ),
+                  ),
+                  Text(
+                    weekdayStr,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontTvnFunStory,
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      height: 1.1,
+                      shadows: shadow,
+                    ),
+                  ),
+                  Text(
+                    timeStr,
+                    style: TextStyle(
+                      fontFamily: CameraUX.fontTvnFunStory,
+                      fontSize: 6.0,
+                      color: Colors.white,
+                      height: 1.0,
+                      shadows: shadow,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Transform.flip(
+                    flipY: true,
+                    child: Image.asset(
+                      CameraUX.stampImg11,
+                      width: 38,
+                      height: 8.5,
+                      fit: BoxFit.fill,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+      case TimestampDesign.style1:
+        final dayStr = DateFormat('EEEE', 'en_US').format(now);
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _CurvedTextWidget(
+                    text: 'Many a little makes a miracle',
+                    textStyle: TextStyle(
+                      fontFamily: CameraUX.fontRondal,
+                      fontSize: 4.8,
+                      color: Colors.white.withValues(alpha: 0.92),
+                      letterSpacing: 0.2,
+                    ),
+                    radius: 65.0,
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        DateFormat('MM').format(now),
+                        style: TextStyle(
+                          fontFamily: CameraUX.fontLobster,
+                          fontSize: 5.5,
+                          color: Colors.white,
+                          shadows: shadow,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          dayStr,
+                          style: TextStyle(
+                            fontFamily: CameraUX.fontRondalBold,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                            shadows: shadow,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        DateFormat('dd').format(now),
+                        style: TextStyle(
+                          fontFamily: CameraUX.fontLobster,
+                          fontSize: 5.5,
+                          color: Colors.white,
+                          shadows: shadow,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  SizedBox(
+                    width: 38,
+                    height: 14,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Image.asset(
+                          CameraUX.stampImgCircle1,
+                          width: 38,
+                          height: 14,
+                          fit: BoxFit.fill,
+                          color: Colors.white,
+                        ),
+                        Text(
+                          '${now.hour < 12 ? 'AM' : 'PM'} ${DateFormat('hh:mm').format(now)}',
+                          style: TextStyle(
+                            fontFamily: CameraUX.fontRondal,
+                            fontSize: 5.2,
+                            color: Colors.white,
+                            shadows: shadow,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -571,393 +847,883 @@ class TimestampThumbnail extends StatelessWidget {
   }
 }
 
-// ───── Sample 0 Design (Rec + Corners + Center Text) ─────
-class _Sample0Stamp extends StatelessWidget {
+// ───── 1. n1_1 (Normal 1-line Center) ─────
+class _N1_1Stamp extends StatelessWidget {
   final DateTime now;
   final Alignment alignment;
-  const _Sample0Stamp({required this.now, required this.alignment});
+  final double fontSize;
+  const _N1_1Stamp({required this.now, required this.alignment, required this.fontSize});
 
   @override
   Widget build(BuildContext context) {
-    final shadows = TimestampMetadata.getShadows(TimestampDesign.sample0);
+    final text = TimestampMetadata.getFormattedDateTime(TimestampDesign.n1_1, now);
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.n1_1);
+    return _wrapAlign(
+      alignment: alignment,
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: CameraUX.fontRubberNippleFactory,
+          fontSize: fontSize,
+          color: Colors.white,
+          height: 1.0,
+          shadows: shadows,
+        ),
+      ),
+    );
+  }
+}
 
-    return Stack(
-      children: [
-        // Corners stay fixed as they are "frame" elements
-        const Positioned(top: 20, left: 20, child: _Corner(angle: 0)),
-        const Positioned(top: 20, right: 20, child: _Corner(angle: 90)),
-        const Positioned(bottom: 20, left: 20, child: _Corner(angle: 270)),
-        const Positioned(bottom: 20, right: 20, child: _Corner(angle: 180)),
+// ───── 2. n1_2 (Normal 1-line Left) ─────
+class _N1_2Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _N1_2Stamp({required this.now, required this.alignment, required this.fontSize});
 
-        // REC and Time move together based on alignment
-        Align(
-          alignment: alignment,
-          child: Padding(
-            padding: const EdgeInsets.all(
-              40,
-            ), // More padding for viewfinder style
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'REC',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        shadows: shadows,
-                      ),
-                    ),
-                  ],
+  @override
+  Widget build(BuildContext context) {
+    final text = TimestampMetadata.getFormattedDateTime(TimestampDesign.n1_2, now);
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.n1_2);
+    return _wrapAlign(
+      alignment: alignment,
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: CameraUX.fontNixieOne,
+          fontSize: fontSize,
+          color: Colors.white,
+          height: 1.0,
+          shadows: shadows,
+        ),
+      ),
+    );
+  }
+}
+
+// ───── 3. n2_1 (Normal 2-line: Date smaller to match Time width, always center-aligned) ─────
+class _N2_1Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _N2_1Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final weekday = weekdays[now.weekday - 1];
+    final dateStr = '${DateFormat('yyyy년 MM월 dd일').format(now)} ($weekday)';
+    final period = now.hour < 12 ? '오전' : '오후';
+    final timeStr = '$period ${DateFormat('h:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.n2_1);
+    final dateFontSize = fontSize * 0.36;
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            dateStr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: CameraUX.fontCafe24OnePrettyNight,
+              fontSize: dateFontSize,
+              color: Colors.white,
+              height: 1.1,
+              shadows: shadows,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            timeStr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: CameraUX.fontCafe24OnePrettyNight,
+              fontSize: fontSize,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───── 4. n2_2 (Normal 2-line Amsterdam: Date smaller to match Time width, always center-aligned) ─────
+class _N2_2Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _N2_2Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('yyyy년 MM월 dd일').format(now);
+    final period = now.hour < 12 ? '오전' : '오후';
+    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.n2_2);
+    final dateFontSize = fontSize * 0.52;
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            dateStr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: CameraUX.fontNanumAmsterdam,
+              fontSize: dateFontSize,
+              color: Colors.white,
+              height: 1.1,
+              shadows: shadows,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            timeStr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: CameraUX.fontNanumAmsterdam,
+              fontSize: fontSize,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───── 5. n3_1 (Normal 3-line Left/Center/Right dynamic alignment) ─────
+class _N3_1Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _N3_1Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('dd MMM, yyyy', 'en_US').format(now);
+    final dayStr = DateFormat('EEEE', 'en_US').format(now);
+    final period = now.hour < 12 ? 'AM' : 'PM';
+    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.n3_1);
+    final crossAxis = _getCrossAxis(alignment);
+    final textAlign = _getTextAlign(alignment);
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: crossAxis,
+        children: [
+          Text(
+            dateStr,
+            textAlign: textAlign,
+            style: TextStyle(
+              fontFamily: CameraUX.fontNanumBarunpen,
+              fontSize: fontSize,
+              color: Colors.white,
+              height: 1.1,
+              shadows: shadows,
+            ),
+          ),
+          Text(
+            dayStr,
+            textAlign: textAlign,
+            style: TextStyle(
+              fontFamily: CameraUX.fontNanumBarunpen,
+              fontSize: fontSize,
+              color: Colors.white,
+              height: 1.1,
+              shadows: shadows,
+            ),
+          ),
+          Text(
+            timeStr,
+            textAlign: textAlign,
+            style: TextStyle(
+              fontFamily: CameraUX.fontNanumBarunpen,
+              fontSize: fontSize,
+              color: Colors.white,
+              height: 1.1,
+              shadows: shadows,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───── 6. n3_2 (Normal 3-line Simplehae: smaller size & dynamic alignment) ─────
+class _N3_2Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _N3_2Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final yearStr = DateFormat('yyyy').format(now);
+    final dateStr = DateFormat('MMMM dd', 'en_US').format(now);
+    final period = now.hour < 12 ? 'AM' : 'PM';
+    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.n3_2);
+    final crossAxis = _getCrossAxis(alignment);
+    final textAlign = _getTextAlign(alignment);
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: crossAxis,
+        children: [
+          Text(
+            yearStr,
+            textAlign: textAlign,
+            style: TextStyle(
+              fontFamily: CameraUX.fontCafe24Simplehae,
+              fontSize: fontSize,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            dateStr,
+            textAlign: textAlign,
+            style: TextStyle(
+              fontFamily: CameraUX.fontCafe24Simplehae,
+              fontSize: fontSize,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            timeStr,
+            textAlign: textAlign,
+            style: TextStyle(
+              fontFamily: CameraUX.fontCafe24Simplehae,
+              fontSize: fontSize,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───── 7. s1_1 (Stamp Frame 1: adjusted compact size) ─────
+class _S1_1Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _S1_1Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final weekday = weekdays[now.weekday - 1];
+    final period = now.hour < 12 ? '오전' : '오후';
+    final text = '${DateFormat('yyyy.MM.dd').format(now)}.$weekday $period ${DateFormat('hh:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.s1_1);
+    final scale = fontSize / 24.0;
+    final frameW = 280.0 * scale;
+    final frameH = 50.0 * scale;
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: SizedBox(
+        width: frameW,
+        height: frameH,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Image.asset(
+              CameraUX.stampImg1,
+              width: frameW,
+              height: frameH,
+              fit: BoxFit.fill,
+              color: Colors.white,
+            ),
+            Text(
+              text,
+              style: TextStyle(
+                fontFamily: CameraUX.fontTvnFunStory,
+                fontSize: fontSize,
+                color: Colors.white,
+                height: 1.0,
+                shadows: shadows,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ───── 8. s1_2 (Stamp Frame 2: adjusted compact size) ─────
+class _S1_2Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _S1_2Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final weekday = weekdays[now.weekday - 1];
+    final period = now.hour < 12 ? '오전' : '오후';
+    final text = '${DateFormat('yyyy.MM.dd').format(now)}.$weekday $period ${DateFormat('hh:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.s1_2);
+    final scale = fontSize / 26.0;
+    final frameW = 280.0 * scale;
+    final frameH = 50.0 * scale;
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: SizedBox(
+        width: frameW,
+        height: frameH,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Image.asset(
+              CameraUX.stampImg2,
+              width: frameW,
+              height: frameH,
+              fit: BoxFit.fill,
+              color: Colors.white,
+            ),
+            Text(
+              text,
+              style: TextStyle(
+                fontFamily: CameraUX.fontCafe24Shiningstar,
+                fontSize: fontSize,
+                color: Colors.white,
+                height: 1.0,
+                shadows: shadows,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ───── 9. s2_1 (Divider bar exactly centered between Date & Time, dynamic alignment) ─────
+class _S2_1Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _S2_1Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('yyyy/MM/dd').format(now);
+    final period = now.hour < 12 ? '오전' : '오후';
+    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.s2_1);
+    final scale = fontSize / 25.0;
+    final crossAxis = _getCrossAxis(alignment);
+    final textAlign = _getTextAlign(alignment);
+    final barW = 100.0 * scale;
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: crossAxis,
+        children: [
+          Text(
+            dateStr,
+            textAlign: textAlign,
+            style: TextStyle(
+              fontFamily: CameraUX.fontNanumBarunpen,
+              fontSize: fontSize * 0.9,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+          Container(
+            margin: EdgeInsets.symmetric(vertical: 5 * scale),
+            width: barW,
+            height: 2.2 * scale,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(1.0 * scale),
+              boxShadow: shadows != null
+                  ? shadows
+                      .map((s) => BoxShadow(
+                            color: s.color,
+                            offset: s.offset,
+                            blurRadius: s.blurRadius,
+                          ))
+                      .toList()
+                  : null,
+            ),
+          ),
+          Text(
+            timeStr,
+            textAlign: textAlign,
+            style: TextStyle(
+              fontFamily: CameraUX.fontNanumBarunpen,
+              fontSize: fontSize * 0.9,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───── 10. s2_2 (Slender pill badge, dynamic alignment) ─────
+class _S2_2Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _S2_2Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final period = now.hour < 12 ? '오전' : '오후';
+    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final dateStr = DateFormat('yyyy MMM dd', 'en_US').format(now);
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.s2_2);
+    final scale = fontSize / 25.0;
+    final crossAxis = _getCrossAxis(alignment);
+    final textAlign = _getTextAlign(alignment);
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: crossAxis,
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10 * scale, vertical: 3 * scale),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Text(
+              timeStr,
+              style: TextStyle(
+                fontFamily: CameraUX.fontNanumBarunpen,
+                fontSize: fontSize * 0.82,
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+                height: 1.0,
+              ),
+            ),
+          ),
+          SizedBox(height: 4 * scale),
+          Text(
+            dateStr,
+            textAlign: textAlign,
+            style: TextStyle(
+              fontFamily: CameraUX.fontNanumBarunpen,
+              fontSize: fontSize * 0.85,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───── 11. s3_1 (Stamp 3-line dividers: adjusted compact size) ─────
+class _S3_1Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _S3_1Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final yearStr = DateFormat('yyyy').format(now);
+    final dateStr = DateFormat('MMMM dd', 'en_US').format(now);
+    final period = now.hour < 12 ? '오전' : '오후';
+    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.s3_1);
+    final scale = fontSize / 32.0;
+    final dividerW = 140.0 * scale;
+    final dividerH = 20.0 * scale;
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            yearStr,
+            style: TextStyle(
+              fontFamily: CameraUX.fontTvnFunStory,
+              fontSize: fontSize * 0.85,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+          Image.asset(
+            CameraUX.stampImg10,
+            width: dividerW,
+            height: dividerH,
+            fit: BoxFit.fill,
+            color: Colors.white,
+          ),
+          Text(
+            dateStr,
+            style: TextStyle(
+              fontFamily: CameraUX.fontTvnFunStory,
+              fontSize: fontSize * 0.85,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+          Image.asset(
+            CameraUX.stampImg10,
+            width: dividerW,
+            height: dividerH,
+            fit: BoxFit.fill,
+            color: Colors.white,
+          ),
+          Text(
+            timeStr,
+            style: TextStyle(
+              fontFamily: CameraUX.fontTvnFunStory,
+              fontSize: fontSize * 0.85,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───── 12. s3_2 (Colored Flowers with adjusted compact size) ─────
+class _S3_2Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _S3_2Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('yy/MM/dd').format(now);
+    final weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+    final weekdayStr = weekdays[now.weekday - 1];
+    final period = now.hour < 12 ? '오전' : '오후';
+    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.s3_2);
+    final scale = fontSize / 26.0;
+    final bracketW = 100.0 * scale;
+    final bracketH = 22.0 * scale;
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Original colored flowers without color tint
+          Image.asset(
+            CameraUX.stampImg11,
+            width: bracketW,
+            height: bracketH,
+            fit: BoxFit.fill,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            dateStr,
+            style: TextStyle(
+              fontFamily: CameraUX.fontTvnFunStory,
+              fontSize: fontSize * 0.75,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+          Text(
+            weekdayStr,
+            style: TextStyle(
+              fontFamily: CameraUX.fontTvnFunStory,
+              fontSize: fontSize * 1.15,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.1,
+              shadows: shadows,
+            ),
+          ),
+          Text(
+            timeStr,
+            style: TextStyle(
+              fontFamily: CameraUX.fontTvnFunStory,
+              fontSize: fontSize * 0.75,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+          const SizedBox(height: 2),
+          // Flipped colored flowers
+          Transform.flip(
+            flipY: true,
+            child: Image.asset(
+              CameraUX.stampImg11,
+              width: bracketW,
+              height: bracketH,
+              fit: BoxFit.fill,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ───── 13. style1 (Circular Arc Text, Title Case Tuesday, White time text, reduced size) ─────
+class _Style1Stamp extends StatelessWidget {
+  final DateTime now;
+  final Alignment alignment;
+  final double fontSize;
+  const _Style1Stamp({required this.now, required this.alignment, required this.fontSize});
+
+  @override
+  Widget build(BuildContext context) {
+    // Title Case (e.g. Tuesday, Saturday)
+    final dayStr = DateFormat('EEEE', 'en_US').format(now);
+    final monthStr = DateFormat('MM').format(now);
+    final dateStr = DateFormat('dd').format(now);
+    final period = now.hour < 12 ? 'AM' : 'PM';
+    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final shadows = TimestampMetadata.getShadows(TimestampDesign.style1);
+    final scale = fontSize / 34.0;
+    final pillW = 85.0 * scale;
+    final pillH = 34.0 * scale;
+    final arcRadius = 240.0 * scale;
+
+    return _wrapAlign(
+      alignment: alignment,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Circular Arc Text: "Many a little makes a miracle" with exact bounding width
+          _CurvedTextWidget(
+            text: 'Many a little makes a miracle',
+            textStyle: TextStyle(
+              fontFamily: CameraUX.fontRondal,
+              fontSize: fontSize * 0.32,
+              color: Colors.white.withValues(alpha: 0.92),
+              letterSpacing: 0.8,
+              shadows: shadows,
+            ),
+            radius: arcRadius,
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                monthStr,
+                style: TextStyle(
+                  fontFamily: CameraUX.fontLobster,
+                  fontSize: fontSize * 0.42,
+                  color: Colors.white,
+                  shadows: shadows,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  DateFormat(
-                    TimestampMetadata.getTimeFormat(TimestampDesign.sample0),
-                  ).format(now),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8 * scale),
+                child: Text(
+                  dayStr,
                   style: TextStyle(
+                    fontFamily: CameraUX.fontRondalBold,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: 1,
+                    letterSpacing: 1.0,
+                    height: 1.0,
                     shadows: shadows,
+                  ),
+                ),
+              ),
+              Text(
+                dateStr,
+                style: TextStyle(
+                  fontFamily: CameraUX.fontLobster,
+                  fontSize: fontSize * 0.42,
+                  color: Colors.white,
+                  shadows: shadows,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 18 * scale),
+          SizedBox(
+            width: pillW,
+            height: pillH,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Image.asset(
+                  CameraUX.stampImgCircle1,
+                  width: pillW,
+                  height: pillH,
+                  fit: BoxFit.fill,
+                  color: Colors.white,
+                ),
+                Text(
+                  timeStr,
+                  style: TextStyle(
+                    fontFamily: CameraUX.fontRondal,
+                    fontSize: fontSize * 0.34,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    shadows: shadows,
+                    height: 1.0,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _Corner extends StatelessWidget {
-  final double angle; // Angle in degrees for rotation
-  const _Corner({required this.angle});
-
-  @override
-  Widget build(BuildContext context) {
-    const double size = 24.0;
-    const double thickness = 2.5;
-    return Transform.rotate(
-      angle: angle * (math.pi / 180), // Convert degrees to radians
-      alignment: Alignment.topLeft,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: const BoxDecoration(
-          border: Border(
-            top: BorderSide(color: Colors.white, width: thickness),
-            left: BorderSide(color: Colors.white, width: thickness),
-          ),
-        ),
+        ],
       ),
     );
   }
 }
 
-// ───── Sample 1 Design (Center Bold Bubble) ─────
-class _Sample1Stamp extends StatelessWidget {
-  final DateTime now;
-  final Alignment alignment;
-  const _Sample1Stamp({required this.now, required this.alignment});
+// ───── Circular Arc Text Widget for Style1 ─────
+class _CurvedTextWidget extends StatelessWidget {
+  final String text;
+  final TextStyle textStyle;
+  final double radius;
 
-  @override
-  Widget build(BuildContext context) {
-    final shadows = TimestampMetadata.getShadows(TimestampDesign.sample1);
-
-    return Align(
-      alignment: alignment,
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white, width: 2),
-          boxShadow: shadows
-              ?.map(
-                (s) => BoxShadow(
-                  color: s.color,
-                  offset: s.offset,
-                  blurRadius: s.blurRadius,
-                ),
-              )
-              .toList(),
-        ),
-        child: Text(
-          DateFormat(
-            TimestampMetadata.getDateFormat(TimestampDesign.sample1),
-          ).format(now),
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 4,
-            shadows: shadows,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ───── Sample 2 Design (Large Time + Small Date below) ─────
-// ───── Sample 2 Design (Large Time + Small Date below) ─────
-class _Sample2Stamp extends StatelessWidget {
-  final DateTime now;
-  final Alignment alignment;
-  const _Sample2Stamp({required this.now, required this.alignment});
-
-  @override
-  Widget build(BuildContext context) {
-    final shadows = TimestampMetadata.getShadows(TimestampDesign.sample2);
-
-    return Align(
-      alignment: alignment,
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-              alignment == Alignment.center ||
-                  alignment == Alignment.topCenter ||
-                  alignment == Alignment.bottomCenter
-              ? CrossAxisAlignment.center
-              : (alignment == Alignment.topLeft ||
-                        alignment == Alignment.bottomLeft
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end),
-          children: [
-            Text(
-              DateFormat(
-                TimestampMetadata.getDateFormat(
-                  TimestampDesign.sample2,
-                ).split('\n')[0],
-              ).format(now).toUpperCase(),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 42,
-                fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
-                shadows: shadows,
-              ),
-            ),
-            Text(
-              DateFormat(
-                TimestampMetadata.getDateFormat(
-                  TimestampDesign.sample2,
-                ).split('\n')[1],
-              ).format(now).toUpperCase(),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w300,
-                letterSpacing: 8,
-                shadows: shadows,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ───── Sample 3 Design (Korean Style thin) ─────
-class _Sample3Stamp extends StatelessWidget {
-  final DateTime now;
-  final Alignment alignment;
-  const _Sample3Stamp({required this.now, required this.alignment});
-
-  @override
-  Widget build(BuildContext context) {
-    final shadows = TimestampMetadata.getShadows(TimestampDesign.sample3);
-
-    return Align(
-      alignment: alignment,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-              alignment == Alignment.center ||
-                  alignment == Alignment.topCenter ||
-                  alignment == Alignment.bottomCenter
-              ? CrossAxisAlignment.center
-              : (alignment == Alignment.topLeft ||
-                        alignment == Alignment.bottomLeft
-                    ? CrossAxisAlignment.start
-                    : CrossAxisAlignment.end),
-          children: [
-            Text(
-              DateFormat(
-                TimestampMetadata.getTimeFormat(TimestampDesign.sample3),
-                'ko_KR',
-              ).format(now),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 64,
-                fontWeight: FontWeight.w200,
-                shadows: shadows,
-              ),
-            ),
-            Text(
-              DateFormat(
-                TimestampMetadata.getDateFormat(TimestampDesign.sample3),
-                'ko_KR',
-              ).format(now),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w300,
-                shadows: shadows,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ───── Custom 01 Design (Korean Style from image) ─────
-class _Custom01Stamp extends StatelessWidget {
-  final DateTime now;
-  final Alignment alignment;
-  final double fontSize;
-  const _Custom01Stamp({
-    required this.now,
-    required this.alignment,
-    this.fontSize = 14.0,
+  const _CurvedTextWidget({
+    required this.text,
+    required this.textStyle,
+    required this.radius,
   });
 
   @override
   Widget build(BuildContext context) {
-    final displayStr = TimestampMetadata.getFormattedDateTime(
-      TimestampDesign.custom01,
-      now,
-    );
-    final shadows = TimestampMetadata.getShadows(TimestampDesign.custom01);
+    // 텍스트 호의 실제 시각적 가로 너비(양 끝점 간격)를 정밀 측정하여 불필요한 좌우 여백을 완전히 제거
+    double totalTextLength = 0.0;
+    double maxCharHeight = 0.0;
+    for (int i = 0; i < text.length; i++) {
+      final tp = TextPainter(
+        text: TextSpan(text: text[i], style: textStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      totalTextLength += tp.width;
+      if (tp.height > maxCharHeight) maxCharHeight = tp.height;
+    }
 
-    return Align(
-      alignment: alignment,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        margin: const EdgeInsets.all(10),
-        child: Text(
-          displayStr,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: TimestampMetadata.getColor(TimestampDesign.custom01),
-            fontSize: fontSize,
-            fontWeight: FontWeight.w400,
-            fontFamily: TimestampMetadata.getFontFamily(
-              TimestampDesign.custom01,
-            ),
-            letterSpacing: -0.5,
-            shadows: shadows,
-          ),
+    final totalAngle = totalTextLength / radius;
+    final fontSize = textStyle.fontSize ?? 10.0;
+    // 호의 양 끝점 사이의 chord 너비 + 양 끝 글자 너비 보정
+    final exactArcWidth = (2 * radius * math.sin(totalAngle / 2)) + (fontSize * 0.9);
+    final arcHeight = radius * (1 - math.cos(totalAngle / 2)) + maxCharHeight * 1.3;
+
+    return SizedBox(
+      width: exactArcWidth,
+      height: arcHeight.clamp(maxCharHeight * 1.4, double.infinity),
+      child: CustomPaint(
+        painter: _CurvedTextPainter(
+          text: text,
+          textStyle: textStyle,
+          radius: radius,
+          totalAngle: totalAngle,
         ),
       ),
     );
   }
 }
 
-// ───── Custom 02 Design (LeeSeoyun) ─────
-class _Custom02Stamp extends StatelessWidget {
-  final DateTime now;
-  final Alignment alignment;
-  final double fontSize;
-  const _Custom02Stamp({
-    required this.now,
-    required this.alignment,
-    this.fontSize = 14.0,
+// ───── Circular Arc Text Painter for Style1 ─────
+class _CurvedTextPainter extends CustomPainter {
+  final String text;
+  final TextStyle textStyle;
+  final double radius;
+  final double totalAngle;
+
+  _CurvedTextPainter({
+    required this.text,
+    required this.textStyle,
+    required this.radius,
+    required this.totalAngle,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final displayStr = TimestampMetadata.getFormattedDateTime(
-      TimestampDesign.custom02,
-      now,
-    );
-    final shadows = TimestampMetadata.getShadows(TimestampDesign.custom02);
+  void paint(Canvas canvas, Size size) {
+    // 호의 꼭짓점이 박스 상단에 딱 닿고 가로 중앙에 오도록 중심점 계산
+    final center = Offset(size.width / 2, radius + (textStyle.fontSize ?? 10) * 0.3);
 
-    return Align(
-      alignment: alignment,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        margin: const EdgeInsets.all(10),
-        child: Text(
-          displayStr,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w400,
-            fontFamily: CameraUX.stampFont02,
-            letterSpacing: -0.5,
-            shadows: shadows,
-          ),
-        ),
-      ),
-    );
+    final textPainters = <TextPainter>[];
+    for (int i = 0; i < text.length; i++) {
+      final tp = TextPainter(
+        text: TextSpan(text: text[i], style: textStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      textPainters.add(tp);
+    }
+
+    double currentAngle = -math.pi / 2 - (totalAngle / 2);
+
+    for (final tp in textPainters) {
+      final charAngle = tp.width / radius;
+      final midAngle = currentAngle + (charAngle / 2);
+
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.rotate(midAngle + math.pi / 2);
+      tp.paint(canvas, Offset(-tp.width / 2, -radius - tp.height / 2));
+      canvas.restore();
+
+      currentAngle += charAngle;
+    }
   }
-}
-
-// ───── Custom 03 Design (RubberNippleFactory) ─────
-class _Custom03Stamp extends StatelessWidget {
-  final DateTime now;
-  final Alignment alignment;
-  final double fontSize;
-  const _Custom03Stamp({
-    required this.now,
-    required this.alignment,
-    this.fontSize = 25.0,
-  });
 
   @override
-  Widget build(BuildContext context) {
-    final displayStr = TimestampMetadata.getFormattedDateTime(
-      TimestampDesign.custom03,
-      now,
-    );
-    final shadows = TimestampMetadata.getShadows(TimestampDesign.custom03);
-
-    return Align(
-      alignment: alignment,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        margin: const EdgeInsets.all(10),
-        child: Text(
-          displayStr,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: fontSize,
-            height: 1.0,
-            fontWeight: FontWeight.w400,
-            fontFamily: CameraUX.stampFont03,
-            letterSpacing: 0.0,
-            shadows: shadows,
-          ),
-        ),
-      ),
-    );
+  bool shouldRepaint(covariant _CurvedTextPainter oldDelegate) {
+    return oldDelegate.text != text ||
+        oldDelegate.textStyle != textStyle ||
+        oldDelegate.radius != radius ||
+        oldDelegate.totalAngle != totalAngle;
   }
 }

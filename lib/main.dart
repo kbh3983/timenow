@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'services/ad_service.dart';
+import 'services/timestamp_access_manager.dart';
+import 'services/timestamp_deck_manager.dart';
 import 'splash_screen.dart';
 
 List<CameraDescription> cameras = [];
@@ -20,6 +23,16 @@ Future<void> main() async {
   );
 
   await initializeDateFormatting('ko_KR', null);
+  
+  // Initialize Services
+  try {
+    await AdService.initialize();
+    await TimestampAccessManager().init();
+    await TimestampDeckManager().init();
+  } catch (e) {
+    debugPrint('Init error: $e');
+  }
+
   try {
     cameras = await availableCameras();
   } catch (e) {
@@ -37,7 +50,22 @@ class TimenowApp extends StatelessWidget {
       title: 'Timenow',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F1013),
+        canvasColor: const Color(0xFF0F1013),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Color(0xFF17191E),
+        ),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFFC6FF00),
+          surface: Color(0xFF0F1013),
+        ),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
+        ),
         useMaterial3: true,
         fontFamily: 'NanumSquareB',
       ),

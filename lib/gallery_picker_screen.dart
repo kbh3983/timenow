@@ -173,7 +173,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0F1013),
       body: Column(
         children: [
           // Top bar

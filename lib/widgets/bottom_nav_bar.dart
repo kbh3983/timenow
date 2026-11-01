@@ -9,6 +9,8 @@ class CustomBottomNavBar extends StatelessWidget {
   final File? rightThumbnail;
   final bool isLoading;
   final IconData? centerIcon;
+  final bool isVideoMode;
+  final bool isRecording;
 
   const CustomBottomNavBar({
     super.key,
@@ -18,6 +20,8 @@ class CustomBottomNavBar extends StatelessWidget {
     this.rightThumbnail,
     this.isLoading = false,
     this.centerIcon,
+    this.isVideoMode = false,
+    this.isRecording = false,
   });
 
   // 스타일 관련 상수들을 SharedUX에서 관리
@@ -193,6 +197,100 @@ class CustomBottomNavBar extends StatelessWidget {
   }
 
   Widget _buildCenterButton() {
+    if (isLoading) {
+      return Container(
+        width: kShutterSize,
+        height: kShutterSize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: kShutterColor.withOpacity(SharedUX.centerOpacity),
+          border: Border.all(
+            color: kShutterColor,
+            width: SharedUX.centerRingWidth,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.35),
+              blurRadius: 18,
+              spreadRadius: 1,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 2.5,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (centerIcon != null) {
+      return Container(
+        width: kShutterSize,
+        height: kShutterSize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: kShutterColor.withOpacity(SharedUX.centerOpacity),
+          border: Border.all(
+            color: kShutterColor,
+            width: SharedUX.centerRingWidth,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.35),
+              blurRadius: 18,
+              spreadRadius: 1,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Icon(centerIcon, color: Colors.white, size: SharedUX.centerIconSize),
+        ),
+      );
+    }
+
+    if (isVideoMode) {
+      return Container(
+        width: kShutterSize,
+        height: kShutterSize,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withOpacity(0.25),
+          border: Border.all(
+            color: Colors.white,
+            width: 3.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 18,
+              spreadRadius: 1,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            width: isRecording ? 24 : 46,
+            height: isRecording ? 24 : 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF3B30),
+              borderRadius: BorderRadius.circular(isRecording ? 6 : 23),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: kShutterSize,
       height: kShutterSize,
@@ -211,20 +309,6 @@ class CustomBottomNavBar extends StatelessWidget {
             offset: const Offset(0, 6),
           ),
         ],
-      ),
-      child: Center(
-        child: isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2.5,
-                ),
-              )
-            : (centerIcon != null
-                ? Icon(centerIcon, color: Colors.white, size: SharedUX.centerIconSize)
-                : null),
       ),
     );
   }

@@ -60,11 +60,33 @@ class CameraUX {
     Shadow(offset: Offset(0, 2), blurRadius: 10.0, color: Colors.black26),
   ];
 
-  // --- Custom Stamp Assets ---
+  // --- Custom Stamp Assets & Fonts ---
   static const String stampImage02 = 'assets/images/timestamp/timestamp_02.png';
   static const String stampFont02 = 'LeeSeoyun';
   static const String stampImage03 = 'assets/images/timestamp/timestamp_03.png';
   static const String stampFont03 = 'RubberNippleFactory';
+
+  // Ported Fonts
+  static const String fontRubberNippleFactory = 'RubberNippleFactory';
+  static const String fontNixieOne = 'NixieOne';
+  static const String fontCafe24OnePrettyNight = 'Cafe24OnePrettyNight';
+  static const String fontNanumAmsterdam = 'NanumAmsterdam';
+  static const String fontNanumBarunpen = 'NanumBarunpen';
+  static const String fontCafe24Simplehae = 'Cafe24Simplehae';
+  static const String fontTvnFunStory = 'TvnFunStory';
+  static const String fontCafe24Shiningstar = 'Cafe24Shiningstar';
+  static const String fontRondal = 'Rondal';
+  static const String fontRondalBold = 'RondalBold';
+  static const String fontLobster = 'Lobster';
+
+  // Ported Stamp Images
+  static const String stampImg1 = 'assets/images/timestamp/stamp/stamp_1.png';
+  static const String stampImg2 = 'assets/images/timestamp/stamp/stamp_2.png';
+  static const String stampImg4_2 = 'assets/images/timestamp/stamp/stamp_4_2.png';
+  static const String stampImg6 = 'assets/images/timestamp/stamp/stamp_6.png';
+  static const String stampImg10 = 'assets/images/timestamp/stamp/stamp_10.png';
+  static const String stampImg11 = 'assets/images/timestamp/stamp/stamp_11.png';
+  static const String stampImgCircle1 = 'assets/images/timestamp/circle/circle_1.png';
 }
 
 /// Calendar Screen Specific Configurations
@@ -74,8 +96,8 @@ class CalendarUX {
   static const double weekdayVerticalPadding = 6.0;
   static const double calendarHorizontalPadding = 6.0;
   static const double initialSheetSize = 0.45;
-  static const double albumTitleFontSize = 16.0;
-  static const double monthHeaderFontSize = 14.0;
+  static const double albumTitleFontSize = 18.5;
+  static const double monthHeaderFontSize = 14.5;
   static const double calendarDayFontSize = 16.0;
   static const double calendarGridAspectRatio = 1.0;
 

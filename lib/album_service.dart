@@ -4,6 +4,19 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+
+class MonthAlbumData {
+  final Map<DateTime, File> thumbnails;
+  final Map<DateTime, int> counts;
+  final Map<DateTime, List<File>> photosByDate;
+
+  MonthAlbumData({
+    required this.thumbnails,
+    required this.counts,
+    required this.photosByDate,
+  });
+}
 
 class AlbumService {
   static Future<Directory> get _photosRoot async {
@@ -15,19 +28,24 @@ class AlbumService {
     return root;
   }
 
-  /// Extract DateTime from photo filename (photo_XXXXX.jpg → DateTime).
+  /// Extract DateTime from photo/video filename (photo_XXXXX.jpg or video_XXXXX.mp4 → DateTime).
   /// Falls back to file modified time if filename parsing fails.
-  static DateTime _getPhotoDate(File file) {
+  static DateTime getPhotoDate(File file) {
     final name = file.path.split(Platform.pathSeparator).last;
-    final match = RegExp(r'photo_(\d+)\.').firstMatch(name);
+    final match = RegExp(r'(photo|video)_(\d+)\.').firstMatch(name);
     if (match != null) {
-      final ms = int.tryParse(match.group(1)!);
+      final ms = int.tryParse(match.group(2)!);
       if (ms != null) {
         return DateTime.fromMillisecondsSinceEpoch(ms);
       }
     }
     // Fallback to file modified time
     return file.statSync().modified;
+  }
+
+  static bool isVideo(File file) {
+    final path = file.path.toLowerCase();
+    return path.endsWith('.mp4') || path.endsWith('.mov') || path.endsWith('.avi');
   }
 
   static Future<List<String>> getAlbums() async {
@@ -83,6 +101,48 @@ class AlbumService {
     }
   }
 
+  static Future<void> deleteAlbum(String name) async {
+    final root = await _photosRoot;
+    final dir = Directory('${root.path}/$name');
+    final defaultDir = Directory('${root.path}/일상');
+    if (!await defaultDir.exists()) {
+      await defaultDir.create();
+    }
+
+    if (await dir.exists()) {
+      // 사진은 영구 보존: 삭제되는 폴더의 사진들을 기본 '일상' 앨범으로 안전하게 이전
+      final files = await dir.list().toList();
+      for (var file in files) {
+        if (file is File) {
+          final filename = file.path.split(Platform.pathSeparator).last;
+          var targetFile = File('${defaultDir.path}/$filename');
+          if (await targetFile.exists()) {
+            final uniqueName = 'moved_${DateTime.now().microsecondsSinceEpoch}_$filename';
+            targetFile = File('${defaultDir.path}/$uniqueName');
+          }
+          try {
+            await file.rename(targetFile.path);
+          } catch (_) {
+            await file.copy(targetFile.path);
+            await file.delete();
+          }
+        }
+      }
+      await dir.delete(recursive: true);
+    }
+
+    final file = File('${root.path}/album_colors.json');
+    if (await file.exists()) {
+      try {
+        final colors = await getAlbumColors();
+        if (colors.containsKey(name)) {
+          colors.remove(name);
+          await file.writeAsString(jsonEncode(colors));
+        }
+      } catch (_) {}
+    }
+  }
+
   static Future<void> savePhoto(Uint8List bytes, String albumName, {DateTime? originalDate}) async {
     final root = await _photosRoot;
     final albumDir = Directory('${root.path}/$albumName');
@@ -101,6 +161,46 @@ class AlbumService {
     final filename = 'photo_${timestamp.millisecondsSinceEpoch}.jpg';
     final file = File('${albumDir.path}/$filename');
     await file.writeAsBytes(compressed);
+  }
+
+  static Future<File> saveVideo(File videoFile, String albumName, {DateTime? originalDate}) async {
+    final root = await _photosRoot;
+    final albumDir = Directory('${root.path}/$albumName');
+    if (!await albumDir.exists()) {
+      await albumDir.create();
+    }
+
+    final timestamp = originalDate ?? DateTime.now();
+    final filename = 'video_${timestamp.millisecondsSinceEpoch}.mp4';
+    final targetFile = File('${albumDir.path}/$filename');
+    await videoFile.copy(targetFile.path);
+
+    // 썸네일 미리 생성
+    try {
+      await getVideoThumbnail(targetFile);
+    } catch (_) {}
+
+    return targetFile;
+  }
+
+  /// 비디오 파일의 첫 프레임 썸네일 파일 반환 (없으면 FFmpeg로 추출)
+  static Future<File?> getVideoThumbnail(File videoFile) async {
+    final thumbPath = '${videoFile.path}_thumb.jpg';
+    final thumbFile = File(thumbPath);
+    if (await thumbFile.exists()) {
+      return thumbFile;
+    }
+
+    try {
+      final cmd = '-y -ss 00:00:00.100 -i "${videoFile.path}" -vframes 1 -q:v 2 "$thumbPath"';
+      await FFmpegKit.execute(cmd);
+      if (await thumbFile.exists()) {
+        return thumbFile;
+      }
+    } catch (e) {
+      debugPrint('getVideoThumbnail error: $e');
+    }
+    return null;
   }
 
   static Future<Map<DateTime, Set<String>>> getPhotoDotsForMonth(
@@ -124,7 +224,7 @@ class AlbumService {
       final files = await dir.list().toList();
       for (var file in files) {
         if (file is File) {
-          final photoDate = _getPhotoDate(file);
+          final photoDate = getPhotoDate(file);
           final date = DateTime(
             photoDate.year,
             photoDate.month,
@@ -139,8 +239,8 @@ class AlbumService {
     return dots;
   }
 
-  /// Returns the most recent photo file for each date in the given month.
-  static Future<Map<DateTime, File>> getPhotoThumbnailsForMonth(
+  /// Single-pass loader for month photos: thumbnails, counts, and day groupings.
+  static Future<MonthAlbumData> getMonthAlbumData(
     DateTime month, {
     String? albumName,
   }) async {
@@ -160,7 +260,7 @@ class AlbumService {
       final files = await dir.list().toList();
       for (var file in files) {
         if (file is File) {
-          final photoDate = _getPhotoDate(file);
+          final photoDate = getPhotoDate(file);
           final date = DateTime(
             photoDate.year,
             photoDate.month,
@@ -173,15 +273,67 @@ class AlbumService {
       }
     }
 
-    // For each date, pick the most recent file
-    final Map<DateTime, File> result = {};
+    final Map<DateTime, File> thumbnails = {};
+    final Map<DateTime, int> counts = {};
+
     for (var entry in dateFiles.entries) {
       entry.value.sort(
-        (a, b) => _getPhotoDate(b).compareTo(_getPhotoDate(a)),
+        (a, b) => getPhotoDate(b).compareTo(getPhotoDate(a)),
       );
-      result[entry.key] = entry.value.first;
+      thumbnails[entry.key] = entry.value.first;
+      counts[entry.key] = entry.value.length;
     }
-    return result;
+
+    return MonthAlbumData(
+      thumbnails: thumbnails,
+      counts: counts,
+      photosByDate: dateFiles,
+    );
+  }
+
+  /// Returns the most recent photo file for each date in the given month.
+  static Future<Map<DateTime, File>> getPhotoThumbnailsForMonth(
+    DateTime month, {
+    String? albumName,
+  }) async {
+    final data = await getMonthAlbumData(month, albumName: albumName);
+    return data.thumbnails;
+  }
+
+  /// Returns the number of photos for each date in the given month.
+  static Future<Map<DateTime, int>> getPhotoCountsForMonth(
+    DateTime month, {
+    String? albumName,
+  }) async {
+    final root = await _photosRoot;
+    final Map<DateTime, int> counts = {};
+
+    List<Directory> targetDirs = [];
+    if (albumName == null || albumName == '전체') {
+      final entities = await root.list().toList();
+      targetDirs = entities.whereType<Directory>().toList();
+    } else {
+      targetDirs = [Directory('${root.path}/$albumName')];
+    }
+
+    for (var dir in targetDirs) {
+      if (!await dir.exists()) continue;
+      final files = await dir.list().toList();
+      for (var file in files) {
+        if (file is File) {
+          final photoDate = getPhotoDate(file);
+          final date = DateTime(
+            photoDate.year,
+            photoDate.month,
+            photoDate.day,
+          );
+          if (date.year == month.year && date.month == month.month) {
+            counts[date] = (counts[date] ?? 0) + 1;
+          }
+        }
+      }
+    }
+    return counts;
   }
 
   static Future<List<File>> getPhotosByDate(
@@ -204,7 +356,7 @@ class AlbumService {
       final files = await dir.list().toList();
       for (var file in files) {
         if (file is File) {
-          final photoDate = _getPhotoDate(file);
+          final photoDate = getPhotoDate(file);
           final fileDate = DateTime(
             photoDate.year,
             photoDate.month,
@@ -218,7 +370,7 @@ class AlbumService {
     }
 
     // Sort by timestamp (newest first)
-    result.sort((a, b) => _getPhotoDate(b).compareTo(_getPhotoDate(a)));
+    result.sort((a, b) => getPhotoDate(b).compareTo(getPhotoDate(a)));
     return result;
   }
 
@@ -245,7 +397,66 @@ class AlbumService {
     }
 
     // Sort by timestamp (newest first)
-    result.sort((a, b) => _getPhotoDate(b).compareTo(_getPhotoDate(a)));
+    result.sort((a, b) => getPhotoDate(b).compareTo(getPhotoDate(a)));
     return result;
+  }
+
+  /// Returns photos grouped by "yyyy.MM" with filename-parsed dates (zero statSync I/O)
+  static Future<Map<String, List<File>>> getAllPhotosGrouped({
+    String? albumName,
+  }) async {
+    final allPhotos = await getAllPhotos(albumName: albumName);
+    final Map<String, List<File>> grouped = {};
+    for (var file in allPhotos) {
+      final date = getPhotoDate(file);
+      final key = "${date.year}.${date.month.toString().padLeft(2, '0')}";
+      grouped.putIfAbsent(key, () => []).add(file);
+    }
+    return grouped;
+  }
+
+  // ───── Photo Note (Caption) Persistence ─────
+
+  static Future<Map<String, String>> getAllNotes() async {
+    final root = await _photosRoot;
+    final file = File('${root.path}/photo_notes.json');
+    if (!await file.exists()) return {};
+    try {
+      final content = await file.readAsString();
+      final Map<String, dynamic> json = jsonDecode(content);
+      return json.map((key, value) => MapEntry(key, value.toString()));
+    } catch (e) {
+      return {};
+    }
+  }
+
+  static Future<String?> getNote(String photoPath) async {
+    final notes = await getAllNotes();
+    final fileName = photoPath.split(Platform.pathSeparator).last;
+    return notes[fileName] ?? notes[photoPath];
+  }
+
+  static Future<void> saveNote(String photoPath, String note) async {
+    final root = await _photosRoot;
+    final file = File('${root.path}/photo_notes.json');
+    final notes = await getAllNotes();
+    final fileName = photoPath.split(Platform.pathSeparator).last;
+    if (note.trim().isEmpty) {
+      notes.remove(fileName);
+      notes.remove(photoPath);
+    } else {
+      notes[fileName] = note.trim();
+    }
+    await file.writeAsString(jsonEncode(notes));
+  }
+
+  static Future<void> deleteNote(String photoPath) async {
+    final root = await _photosRoot;
+    final file = File('${root.path}/photo_notes.json');
+    final notes = await getAllNotes();
+    final fileName = photoPath.split(Platform.pathSeparator).last;
+    notes.remove(fileName);
+    notes.remove(photoPath);
+    await file.writeAsString(jsonEncode(notes));
   }
 }
