@@ -30,6 +30,24 @@ class AdService {
     return '';
   }
 
+  /// AdMob 공식 테스트용 배너 광고 ID
+  static String get bannerAdUnitId {
+    if (kDebugMode) {
+      if (Platform.isAndroid) {
+        return 'ca-app-pub-3940256099942544/6300978111'; // Android Test Banner ID
+      } else if (Platform.isIOS) {
+        return 'ca-app-pub-3940256099942544/2934735716'; // iOS Test Banner ID
+      }
+    }
+
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-3940256099942544/6300978111';
+    } else if (Platform.isIOS) {
+      return 'ca-app-pub-3940256099942544/2934735716';
+    }
+    return '';
+  }
+
   /// 앱 시작 시 호출하여 MobileAds 초기화 및 광고 사전 로드
   static Future<void> initialize() async {
     try {
@@ -137,7 +155,7 @@ class AdService {
       },
     );
 
-    ad.setImmersiveMode(true);
+    ad.setImmersiveMode(false);
     ad.show(
       onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
         debugPrint('AdService: User earned reward: ${reward.amount} ${reward.type}');

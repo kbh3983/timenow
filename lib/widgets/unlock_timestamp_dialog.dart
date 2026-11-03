@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/ad_service.dart';
+import '../services/app_settings_service.dart';
 import '../services/timestamp_access_manager.dart';
 import '../timestamp_overlays.dart';
 
@@ -42,26 +43,35 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
       _errorMessage = null;
     });
 
+    final settings = AppSettingsService();
+    final accent = settings.accentColor;
+
     AdService().showRewardedAd(
       onUserEarnedReward: () async {
         // 3일 해금 처리
         await TimestampAccessManager().unlockForDays(widget.design, days: 3);
         if (!mounted) return;
 
+        // 다이얼로그가 닫히면 context가 비활성화되므로 messenger를 미리 확보
+        final messenger = ScaffoldMessenger.of(context);
+
         widget.onUnlocked();
         Navigator.of(context).pop(true);
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.clearSnackBars();
+        final controller = messenger.showSnackBar(
           SnackBar(
             content: Row(
-              children: const [
-                Icon(Icons.check_circle, color: Color(0xFFC6FF00)),
-                SizedBox(width: 8),
-                Text(
-                  '3일 동안 무료로 해금되었습니다! 🎉',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+              children: [
+                Icon(Icons.check_circle, color: accent),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    '3일 동안 무료로 사용하실 수 있어요.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -72,8 +82,24 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),
+            action: SnackBarAction(
+              label: '확인',
+              textColor: accent,
+              onPressed: () {
+                messenger.hideCurrentSnackBar();
+              },
+            ),
           ),
         );
+
+        // 액션 버튼이 있는 SnackBar는 자동으로 닫히지 않을 수 있으므로 3초 뒤 강제로 닫기
+        var isClosed = false;
+        controller.closed.then((_) => isClosed = true);
+        Future.delayed(const Duration(seconds: 3), () {
+          if (!isClosed && messenger.mounted) {
+            controller.close();
+          }
+        });
       },
       onAdClosed: () {
         if (mounted) {
@@ -95,169 +121,198 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = AppSettingsService();
+    final accent = settings.accentColor;
+
     return Dialog(
-      backgroundColor: const Color(0xFF181A20),
+      backgroundColor: settings.cardBackgroundColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Colors.white12, width: 1),
+        side: BorderSide(color: settings.borderColor, width: 1),
       ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 아이콘 뱃지
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: const Color(0xFFC6FF00).withOpacity(0.15),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFFC6FF00).withOpacity(0.4),
-                  width: 1.5,
-                ),
-              ),
-              child: const Icon(
-                Icons.lock_open_rounded,
-                color: Color(0xFFC6FF00),
-                size: 30,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 타이틀
-            const Text(
-              '감성 타임스탬프 해금',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // 서브타이틀
-            Text(
-              '짧은 광고를 시청하시면\n3일(72시간) 동안 마음껏 사용하실 수 있습니다!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 14,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // 혜택 포인트 박스
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _featureItem(Icons.play_circle_outline, '짧은 광고 1회'),
-                  Container(width: 1, height: 26, color: Colors.white12),
-                  _featureItem(Icons.timer_outlined, '3일간 무제한'),
-                  Container(width: 1, height: 26, color: Colors.white12),
-                  _featureItem(Icons.auto_awesome, '워터마크 없음'),
-                ],
-              ),
-            ),
-
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-              ),
-            ],
-
-            const SizedBox(height: 24),
-
-            // 액션 버튼
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _isLoadingAd ? null : _watchAdAndUnlock,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC6FF00),
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 아이콘 뱃지
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.4),
+                    width: 1.5,
                   ),
                 ),
-                child: _isLoadingAd
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.black),
-                        ),
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(Icons.play_arrow_rounded, size: 22),
-                          SizedBox(width: 6),
-                          Text(
-                            '광고 보고 3일 무료 사용',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.2,
+                child: Icon(
+                  Icons.lock_open_rounded,
+                  color: accent,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 타이틀
+              Text(
+                '감성 타임스탬프 해금',
+                style: TextStyle(
+                  color: settings.textColor,
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // 서브타이틀
+              Text(
+                '짧은 광고를 시청하시면\n3일(72시간) 동안 마음껏 사용하실 수 있습니다!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: settings.subTextColor,
+                  fontSize: 13.5,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // 혜택 포인트 박스
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                decoration: BoxDecoration(
+                  color: settings.surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: settings.borderColor),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _featureItem(
+                        Icons.play_circle_outline,
+                        '짧은 광고 1회',
+                        accent,
+                        settings.textColor,
+                      ),
+                    ),
+                    Container(width: 1, height: 26, color: settings.dividerColor),
+                    Expanded(
+                      child: _featureItem(
+                        Icons.timer_outlined,
+                        '3일간 무제한',
+                        accent,
+                        settings.textColor,
+                      ),
+                    ),
+                    Container(width: 1, height: 26, color: settings.dividerColor),
+                    Expanded(
+                      child: _featureItem(
+                        Icons.auto_awesome,
+                        '워터마크 없음',
+                        accent,
+                        settings.textColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                ),
+              ],
+
+              const SizedBox(height: 22),
+
+              // 액션 버튼
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _isLoadingAd ? null : _watchAdAndUnlock,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: settings.isLight ? Colors.white : Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isLoadingAd
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              settings.isLight ? Colors.white : Colors.black,
                             ),
                           ),
-                        ],
-                      ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.play_arrow_rounded, size: 22),
+                            SizedBox(width: 6),
+                            Text(
+                              '광고 보고 3일 무료 사용',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
-            ),
 
-            const SizedBox(height: 8),
+              const SizedBox(height: 8),
 
-            // 취소 버튼
-            SizedBox(
-              width: double.infinity,
-              height: 40,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(
-                  '다음에 하기',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 14,
+              // 취소 버튼
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(
+                    '다음에 하기',
+                    style: TextStyle(
+                      color: settings.subTextColor,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _featureItem(IconData icon, String text) {
+  Widget _featureItem(IconData icon, String text, Color accent, Color textColor) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: const Color(0xFFC6FF00), size: 18),
+        Icon(icon, color: accent, size: 18),
         const SizedBox(height: 4),
         Text(
           text,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.85),
-            fontSize: 11.5,
+            color: textColor.withValues(alpha: 0.85),
+            fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
         ),

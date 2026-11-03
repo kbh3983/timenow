@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import 'album_service.dart';
+import 'widgets/ad_banner_widget.dart';
+import 'services/app_settings_service.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
   final File? photoFile;
@@ -95,6 +98,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   /// Delete Memo Confirmation Bottom Sheet (matching runningapp style)
   Future<bool> _confirmDeleteMemo(BuildContext context) async {
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
+
     final res = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -103,10 +109,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       showDragHandle: false,
       builder: (ctx) => Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF17191E),
+          color: isLight ? Colors.white : const Color(0xFF17191E),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           border: Border.all(
-            color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+            color: isLight ? const Color(0xFFE2E4E8) : const Color(0xFF2E323A).withValues(alpha: 0.35),
             width: 1.0,
           ),
         ),
@@ -124,7 +130,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2E323A),
+                      color: isLight ? const Color(0xFFCBD5E1) : const Color(0xFF2E323A),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -145,21 +151,21 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         '메모를 삭제할까요?',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.3,
-                          color: Colors.white,
+                          color: isLight ? const Color(0xFF111418) : Colors.white,
                         ),
                       ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(ctx, false),
                       icon: const Icon(Icons.close_rounded, size: 20),
-                      color: const Color(0xFF9AA1AC),
+                      color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
                       visualDensity: VisualDensity.compact,
                     ),
                   ],
@@ -170,18 +176,19 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF22252C).withValues(alpha: 0.5),
+                    color: isLight ? const Color(0xFFFEF2F2) : const Color(0xFF22252C).withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFFF5252).withValues(alpha: 0.3),
+                      color: isLight ? const Color(0xFFFECACA) : const Color(0xFFFF5252).withValues(alpha: 0.3),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     '삭제된 메모는 복구할 수 없어요',
                     style: TextStyle(
-                      color: Color(0xFF9AA1AC),
+                      color: isLight ? const Color(0xFFDC2626) : const Color(0xFF9AA1AC),
                       fontSize: 13.5,
                       height: 1.5,
+                      fontWeight: isLight ? FontWeight.w500 : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -196,17 +203,17 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: BorderSide(
-                            color: const Color(0xFF2E323A).withValues(alpha: 0.4),
+                            color: isLight ? const Color(0xFFCBD5E1) : const Color(0xFF2E323A).withValues(alpha: 0.4),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                         onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text(
+                        child: Text(
                           '취소',
                           style: TextStyle(
-                            color: Color(0xFFF4F6F8),
+                            color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
                           ),
@@ -307,6 +314,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   /// Delete Photo Confirmation Bottom Sheet (matching runningapp style)
   Future<bool> _confirmDeletePhoto() async {
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
+
     final res = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -315,10 +325,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       showDragHandle: false,
       builder: (ctx) => Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF17191E),
+          color: isLight ? Colors.white : const Color(0xFF17191E),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           border: Border.all(
-            color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+            color: isLight ? const Color(0xFFE2E4E8) : const Color(0xFF2E323A).withValues(alpha: 0.35),
             width: 1.0,
           ),
         ),
@@ -336,7 +346,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2E323A),
+                      color: isLight ? const Color(0xFFCBD5E1) : const Color(0xFF2E323A),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -357,21 +367,21 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         '사진을 삭제할까요?',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.3,
-                          color: Colors.white,
+                          color: isLight ? const Color(0xFF111418) : Colors.white,
                         ),
                       ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(ctx, false),
                       icon: const Icon(Icons.close_rounded, size: 20),
-                      color: const Color(0xFF9AA1AC),
+                      color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
                       visualDensity: VisualDensity.compact,
                     ),
                   ],
@@ -382,18 +392,19 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF22252C).withValues(alpha: 0.5),
+                    color: isLight ? const Color(0xFFFEF2F2) : const Color(0xFF22252C).withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFFF5252).withValues(alpha: 0.3),
+                      color: isLight ? const Color(0xFFFECACA) : const Color(0xFFFF5252).withValues(alpha: 0.3),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     '삭제된 사진은 보관함에서 완전히 삭제되며 복구할 수 없어요',
                     style: TextStyle(
-                      color: Color(0xFF9AA1AC),
+                      color: isLight ? const Color(0xFFDC2626) : const Color(0xFF9AA1AC),
                       fontSize: 13.5,
                       height: 1.5,
+                      fontWeight: isLight ? FontWeight.w500 : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -408,17 +419,17 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: BorderSide(
-                            color: const Color(0xFF2E323A).withValues(alpha: 0.4),
+                            color: isLight ? const Color(0xFFCBD5E1) : const Color(0xFF2E323A).withValues(alpha: 0.4),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
                         onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text(
+                        child: Text(
                           '취소',
                           style: TextStyle(
-                            color: Color(0xFFF4F6F8),
+                            color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
                           ),
@@ -501,7 +512,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     final dateStr = '${DateFormat('yyyy년 M월 d일').format(date)} ($weekday)';
     final timeStr = '${date.hour < 12 ? '오전' : '오후'} ${DateFormat('h:mm').format(date)}';
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1013),
+      backgroundColor: AppSettingsService().scaffoldBackgroundColor,
       resizeToAvoidBottomInset: false,
       body: Stack(
         fit: StackFit.expand,
@@ -537,10 +548,31 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     if (AlbumService.isVideo(photo))
                       _VideoDetailPlayerItem(file: photo)
                     else
-                      RepaintBoundary(
-                        child: Image.file(
-                          photo,
-                          fit: BoxFit.contain,
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                              opaque: false,
+                              pageBuilder: (context, animation, secondaryAnimation) =>
+                                  FullScreenImageViewer(file: photo),
+                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: child,
+                                );
+                              },
+                            ),
+                          );
+                        },
+                        child: Hero(
+                          tag: 'photo_fullscreen_${photo.path}',
+                          child: RepaintBoundary(
+                            child: Image.file(
+                              photo,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
                         ),
                       ),
 
@@ -554,31 +586,50 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
                           color: hasNote
-                              ? const Color(0xFF181A20)
-                              : Colors.white.withValues(alpha: 0.05),
+                              ? (AppSettingsService().isLight
+                                  ? Colors.white
+                                  : const Color(0xFF181A20))
+                              : (AppSettingsService().isLight
+                                  ? const Color(0xFFF1F3F5)
+                                  : Colors.white.withValues(alpha: 0.05)),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: hasNote
-                                ? const Color(0xFF2B2E38)
-                                : Colors.white.withValues(alpha: 0.08),
+                                ? (AppSettingsService().isLight
+                                    ? const Color(0xFFE2E4E8)
+                                    : const Color(0xFF2B2E38))
+                                : (AppSettingsService().isLight
+                                    ? const Color(0xFFE2E4E8)
+                                    : Colors.white.withValues(alpha: 0.08)),
                             width: 0.8,
                           ),
-                          boxShadow: hasNote
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.25),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ]
-                              : null,
+                          boxShadow: [
+                            if (hasNote)
+                              BoxShadow(
+                                color: AppSettingsService().isLight
+                                    ? Colors.black.withValues(alpha: 0.06)
+                                    : Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              )
+                            else if (AppSettingsService().isLight)
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                          ],
                         ),
                         child: Text(
                           hasNote ? note : '메모 추가...',
                           style: TextStyle(
                             color: hasNote
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.45),
+                                ? (AppSettingsService().isLight
+                                    ? const Color(0xFF111418)
+                                    : Colors.white)
+                                : (AppSettingsService().isLight
+                                    ? const Color(0xFF94A3B8)
+                                    : Colors.white.withValues(alpha: 0.45)),
                             fontSize: 14.5,
                             height: 1.5,
                             letterSpacing: -0.2,
@@ -586,95 +637,114 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         ),
                       ),
                     ),
+
+                    // 메모 밑 배너 광고
+                    const AdBannerWidget(
+                      margin: EdgeInsets.only(top: 14),
+                    ),
                   ],
                 ),
               );
             },
           ),
 
-          // ───── 2. Top Bar (Apple Navigation, Fast Solid Dark Header) ─────
+          // ───── 2. Top Bar (Translucent Header matching Bottom Bar) ─────
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF16171B),
-                border: Border(
-                  bottom: BorderSide(
-                    color: Color(0xFF232630),
-                    width: 0.6,
-                  ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: AppSettingsService().isLight
+                      ? [
+                          Colors.white.withValues(alpha: 0.0),
+                          Colors.white.withValues(alpha: 0.75),
+                          Colors.white.withValues(alpha: 0.95),
+                        ]
+                      : [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.30),
+                          Colors.black.withValues(alpha: 0.65),
+                        ],
                 ),
               ),
               padding: EdgeInsets.only(
                 top: MediaQuery.paddingOf(context).top + 6,
-                bottom: 10,
+                bottom: 12,
                 left: 12,
                 right: 16,
               ),
-                  child: Row(
-                    children: [
-                      CupertinoButton(
-                        padding: const EdgeInsets.all(8),
-                        minimumSize: Size.zero,
-                        onPressed: () => Navigator.pop(context, _hasDeleted),
-                        child: const Icon(
-                          CupertinoIcons.chevron_back,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              dateStr,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              timeStr,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Photo counter badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            width: 0.5,
-                          ),
-                        ),
-                        child: Text(
-                          '${_currentIndex + 1} / ${_photos.length}',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+              child: Row(
+                children: [
+                  CupertinoButton(
+                    padding: const EdgeInsets.all(8),
+                    minimumSize: Size.zero,
+                    onPressed: () => Navigator.pop(context, _hasDeleted),
+                    child: Icon(
+                      CupertinoIcons.chevron_back,
+                      color: AppSettingsService().textColor,
+                      size: 24,
+                    ),
                   ),
-                ),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          dateStr,
+                          style: TextStyle(
+                            color: AppSettingsService().textColor,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          timeStr,
+                          style: TextStyle(
+                            color: AppSettingsService().subTextColor,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Photo counter badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppSettingsService().isLight
+                          ? const Color(0xFFF1F3F5)
+                          : Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppSettingsService().isLight
+                            ? const Color(0xFFE2E4E8)
+                            : Colors.white.withValues(alpha: 0.1),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Text(
+                      '${_currentIndex + 1} / ${_photos.length}',
+                      style: TextStyle(
+                        color: AppSettingsService().isLight
+                            ? const Color(0xFF64748B)
+                            : Colors.white.withValues(alpha: 0.85),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ),
+          ),
 
           // ───── 4. Translucent Floating Action Buttons Toolbar ─────
           Positioned(
@@ -692,11 +762,17 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.30),
-                    Colors.black.withValues(alpha: 0.65),
-                  ],
+                  colors: AppSettingsService().isLight
+                      ? [
+                          Colors.white.withValues(alpha: 0.0),
+                          Colors.white.withValues(alpha: 0.75),
+                          Colors.white.withValues(alpha: 0.95),
+                        ]
+                      : [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.30),
+                          Colors.black.withValues(alpha: 0.65),
+                        ],
                 ),
               ),
               child: Row(
@@ -729,9 +805,11 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     required VoidCallback onTap,
     bool isDestructive = false,
   }) {
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
     final color = isDestructive
         ? const Color(0xFFFF453A) // Apple System Red
-        : Colors.white;
+        : settings.textColor;
 
     return CupertinoButton(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -742,20 +820,33 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         height: 46,
         decoration: BoxDecoration(
           color: isDestructive
-              ? const Color(0xFFFF453A).withValues(alpha: 0.16)
-              : Colors.white.withValues(alpha: 0.12),
+              ? const Color(0xFFFF453A).withValues(alpha: isLight ? 0.12 : 0.16)
+              : (isLight
+                  ? const Color(0xFFF1F3F5)
+                  : Colors.white.withValues(alpha: 0.12)),
           shape: BoxShape.circle,
           border: Border.all(
             color: isDestructive
-                ? const Color(0xFFFF453A).withValues(alpha: 0.32)
-                : Colors.white.withValues(alpha: 0.15),
+                ? const Color(0xFFFF453A).withValues(alpha: isLight ? 0.28 : 0.32)
+                : (isLight
+                    ? const Color(0xFFCBD5E1)
+                    : Colors.white.withValues(alpha: 0.15)),
             width: 0.8,
           ),
+          boxShadow: isLight
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1.5),
+                  ),
+                ]
+              : null,
         ),
         child: Center(
           child: Icon(
             icon,
-            color: isDestructive ? color : Colors.white.withValues(alpha: 0.95),
+            color: color,
             size: 21,
           ),
         ),
@@ -807,13 +898,17 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
     final hasNote = widget.initialNote.isNotEmpty;
     final hasText = _ctrl.text.trim().isNotEmpty;
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF17191E),
+        color: isLight ? Colors.white : const Color(0xFF17191E),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         border: Border.all(
-          color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+          color: isLight
+              ? const Color(0xFFE2E4E8)
+              : const Color(0xFF2E323A).withValues(alpha: 0.35),
           width: 1.0,
         ),
       ),
@@ -834,7 +929,9 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2E323A),
+                      color: isLight
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFF2E323A),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -843,7 +940,7 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                 // Header (Title, Subtitle, Trash delete button on the far right if hasNote)
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -853,15 +950,19 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.3,
-                              color: Colors.white,
+                              color: isLight
+                                  ? const Color(0xFF111418)
+                                  : Colors.white,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
                             '오늘의 사진에 대한 생각이나 메모를 남겨보세요',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF9AA1AC),
+                              color: isLight
+                                  ? const Color(0xFF64748B)
+                                  : const Color(0xFF9AA1AC),
                             ),
                           ),
                         ],
@@ -910,17 +1011,23 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF22252C),
+                              color: isLight
+                                  ? const Color(0xFFF1F3F5)
+                                  : const Color(0xFF22252C),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+                                color: isLight
+                                    ? const Color(0xFFE2E4E8)
+                                    : const Color(0xFF2E323A).withValues(alpha: 0.35),
                               ),
                             ),
                             child: Text(
                               tag,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF9AA1AC),
+                                color: isLight
+                                    ? const Color(0xFF475569)
+                                    : const Color(0xFF9AA1AC),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -940,40 +1047,54 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                   maxLines: 5,
                   maxLength: 500,
                   onChanged: (_) => setState(() {}),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     height: 1.45,
-                    color: Color(0xFFF4F6F8),
+                    color: isLight
+                        ? const Color(0xFF111418)
+                        : const Color(0xFFF4F6F8),
                   ),
                   decoration: InputDecoration(
                     hintText: '이 사진에 대한 생각을 자유롭게 적어보세요.',
                     hintStyle: TextStyle(
                       fontSize: 13,
-                      color: const Color(0xFF9AA1AC).withValues(alpha: 0.6),
+                      color: isLight
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF9AA1AC).withValues(alpha: 0.6),
                     ),
                     filled: true,
-                    fillColor: const Color(0xFF22252C),
-                    counterStyle: const TextStyle(
-                      color: Color(0xFF9AA1AC),
+                    fillColor: isLight
+                        ? const Color(0xFFF8FAFC)
+                        : const Color(0xFF22252C),
+                    counterStyle: TextStyle(
+                      color: isLight
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF9AA1AC),
                       fontSize: 11,
                     ),
                     contentPadding: const EdgeInsets.all(14),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: const Color(0xFF2E323A).withValues(alpha: 0.3),
+                        color: isLight
+                            ? const Color(0xFFE2E4E8)
+                            : const Color(0xFF2E323A).withValues(alpha: 0.3),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: const Color(0xFF2E323A).withValues(alpha: 0.3),
+                        color: isLight
+                            ? const Color(0xFFE2E4E8)
+                            : const Color(0xFF2E323A).withValues(alpha: 0.3),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: const Color(0xFF9AA1AC).withValues(alpha: 0.6),
+                        color: isLight
+                            ? settings.accentColor
+                            : const Color(0xFF9AA1AC).withValues(alpha: 0.6),
                         width: 1.2,
                       ),
                     ),
@@ -993,14 +1114,18 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           side: BorderSide(
-                            color: const Color(0xFF2E323A).withValues(alpha: 0.5),
+                            color: isLight
+                                ? const Color(0xFFCBD5E1)
+                                : const Color(0xFF2E323A).withValues(alpha: 0.5),
                           ),
                         ),
                         onPressed: () => Navigator.pop(context),
-                        child: const Text(
+                        child: Text(
                           '취소',
                           style: TextStyle(
-                            color: Color(0xFFF4F6F8),
+                            color: isLight
+                                ? const Color(0xFF475569)
+                                : const Color(0xFFF4F6F8),
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
                           ),
@@ -1013,11 +1138,15 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                       child: FilledButton(
                         style: FilledButton.styleFrom(
                           backgroundColor: hasText
-                              ? const Color(0xFFCCFF00)
-                              : const Color(0xFF22252C),
+                              ? settings.accentColor
+                              : (isLight
+                                  ? const Color(0xFFF1F3F5)
+                                  : const Color(0xFF22252C)),
                           foregroundColor: hasText
-                              ? Colors.black
-                              : const Color(0xFF9AA1AC),
+                              ? (isLight ? Colors.white : Colors.black)
+                              : (isLight
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF9AA1AC)),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -1057,6 +1186,7 @@ class _VideoDetailPlayerItem extends StatefulWidget {
 class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
   late VideoPlayerController _controller;
   bool _isInitialized = false;
+  bool _isCompleted = false;
 
   @override
   void initState() {
@@ -1065,10 +1195,15 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
   }
 
   Future<void> _initController() async {
-    _controller = VideoPlayerController.file(widget.file);
+    _controller = VideoPlayerController.file(
+      widget.file,
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    );
     try {
       await _controller.initialize();
-      await _controller.setLooping(true);
+      _controller.addListener(_videoListener);
+      // 처음 한 번만 재생하고 끝나면 다시 반복 재생하지 않음
+      await _controller.setLooping(false);
       await _controller.play();
       if (mounted) {
         setState(() => _isInitialized = true);
@@ -1078,8 +1213,62 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
     }
   }
 
+  void _videoListener() {
+    if (!mounted || !_controller.value.isInitialized) return;
+    final pos = _controller.value.position;
+    final dur = _controller.value.duration;
+    final isDone = dur > Duration.zero && pos >= dur;
+
+    if (isDone && !_isCompleted) {
+      setState(() {
+        _isCompleted = true;
+      });
+    } else if (!isDone && _isCompleted) {
+      setState(() {
+        _isCompleted = false;
+      });
+    }
+  }
+
+  void _togglePlay() {
+    if (_isCompleted) {
+      _controller.seekTo(Duration.zero);
+      _controller.play();
+      setState(() {
+        _isCompleted = false;
+      });
+    } else if (_controller.value.isPlaying) {
+      _controller.pause();
+      setState(() {});
+    } else {
+      _controller.play();
+      setState(() {});
+    }
+  }
+
+  Future<void> _openFullScreen() async {
+    _controller.pause();
+    final currentPos = _controller.value.position;
+
+    final returnedPos = await Navigator.push<Duration>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FullScreenVideoViewer(
+          file: widget.file,
+          initialPosition: currentPos,
+        ),
+      ),
+    );
+
+    if (returnedPos != null && mounted) {
+      await _controller.seekTo(returnedPos);
+    }
+    setState(() {});
+  }
+
   @override
   void dispose() {
+    _controller.removeListener(_videoListener);
     _controller.dispose();
     super.dispose();
   }
@@ -1090,53 +1279,412 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
       return Container(
         height: 250,
         alignment: Alignment.center,
-        child: const CircularProgressIndicator(color: Color(0xFFC6FF00)),
+        child: CircularProgressIndicator(color: AppSettingsService().accentColor),
       );
     }
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (_controller.value.isPlaying) {
-            _controller.pause();
-          } else {
-            _controller.play();
-          }
-        });
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: AspectRatio(
-          aspectRatio: _controller.value.aspectRatio,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              VideoPlayer(_controller),
-              if (!_controller.value.isPlaying)
-                Container(
-                  padding: const EdgeInsets.all(14),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: AspectRatio(
+        aspectRatio: _controller.value.aspectRatio,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            GestureDetector(
+              onTap: _togglePlay,
+              child: Stack(
+                alignment: Alignment.center,
+                fit: StackFit.expand,
+                children: [
+                  VideoPlayer(_controller),
+                  if (!_controller.value.isPlaying || _isCompleted)
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _isCompleted
+                              ? Icons.replay_rounded
+                              : Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // 전체화면 보기 버튼 (우측 상단 캡슐 버튼)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: GestureDetector(
+                onTap: _openFullScreen,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    shape: BoxShape.circle,
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 0.8,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: Colors.white,
-                    size: 40,
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.fullscreen_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        '전체화면',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'Pretendard',
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              // 하단 재생 진행 바
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: VideoProgressIndicator(
-                  _controller,
-                  allowScrubbing: true,
-                  colors: const VideoProgressColors(
-                    playedColor: Color(0xFFC6FF00),
-                    bufferedColor: Colors.white24,
-                    backgroundColor: Colors.black38,
+              ),
+            ),
+
+            // 하단 재생 진행 바
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: VideoProgressIndicator(
+                _controller,
+                allowScrubbing: true,
+                colors: VideoProgressColors(
+                  playedColor: AppSettingsService().accentColor,
+                  bufferedColor: Colors.white24,
+                  backgroundColor: Colors.black38,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 사진 터치 시 전체화면으로 볼 수 있는 뷰어
+class FullScreenImageViewer extends StatelessWidget {
+  final File file;
+
+  const FullScreenImageViewer({super.key, required this.file});
+
+  @override
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 핀치 줌 & 더블 탭 확대 가능한 인터랙티브 뷰어
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: InteractiveViewer(
+              minScale: 1.0,
+              maxScale: 4.5,
+              clipBehavior: Clip.none,
+              child: Center(
+                child: Hero(
+                  tag: 'photo_fullscreen_${file.path}',
+                  child: Image.file(
+                    file,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 상단 닫기 버튼
+          Positioned(
+            top: topPadding + 10,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 영상 전체화면 뷰어 (한 번 재생, 컨트롤러 오버레이, 나가기 버튼)
+class FullScreenVideoViewer extends StatefulWidget {
+  final File file;
+  final Duration initialPosition;
+
+  const FullScreenVideoViewer({
+    super.key,
+    required this.file,
+    this.initialPosition = Duration.zero,
+  });
+
+  @override
+  State<FullScreenVideoViewer> createState() => _FullScreenVideoViewerState();
+}
+
+class _FullScreenVideoViewerState extends State<FullScreenVideoViewer> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+  bool _showControls = true;
+  bool _isCompleted = false;
+  Timer? _hideTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    _controller = VideoPlayerController.file(
+      widget.file,
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    );
+    try {
+      await _controller.initialize();
+      _controller.addListener(_videoListener);
+      await _controller.setLooping(false); // 처음 한 번만 재생
+      if (widget.initialPosition > Duration.zero) {
+        await _controller.seekTo(widget.initialPosition);
+      }
+      await _controller.play();
+
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
+      _startHideTimer();
+    } catch (e) {
+      debugPrint('FullScreenVideo error: $e');
+    }
+  }
+
+  void _videoListener() {
+    if (!mounted || !_controller.value.isInitialized) return;
+    final pos = _controller.value.position;
+    final dur = _controller.value.duration;
+    final isDone = dur > Duration.zero && pos >= dur;
+
+    if (isDone && !_isCompleted) {
+      setState(() {
+        _isCompleted = true;
+        _showControls = true;
+      });
+      _hideTimer?.cancel();
+    } else if (!isDone && _isCompleted) {
+      setState(() {
+        _isCompleted = false;
+      });
+    }
+  }
+
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _controller.value.isPlaying && !_isCompleted) {
+        setState(() => _showControls = false);
+      }
+    });
+  }
+
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+    });
+    if (_showControls && _controller.value.isPlaying && !_isCompleted) {
+      _startHideTimer();
+    }
+  }
+
+  void _togglePlay() {
+    if (_isCompleted) {
+      _controller.seekTo(Duration.zero);
+      _controller.play();
+      setState(() => _isCompleted = false);
+      _startHideTimer();
+    } else if (_controller.value.isPlaying) {
+      _controller.pause();
+      setState(() => _showControls = true);
+      _hideTimer?.cancel();
+    } else {
+      _controller.play();
+      setState(() {});
+      _startHideTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    _controller.removeListener(_videoListener);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          Navigator.pop(context, _controller.value.position);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: GestureDetector(
+          onTap: _toggleControls,
+          behavior: HitTestBehavior.opaque,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 중앙 비디오 재생 영역
+              Center(
+                child: _isInitialized
+                    ? AspectRatio(
+                        aspectRatio: _controller.value.aspectRatio,
+                        child: VideoPlayer(_controller),
+                      )
+                    : CircularProgressIndicator(
+                        color: AppSettingsService().accentColor),
+              ),
+
+              // 컨트롤 오버레이
+              AnimatedOpacity(
+                opacity: _showControls ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: IgnorePointer(
+                  ignoring: !_showControls,
+                  child: Stack(
+                    children: [
+                      // 상단 닫기 / 나가기 버튼
+                      Positioned(
+                        top: topPadding + 10,
+                        left: 16,
+                        child: GestureDetector(
+                          onTap: () => Navigator.pop(
+                              context, _controller.value.position),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // 중앙 재생 / 일시정지 / 다시보기 버튼
+                      Center(
+                        child: GestureDetector(
+                          onTap: _togglePlay,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              _isCompleted
+                                  ? Icons.replay_rounded
+                                  : (_controller.value.isPlaying
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded),
+                              color: Colors.white,
+                              size: 44,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // 하단 재생 시간 및 진행 바
+                      if (_isInitialized)
+                        Positioned(
+                          bottom: bottomPadding + 16,
+                          left: 20,
+                          right: 20,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  ValueListenableBuilder(
+                                    valueListenable: _controller,
+                                    builder:
+                                        (context, VideoPlayerValue value, _) {
+                                      final pos = value.position;
+                                      return Text(
+                                        '${pos.inMinutes}:${(pos.inSeconds % 60).toString().padLeft(2, '0')}',
+                                        style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12),
+                                      );
+                                    },
+                                  ),
+                                  Text(
+                                    '${_controller.value.duration.inMinutes}:${(_controller.value.duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                                    style: const TextStyle(
+                                        color: Colors.white70, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              VideoProgressIndicator(
+                                _controller,
+                                allowScrubbing: true,
+                                colors: VideoProgressColors(
+                                  playedColor: AppSettingsService().accentColor,
+                                  bufferedColor: Colors.white24,
+                                  backgroundColor: Colors.white12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),

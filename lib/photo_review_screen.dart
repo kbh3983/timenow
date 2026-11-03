@@ -7,6 +7,7 @@ import 'timestamp_overlays.dart';
 import 'album_service.dart';
 import 'calendar_album_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
+import 'widgets/ad_banner_widget.dart';
 import 'widgets/unlock_timestamp_dialog.dart';
 import 'services/timestamp_access_manager.dart';
 import 'services/timestamp_deck_manager.dart';
@@ -14,6 +15,9 @@ import 'timestamp_metadata.dart';
 import 'ux_config.dart';
 import 'gallery_picker_screen.dart';
 import 'stamp_management_screen.dart';
+import 'settings_screen.dart';
+import 'package:flutter/services.dart';
+import 'services/app_settings_service.dart';
 
 class PhotoReviewScreen extends StatefulWidget {
   final File imageFile;
@@ -138,20 +142,26 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1013),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildImageWithOverlay(),
-          _buildTopBar(iconColor: CameraUX.getTopIconColor(widget.aspectRatio)),
-          _buildBottomControls(isFullAuto: widget.aspectRatio == 9.0 / 16.0),
-        ],
-      ),
+    return ListenableBuilder(
+      listenable: AppSettingsService(),
+      builder: (context, _) {
+        final settings = AppSettingsService();
+        return Scaffold(
+          backgroundColor: settings.scaffoldBackgroundColor,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildImageWithOverlay(),
+              _buildTopBar(),
+              _buildBottomControls(isFullAuto: widget.aspectRatio == 9.0 / 16.0),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildTopBar({required Color iconColor}) {
+  Widget _buildTopBar() {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Positioned(
@@ -159,16 +169,10 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
       left: 0,
       right: 0,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back, color: iconColor, size: 28),
-              onPressed: () => Navigator.pop(context),
-            ),
-            const SizedBox(width: 48), // Spacer
-          ],
+        // 상단 메뉴 영역(60) 안에 배너(50)가 들어가도록 세로 여백 5
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        child: const Center(
+          child: AdBannerWidget(compact: true),
         ),
       ),
     );
@@ -193,9 +197,15 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
         double clearLeft = 0;
 
         if (isFullAuto) {
+          clearTop = topMenuH;
           clearW = screenW;
-          clearH = screenH;
-          clearTop = 0;
+          clearH = screenW * (16.0 / 9.0);
+          final maxH = screenH - topMenuH;
+          if (clearH > maxH) {
+            clearH = maxH;
+            clearW = maxH * (9.0 / 16.0);
+            clearLeft = (screenW - clearW) / 2;
+          }
         } else if (is4x5) {
           clearW = screenW;
           clearH = screenW * 1.25;
@@ -247,27 +257,21 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
               ),
             ),
             Positioned(
-              top: clearTop,
-              left: clearLeft,
-              width: clearW,
-              height: clearH,
-              child: Container(
-                padding: const EdgeInsets.only(right: 12, bottom: 12),
-                alignment: Alignment.bottomRight,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _hoverButton(
-                      icon: Icons.open_with,
-                      onTap: _cycleAlignment,
-                    ),
-                    const SizedBox(height: 12),
-                    _hoverButton(
-                      label: "${_fontSizeIndex + 1}A",
-                      onTap: _cycleFontSize,
-                    ),
-                  ],
-                ),
+              right: 12,
+              top: topMenuH + screenW - 110,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _hoverButton(
+                    icon: Icons.open_with,
+                    onTap: _cycleAlignment,
+                  ),
+                  const SizedBox(height: 10),
+                  _hoverButton(
+                    label: "${_fontSizeIndex + 1}A",
+                    onTap: _cycleFontSize,
+                  ),
+                ],
               ),
             ),
           ],
@@ -284,7 +288,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
         height: 44,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.black.withOpacity(0.4),
+          color: Colors.black.withValues(alpha: 0.4),
           border: Border.all(color: Colors.white24, width: 1),
         ),
         child: Center(
@@ -345,18 +349,15 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
 
   Widget _buildFloatingMenu({required bool isOverlay}) {
     return CustomBottomNavBar(
-      onLeftActionPressed: () async {
-        final result = await Navigator.push(
+      onSettingsPressed: () async {
+        HapticFeedback.lightImpact();
+        await Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => CalendarAlbumScreen(initialAlbum: _selectedAlbum),
-          ),
+          MaterialPageRoute(builder: (_) => const SettingsScreen()),
         );
-        if (mounted && result is String) {
-          Navigator.pop(context, result);
-        }
+        if (mounted) setState(() {});
       },
-      onRightActionPressed: () async {
+      onPhotoPickerPressed: () async {
         final GalleryResult? galleryResult = await Navigator.push<GalleryResult>(
           context,
           MaterialPageRoute(
@@ -367,10 +368,32 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
           Navigator.pop(context, galleryResult);
         }
       },
+      onAlbumPressed: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CalendarAlbumScreen(initialAlbum: _selectedAlbum),
+          ),
+        );
+        if (mounted && result is String) {
+          Navigator.pop(context, result);
+        }
+      },
+      onStampManagementPressed: () async {
+        HapticFeedback.lightImpact();
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const StampManagementScreen(),
+          ),
+        );
+        if (mounted) {
+          setState(() {});
+        }
+      },
       onCenterActionPressed: _savePhoto,
-      rightThumbnail: _latestPhoto,
+      photoThumbnail: _latestPhoto,
       isLoading: _isSaving,
-      centerIcon: Icons.keyboard_arrow_down,
+      centerIcon: Icons.check,
     );
   }
 
@@ -496,7 +519,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                           color: const Color(0xFF1B1D24),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: const Color(0xFFC6FF00).withValues(alpha: 0.35),
+                            color: AppSettingsService().accentColor.withValues(alpha: 0.35),
                             width: 1.2,
                           ),
                         ),
@@ -506,12 +529,12 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                             Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFC6FF00).withValues(alpha: 0.15),
+                                color: AppSettingsService().accentColor.withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
-                                Icons.tune_rounded,
-                                color: Color(0xFFC6FF00),
+                              child: Icon(
+                                Icons.approval_rounded,
+                                color: AppSettingsService().accentColor,
                                 size: 18,
                               ),
                             ),

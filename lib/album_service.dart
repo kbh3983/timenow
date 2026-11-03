@@ -56,7 +56,7 @@ class AlbumService {
         .map((e) => e.path.split(Platform.pathSeparator).last)
         .toList();
 
-    // Default '일상' folder
+    // Default '일상' folder (항상 기본 앨범으로 제공)
     if (!albums.contains('일상')) {
       await Directory('${root.path}/일상').create();
       albums.add('일상');
@@ -104,30 +104,10 @@ class AlbumService {
   static Future<void> deleteAlbum(String name) async {
     final root = await _photosRoot;
     final dir = Directory('${root.path}/$name');
-    final defaultDir = Directory('${root.path}/일상');
-    if (!await defaultDir.exists()) {
-      await defaultDir.create();
-    }
 
     if (await dir.exists()) {
-      // 사진은 영구 보존: 삭제되는 폴더의 사진들을 기본 '일상' 앨범으로 안전하게 이전
-      final files = await dir.list().toList();
-      for (var file in files) {
-        if (file is File) {
-          final filename = file.path.split(Platform.pathSeparator).last;
-          var targetFile = File('${defaultDir.path}/$filename');
-          if (await targetFile.exists()) {
-            final uniqueName = 'moved_${DateTime.now().microsecondsSinceEpoch}_$filename';
-            targetFile = File('${defaultDir.path}/$uniqueName');
-          }
-          try {
-            await file.rename(targetFile.path);
-          } catch (_) {
-            await file.copy(targetFile.path);
-            await file.delete();
-          }
-        }
-      }
+      // 기기 시스템 갤러리(Media Storage)에 이미 안전하게 저장되어 있으므로
+      // 앱 내 특정 폴더 삭제 시 해당 폴더만 깔끔하게 제거 ('일상'으로 이전하지 않음)
       await dir.delete(recursive: true);
     }
 
@@ -141,6 +121,41 @@ class AlbumService {
         }
       } catch (_) {}
     }
+  }
+
+  static Future<bool> updateAlbum({
+    required String oldName,
+    required String newName,
+    required int colorValue,
+  }) async {
+    final root = await _photosRoot;
+    if (oldName != newName) {
+      final oldDir = Directory('${root.path}/$oldName');
+      final newDir = Directory('${root.path}/$newName');
+
+      if (await newDir.exists()) {
+        return false; // 이미 존재하는 폴더명
+      }
+
+      if (await oldDir.exists()) {
+        await oldDir.rename(newDir.path);
+      } else {
+        await newDir.create();
+      }
+
+      // 색상 json에서 oldName 삭제 및 newName 저장
+      final file = File('${root.path}/album_colors.json');
+      try {
+        final colors = await getAlbumColors();
+        colors.remove(oldName);
+        colors[newName] = colorValue;
+        await file.writeAsString(jsonEncode(colors));
+      } catch (_) {}
+    } else {
+      // 색상만 변경
+      await saveAlbumColor(oldName, colorValue);
+    }
+    return true;
   }
 
   static Future<void> savePhoto(Uint8List bytes, String albumName, {DateTime? originalDate}) async {

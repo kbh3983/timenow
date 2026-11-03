@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'services/timestamp_access_manager.dart';
+import 'services/app_settings_service.dart';
 import 'timestamp_metadata.dart';
 import 'ux_config.dart';
 
@@ -102,7 +103,71 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
       opacity: widget.opacity,
       child: DefaultTextStyle.merge(
         style: const TextStyle(fontFamily: 'Pretendard'),
-        child: Stack(fit: StackFit.expand, children: [_buildDesign()]),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildDesign(),
+            if (AppSettingsService().showLocation)
+              _buildLocationOverlay(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationOverlay() {
+    final location = AppSettingsService().locationText.isEmpty
+        ? 'GPS 위치 확인 중'
+        : AppSettingsService().locationText;
+
+    final locAlign = AppSettingsService().locationAlignment;
+    final isTop = locAlign.y < 0;
+    final isLeft = locAlign.x < 0;
+    final isRight = locAlign.x > 0;
+
+    return Align(
+      alignment: locAlign,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: isLeft ? 24 : 16,
+          right: isRight ? 24 : 16,
+          top: isTop ? 20 : 0,
+          bottom: !isTop ? 20 : 0,
+        ),
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width - (isLeft || isRight ? 48 : 32),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white24, width: 0.8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Icon(Icons.location_on, color: Colors.white, size: 12),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  location,
+                  maxLines: 2,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
+                    shadows: [Shadow(blurRadius: 4, color: Colors.black)],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -199,6 +264,43 @@ class TimestampThumbnail extends StatelessWidget {
 
         final effectiveBorderRadius = borderRadius ?? BorderRadius.zero;
 
+        final settings = AppSettingsService();
+        final isLight = settings.isLight;
+        final accent = settings.accentColor;
+
+        final Color cardBg = isSelected
+            ? const Color(0xFF222530)
+            : const Color(0xFF16181F);
+
+        final Border border = isSelected
+            ? Border.all(color: accent, width: 2.2)
+            : Border.all(
+                color: isLight
+                    ? const Color(0xFFCBD5E1)
+                    : Colors.white.withValues(alpha: 0.2),
+                width: isLight ? 1.2 : 0.8,
+              );
+
+        final List<BoxShadow> shadows = isLight
+            ? [
+                BoxShadow(
+                  color: isSelected
+                      ? accent.withValues(alpha: 0.3)
+                      : Colors.black.withValues(alpha: 0.08),
+                  blurRadius: isSelected ? 8 : 4,
+                  offset: const Offset(0, 1.5),
+                ),
+              ]
+            : (isSelected
+                ? [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : []);
+
         return GestureDetector(
           onTap: onTap,
           child: AnimatedContainer(
@@ -211,23 +313,10 @@ class TimestampThumbnail extends StatelessWidget {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.white.withOpacity(0.25)
-                          : Colors.white.withOpacity(0.1),
+                      color: cardBg,
                       borderRadius: effectiveBorderRadius,
-                      border: Border.all(
-                        color: isSelected ? Colors.deepOrange : Colors.white24,
-                        width: isSelected ? 2.5 : 1.0,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : [],
+                      border: border,
+                      boxShadow: shadows,
                     ),
                     child: ClipRRect(
                       borderRadius: effectiveBorderRadius,
@@ -249,17 +338,17 @@ class TimestampThumbnail extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.75),
+                          color: Colors.black.withValues(alpha: 0.75),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             width: 0.8,
                           ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.lock_rounded,
                           size: 11,
-                          color: Color(0xFFC6FF00),
+                          color: AppSettingsService().accentColor,
                         ),
                       ),
                     ),
@@ -275,11 +364,11 @@ class TimestampThumbnail extends StatelessWidget {
                           vertical: 1.5,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFC6FF00),
+                          color: AppSettingsService().accentColor,
                           borderRadius: BorderRadius.circular(4),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.4),
+                              color: Colors.black.withValues(alpha: 0.4),
                               blurRadius: 3,
                             ),
                           ],
@@ -571,15 +660,13 @@ class TimestampThumbnail extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(1),
-                      boxShadow: shadow != null
-                          ? shadow
-                              .map((s) => BoxShadow(
-                                    color: s.color,
-                                    offset: s.offset,
-                                    blurRadius: s.blurRadius,
-                                  ))
-                              .toList()
-                          : null,
+                      boxShadow: shadow
+                          ?.map((s) => BoxShadow(
+                                color: s.color,
+                                offset: s.offset,
+                                blurRadius: s.blurRadius,
+                              ))
+                          .toList(),
                     ),
                   ),
                   Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
@@ -1275,15 +1362,13 @@ class _S2_1Stamp extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(1.0 * scale),
-              boxShadow: shadows != null
-                  ? shadows
-                      .map((s) => BoxShadow(
-                            color: s.color,
-                            offset: s.offset,
-                            blurRadius: s.blurRadius,
-                          ))
-                      .toList()
-                  : null,
+              boxShadow: shadows
+                  ?.map((s) => BoxShadow(
+                        color: s.color,
+                        offset: s.offset,
+                        blurRadius: s.blurRadius,
+                      ))
+                  .toList(),
             ),
           ),
           Text(

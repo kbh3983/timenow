@@ -5,6 +5,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'album_service.dart';
 import 'ux_config.dart';
 import 'photo_detail_screen.dart';
+import 'services/app_settings_service.dart';
 
 enum CalendarViewMode { calendar, grid }
 
@@ -30,7 +31,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
 
   MonthAlbumData? _monthData;
   Map<DateTime, File> _photoThumbnails = {};
-  Map<DateTime, int> _photoCounts = {};
   List<File> _dayPhotos = [];
   Map<String, int> _albumColors = {};
 
@@ -46,6 +46,12 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   Future<void> _loadData() async {
     final albums = await AlbumService.getAlbums();
     final albumColors = await AlbumService.getAlbumColors();
+
+    // 선택된 앨범이 삭제되었거나 존재하지 않는 경우 자동으로 '전체'로 안전하게 폴백
+    if (_selectedAlbum != '전체' && !albums.contains(_selectedAlbum)) {
+      _selectedAlbum = '전체';
+    }
+
     final monthData = await AlbumService.getMonthAlbumData(
       _focusedDay,
       albumName: _selectedAlbum,
@@ -59,7 +65,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
         _albumColors = albumColors;
         _monthData = monthData;
         _photoThumbnails = monthData.thumbnails;
-        _photoCounts = monthData.counts;
         _dayPhotos = dayPhotos;
       });
     }
@@ -103,31 +108,45 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1013),
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        bottom: false,
-        child: _viewMode == CalendarViewMode.grid
-            ? _buildPhotoGridView()
-            : Stack(
-                children: [_buildCalendarContent(), _buildDraggableSheet()],
-              ),
-      ),
+    return ListenableBuilder(
+      listenable: AppSettingsService(),
+      builder: (context, _) {
+        final settings = AppSettingsService();
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            Navigator.pop(context, _selectedAlbum);
+          },
+          child: Scaffold(
+            backgroundColor: settings.scaffoldBackgroundColor,
+            appBar: _buildAppBar(),
+            body: SafeArea(
+              bottom: false,
+              child: _viewMode == CalendarViewMode.grid
+                  ? _buildPhotoGridView()
+                  : Stack(
+                      children: [_buildCalendarContent(), _buildDraggableSheet()],
+                    ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final settings = AppSettingsService();
     final pointColor = _getAlbumNeonPointColor(_selectedAlbum);
 
     return AppBar(
-      backgroundColor: const Color(0xFF0F1013),
+      backgroundColor: settings.appBarColor,
       surfaceTintColor: Colors.transparent, // 스크롤 시 회색 틴트 제거
       scrolledUnderElevation: 0,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-        onPressed: () => Navigator.pop(context),
+        icon: Icon(Icons.arrow_back_ios_new, color: settings.textColor, size: 20),
+        onPressed: () => Navigator.pop(context, _selectedAlbum),
       ),
       title: GestureDetector(
         onTap: _showAlbumSelector,
@@ -151,19 +170,23 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                   ],
                 ),
               ),
-              Text(
-                _viewMode == CalendarViewMode.grid
-                    ? "$_selectedAlbum ($_totalPhotoCount)"
-                    : _selectedAlbum,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: CalendarUX.albumTitleFontSize,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
+              Flexible(
+                child: Text(
+                  _viewMode == CalendarViewMode.grid
+                      ? "$_selectedAlbum ($_totalPhotoCount)"
+                      : _selectedAlbum,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: settings.textColor,
+                    fontSize: CalendarUX.albumTitleFontSize,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
                 ),
               ),
               const SizedBox(width: 2),
-              const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 22),
+              Icon(Icons.keyboard_arrow_down_rounded, color: settings.subTextColor, size: 22),
             ],
           ),
         ),
@@ -175,7 +198,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             _viewMode == CalendarViewMode.grid
                 ? Icons.calendar_today_outlined
                 : Icons.grid_view_rounded,
-            color: Colors.white70,
+            color: settings.textColor,
             size: 20,
           ),
           onPressed: _toggleView,
@@ -271,27 +294,28 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   }
 
   Widget _buildMonthHeader() {
+    final settings = AppSettingsService();
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: const Icon(Icons.chevron_left, color: Colors.white70, size: 22),
+            icon: Icon(Icons.chevron_left, color: settings.textColor, size: 22),
             onPressed: _goToPrevMonth,
             splashRadius: 20,
           ),
           Text(
             DateFormat('yyyy년 M월', 'ko_KR').format(_focusedDay),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: CalendarUX.monthHeaderFontSize,
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: settings.textColor,
               letterSpacing: -0.2,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.chevron_right, color: Colors.white70, size: 22),
+            icon: Icon(Icons.chevron_right, color: settings.textColor, size: 22),
             onPressed: _goToNextMonth,
             splashRadius: 20,
           ),
@@ -315,6 +339,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   }
 
   Widget _buildWeekdayHeader() {
+    final settings = AppSettingsService();
     final weekdays = ['일', '월', '화', '수', '목', '금', '토'];
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -328,8 +353,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                 child: Center(
                   child: Text(
                     day,
-                    style: const TextStyle(
-                      color: Color(0xFF8E929B),
+                    style: TextStyle(
+                      color: settings.subTextColor,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -371,8 +396,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
           return Center(
             child: Text(
               '$prevDay',
-              style: const TextStyle(
-                color: Color(0xFF383B44),
+              style: TextStyle(
+                color: AppSettingsService().subTextColor.withValues(alpha: 0.35),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -414,13 +439,18 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
 
   Color _getAlbumNeonPointColor(String albumName) {
     if (albumName == '전체') {
-      return const Color(0xFFCCFF00); // 전체 앨범 기본 시그니처 네온 라임
+      return AppSettingsService().accentColor;
     }
     final baseColor = _getAlbumColor(albumName);
+
+    // 사용자가 명시적으로 선택/저장한 색상이 있는 경우 고유 색상을 온전히 유지
+    if (_albumColors.containsKey(albumName)) {
+      return baseColor;
+    }
+
     final hsl = HSLColor.fromColor(baseColor);
 
-    // 앨범 고유의 색조(Hue)를 온전히 유지하면서,
-    // 채도를 1.0(최대)으로 극대화하고, 다크 배경에서 형광으로 발광하도록 명도를 최적화
+    // 기본 생성된 해시 색상인 경우에만 다크 배경 가독성을 위해 HSL 최적화
     double neonLightness = hsl.lightness;
     if (neonLightness < 0.52) {
       neonLightness = 0.60;
@@ -444,7 +474,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     final dateKey = DateTime(date.year, date.month, date.day);
     final thumbnailFile = _photoThumbnails[dateKey];
     final hasPhoto = thumbnailFile != null;
-    final photoCount = _photoCounts[dateKey] ?? (hasPhoto ? 1 : 0);
     final bool isCurrentMonth = date.month == _focusedDay.month;
 
     final numberWidget = Text(
@@ -457,8 +486,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             : (isToday
                 ? pointColor
                 : (!isCurrentMonth
-                    ? const Color(0xFF383B44)
-                    : Colors.white)),
+                    ? AppSettingsService().subTextColor.withValues(alpha: 0.35)
+                    : AppSettingsService().textColor)),
         shadows: hasPhoto
             ? const [Shadow(blurRadius: 4, color: Colors.black)]
             : null,
@@ -508,35 +537,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                     top: mini ? 2 : 3,
                     child: numberWidget,
                   ),
-                  if (photoCount > 1)
-                    Positioned(
-                      right: mini ? 2 : 3,
-                      bottom: mini ? 2 : 3,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: mini ? 3 : 4.5,
-                          vertical: mini ? 0.5 : 1.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: pointColor,
-                          borderRadius: BorderRadius.circular(mini ? 4 : 6),
-                          boxShadow: [
-                            BoxShadow(
-                              color: pointColor.withValues(alpha: 0.35),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          '$photoCount',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: mini ? 8.5 : 10,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -552,20 +552,23 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       snap: true,
       snapSizes: const [CalendarUX.initialSheetSize, 1.0],
       builder: (context, scrollController) {
+        final settings = AppSettingsService();
         return Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF17191E),
+            color: settings.cardBackgroundColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             border: Border(
               top: BorderSide(
-                color: const Color(0xFF2A2D35).withValues(alpha: 0.6),
+                color: settings.borderColor,
                 width: 0.8,
               ),
             ),
             boxShadow: [
               BoxShadow(
                 blurRadius: 20,
-                color: Colors.black.withValues(alpha: 0.4),
+                color: settings.isLight
+                    ? Colors.black.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.4),
               ),
             ],
           ),
@@ -633,7 +636,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             width: 36,
             height: 5,
             decoration: BoxDecoration(
-              color: const Color(0xFF2E323A),
+              color: AppSettingsService().subTextColor.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2.5),
             ),
           ),
@@ -653,9 +656,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
           children: [
             Text(
               DateFormat('yyyy.MM.dd (E)', 'ko_KR').format(_selectedDay),
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF8E929B),
+                color: AppSettingsService().subTextColor,
                 fontSize: 13.5,
               ),
             ),
@@ -667,34 +670,54 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.06),
+                      color: AppSettingsService().surfaceColor,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.photo_library_outlined,
                       size: 28,
-                      color: Colors.white.withValues(alpha: 0.35),
+                      color: AppSettingsService().subTextColor,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    '이 날은 기록이 없어요 📷',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '상단 "기록" 버튼을 눌러 첫 기록을 남겨보세요',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.38),
-                      height: 1.4,
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final now = DateTime.now();
+                      final isToday = _selectedDay.year == now.year &&
+                          _selectedDay.month == now.month &&
+                          _selectedDay.day == now.day;
+                      final isFuture = _selectedDay.isAfter(DateTime(now.year, now.month, now.day, 23, 59, 59));
+
+                      final title = isToday
+                          ? '오늘의 기록이 아직 없어요 📷'
+                          : (isFuture ? '아직 다가오지 않은 날이에요 ⏳' : '이 날은 기록이 없어요 📷');
+
+                      return Column(
+                        children: [
+                          Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppSettingsService().textColor,
+                            ),
+                          ),
+                          if (isToday) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              '상단 "기록" 버튼을 눌러 지금 순간을 남겨보세요',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppSettingsService().subTextColor,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -731,10 +754,10 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               const SizedBox(width: 8),
               Text(
                 timeStr,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: AppSettingsService().textColor,
                 ),
               ),
             ],
@@ -798,23 +821,23 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: AppSettingsService().surfaceColor,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.photo_library_outlined,
                   size: 28,
-                  color: Colors.white.withValues(alpha: 0.35),
+                  color: AppSettingsService().subTextColor,
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 '아직 기록이 없어요',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white70,
+                  color: AppSettingsService().textColor,
                 ),
               ),
               const SizedBox(height: 6),
@@ -823,7 +846,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.white.withValues(alpha: 0.38),
+                  color: AppSettingsService().subTextColor,
                   height: 1.4,
                 ),
               ),
@@ -842,11 +865,11 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               padding: const EdgeInsets.fromLTRB(16, 32, 16, 12),
               child: Text(
                 monthKey,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   letterSpacing: -0.5,
-                  color: Colors.white,
+                  color: AppSettingsService().textColor,
                 ),
               ),
             ),
@@ -872,6 +895,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   }
 
   Widget _buildGridPhotoItem(File file, List<File> monthPhotos, int index) {
+    final isLight = AppSettingsService().isLight;
     return GestureDetector(
       onTap: () async {
         final result = await Navigator.push(
@@ -889,10 +913,11 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1E2026),
-          borderRadius: BorderRadius.circular(10),
+          color: isLight ? const Color(0xFFF1F3F5) : const Color(0xFF1E2026),
           border: Border.all(
-            color: const Color(0xFF2A2D35).withValues(alpha: 0.6),
+            color: isLight
+                ? const Color(0xFFE2E4E8)
+                : const Color(0xFF2A2D35).withValues(alpha: 0.6),
             width: 0.8,
           ),
         ),
@@ -991,13 +1016,14 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final settings = AppSettingsService();
             final bottomInset = MediaQuery.of(context).padding.bottom;
             return Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF17191E),
+                color: settings.cardBackgroundColor,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 border: Border.all(
-                  color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+                  color: settings.borderColor,
                   width: 1.0,
                 ),
               ),
@@ -1016,18 +1042,18 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                           height: 4,
                           margin: const EdgeInsets.only(bottom: 14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2E323A),
+                            color: settings.subTextColor.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                       ),
-                      const Text(
+                      Text(
                         '폴더 선택',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.3,
-                          color: Colors.white,
+                          color: settings.textColor,
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -1047,11 +1073,14 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                           ),
                         ),
                       ),
-                      const Divider(color: Color(0xFF2E323A), height: 24),
+                      Divider(color: settings.dividerColor, height: 24),
                       InkWell(
-                        onTap: () {
+                        onTap: () async {
                           Navigator.pop(context);
-                          _showAddFolderBottomSheet();
+                          await Future.delayed(const Duration(milliseconds: 120));
+                          if (mounted) {
+                            _showAddFolderBottomSheet();
+                          }
                         },
                         borderRadius: BorderRadius.circular(10),
                         child: Padding(
@@ -1062,25 +1091,25 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                                 width: 28,
                                 height: 28,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF22252C),
+                                  color: settings.surfaceColor,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: const Color(0xFF2E323A).withValues(alpha: 0.5),
+                                    color: settings.borderColor,
                                   ),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.add,
                                   size: 18,
-                                  color: Color(0xFFF4F6F8),
+                                  color: settings.textColor,
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              const Text(
+                              Text(
                                 '새 폴더 만들기',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFFF4F6F8),
+                                  color: settings.textColor,
                                 ),
                               ),
                             ],
@@ -1105,6 +1134,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   ]) {
     final isSelected = _selectedAlbum == name;
     final Color color = _getAlbumNeonPointColor(name);
+    final canEdit = name != '전체';
     final canDelete = name != '전체' && name != '일상';
 
     return Container(
@@ -1124,7 +1154,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               },
               borderRadius: BorderRadius.horizontal(
                 left: const Radius.circular(12),
-                right: canDelete ? Radius.zero : const Radius.circular(12),
+                right: (canDelete || canEdit) ? Radius.zero : const Radius.circular(12),
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -1152,7 +1182,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                         style: TextStyle(
                           fontSize: 16.5,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected ? Colors.white : Colors.white60,
+                          color: isSelected ? AppSettingsService().textColor : AppSettingsService().subTextColor,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1165,15 +1195,28 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               ),
             ),
           ),
+          if (canEdit)
+            IconButton(
+              tooltip: '폴더 편집',
+              icon: Icon(
+                Icons.edit_outlined,
+                color: AppSettingsService().subTextColor,
+                size: 19,
+              ),
+              splashRadius: 18,
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _showEditAlbumBottomSheet(name, setModalState),
+            ),
           if (canDelete)
             IconButton(
               tooltip: '폴더 삭제',
               icon: Icon(
                 Icons.delete_outline_rounded,
-                color: Colors.white.withValues(alpha: 0.38),
+                color: AppSettingsService().subTextColor,
                 size: 20,
               ),
               splashRadius: 18,
+              visualDensity: VisualDensity.compact,
               onPressed: () => _confirmDeleteAlbum(name, setModalState),
             ),
         ],
@@ -1193,13 +1236,17 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
         curve: Curves.easeOutCubic,
       ),
       builder: (ctx) {
+        final settings = AppSettingsService();
+        final isLight = settings.isLight;
         final bottomInset = MediaQuery.of(ctx).padding.bottom;
         return Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF17191E),
+            color: isLight ? Colors.white : const Color(0xFF17191E),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             border: Border.all(
-              color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+              color: isLight
+                  ? const Color(0xFFE2E4E8)
+                  : const Color(0xFF2E323A).withValues(alpha: 0.35),
               width: 1.0,
             ),
           ),
@@ -1217,26 +1264,28 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                       height: 4,
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2E323A),
+                        color: isLight
+                            ? const Color(0xFFCBD5E1)
+                            : const Color(0xFF2E323A),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
-                  const Text(
+                  Text(
                     '폴더 삭제',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.3,
-                      color: Colors.white,
+                      color: isLight ? const Color(0xFF111418) : Colors.white,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '\'$albumName\' 폴더를 삭제하시겠습니까?\n사진은 기기 앨범에 안전하게 유지되며 폴더만 삭제됩니다.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF9AA1AC),
+                      color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
                       height: 1.4,
                     ),
                   ),
@@ -1252,14 +1301,16 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             side: BorderSide(
-                              color: const Color(0xFF2E323A).withValues(alpha: 0.5),
+                              color: isLight
+                                  ? const Color(0xFFCBD5E1)
+                                  : const Color(0xFF2E323A).withValues(alpha: 0.5),
                             ),
                           ),
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text(
+                          child: Text(
                             '취소',
                             style: TextStyle(
-                              color: Color(0xFFF4F6F8),
+                              color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
                             ),
@@ -1268,7 +1319,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        flex: 1,
+                        flex: 2,
                         child: FilledButton(
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFFFF453A),
@@ -1302,7 +1353,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       await AlbumService.deleteAlbum(albumName);
 
       if (_selectedAlbum == albumName) {
-        _selectedAlbum = '전체';
+        setState(() {
+          _selectedAlbum = '전체';
+        });
       }
 
       await _loadData();
@@ -1338,21 +1391,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     }
   }
 
-  void _showAddFolderBottomSheet() {
-    String newAlbumName = '';
-    int selectedColorValue = 0xFF81C784; // Default Soft Green
-
-    final List<int> palette = [
-      0xFFEEEAE2,
-      0xFFD9ED72,
-      0xFFAFDE62,
-      0xFFFFCB74,
-      0xFFFFB7B2,
-      0xFFBEE6FF,
-      0xFF63B0F2,
-      0xFFADADFA,
-      0xFF8D775C,
-    ];
+  void _showEditAlbumBottomSheet(String albumName, StateSetter? parentModalSetState) {
+    final currentColor = _albumColors[albumName] ?? _getAlbumNeonPointColor(albumName).toARGB32();
 
     showModalBottomSheet(
       context: context,
@@ -1365,274 +1405,78 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
         reverseDuration: const Duration(milliseconds: 160),
         curve: Curves.easeOutCubic,
       ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final bottomPadding = MediaQuery.of(context).padding.bottom;
-            final keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
-            final hasText = newAlbumName.trim().isNotEmpty;
+      builder: (sheetCtx) => _EditAlbumSheet(
+        albumName: albumName,
+        initialColorValue: currentColor,
+        existingAlbums: _albums,
+        onPickCustomColor: (curr, onSelected) {
+          _showCustomColorPickerBottomSheet(
+            parentContext: sheetCtx,
+            currentColorValue: curr,
+            onColorSelected: onSelected,
+          );
+        },
+        onSaved: (newName, newColor) async {
+          final success = await AlbumService.updateAlbum(
+            oldName: albumName,
+            newName: newName,
+            colorValue: newColor,
+          );
+          if (!success) return false;
 
-            return Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF17191E),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                border: Border.all(
-                  color: const Color(0xFF2E323A).withValues(alpha: 0.35),
-                  width: 1.0,
-                ),
-              ),
-              child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: keyboardPadding > 0 ? keyboardPadding : bottomPadding,
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Drag Indicator
-                        Center(
-                          child: Container(
-                            width: 36,
-                            height: 4,
-                            margin: const EdgeInsets.only(bottom: 14),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2E323A),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
+          setState(() {
+            _albumColors[newName] = newColor;
+            if (albumName != newName) {
+              _albumColors.remove(albumName);
+            }
+            if (_selectedAlbum == albumName) {
+              _selectedAlbum = newName;
+            }
+          });
 
-                        // Header
-                        const Text(
-                          '새 폴더 만들기',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.3,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          '사진을 분류할 새 폴더의 이름과 색상을 지정하세요',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF9AA1AC),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
+          await _loadData();
+          if (parentModalSetState != null && mounted) {
+            parentModalSetState(() {});
+          }
+          return true;
+        },
+      ),
+    );
+  }
 
-                        // TextField
-                        TextField(
-                          autofocus: true,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFFF4F6F8),
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '폴더 이름 입력 (예: 운동, 독서, 여행)',
-                            hintStyle: TextStyle(
-                              fontSize: 13,
-                              color: const Color(0xFF9AA1AC).withValues(alpha: 0.6),
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFF22252C),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: const Color(0xFF2E323A).withValues(alpha: 0.35),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: const Color(0xFF2E323A).withValues(alpha: 0.35),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: Color(selectedColorValue),
-                                width: 1.2,
-                              ),
-                            ),
-                          ),
-                          onChanged: (value) => setModalState(() => newAlbumName = value),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Color Header
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              '폴더 색상 테마',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF9AA1AC),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                _showCustomColorPickerBottomSheet(
-                                  parentContext: context,
-                                  currentColorValue: selectedColorValue,
-                                  onColorSelected: (newColor) {
-                                    setModalState(() => selectedColorValue = newColor);
-                                  },
-                                );
-                              },
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.colorize, size: 14, color: Color(0xFF9AA1AC)),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    '직접 선택',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFF9AA1AC),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Palette Circles
-                        SizedBox(
-                          height: 36,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: palette.length,
-                            itemBuilder: (context, index) {
-                              final colorValue = palette[index];
-                              final isColorSelected = selectedColorValue == colorValue;
-                              return GestureDetector(
-                                onTap: () => setModalState(
-                                  () => selectedColorValue = colorValue,
-                                ),
-                                child: Container(
-                                  margin: const EdgeInsets.only(right: 10),
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: Color(colorValue),
-                                    shape: BoxShape.circle,
-                                    border: isColorSelected
-                                        ? Border.all(color: Colors.white, width: 2)
-                                        : null,
-                                    boxShadow: [
-                                      if (isColorSelected)
-                                        BoxShadow(
-                                          color: Color(colorValue).withValues(alpha: 0.5),
-                                          blurRadius: 6,
-                                          spreadRadius: 1,
-                                        ),
-                                    ],
-                                  ),
-                                  child: isColorSelected
-                                      ? const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 16,
-                                        )
-                                      : null,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-
-                        // Action Buttons (Cancel / Confirm matching runningapp style)
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 1,
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 13),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  side: BorderSide(
-                                    color: const Color(0xFF2E323A).withValues(alpha: 0.5),
-                                  ),
-                                ),
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text(
-                                  '취소',
-                                  style: TextStyle(
-                                    color: Color(0xFFF4F6F8),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              flex: 2,
-                              child: FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: hasText
-                                      ? Color(selectedColorValue)
-                                      : const Color(0xFF22252C),
-                                  foregroundColor: hasText
-                                      ? Colors.white
-                                      : const Color(0xFF9AA1AC),
-                                  padding: const EdgeInsets.symmetric(vertical: 13),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  final name = newAlbumName.trim();
-                                  if (name.isEmpty) return;
-                                  if (_albums.contains(name)) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('이미 존재하는 폴더 이름입니다.')),
-                                    );
-                                    return;
-                                  }
-
-                                  await AlbumService.createAlbum(
-                                    name,
-                                    colorValue: selectedColorValue,
-                                  );
-                                  setState(() => _selectedAlbum = name);
-                                  await _loadData();
-                                  if (context.mounted) Navigator.pop(context);
-                                },
-                                child: const Text(
-                                  '폴더 만들기',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+  void _showAddFolderBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      showDragHandle: false,
+      sheetAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 200),
+        reverseDuration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+      ),
+      builder: (sheetCtx) => _AddFolderSheet(
+        existingAlbums: _albums,
+        onPickCustomColor: (curr, onSelected) {
+          _showCustomColorPickerBottomSheet(
+            parentContext: sheetCtx,
+            currentColorValue: curr,
+            onColorSelected: onSelected,
+          );
+        },
+        onCreated: (name, colorValue) async {
+          await AlbumService.createAlbum(
+            name,
+            colorValue: colorValue,
+          );
+          setState(() {
+            _albumColors[name] = colorValue;
+            _selectedAlbum = name;
+          });
+          await _loadData();
+        },
+      ),
     );
   }
 
@@ -1660,16 +1504,20 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setPickerState) {
+            final settings = AppSettingsService();
+            final isLight = settings.isLight;
             final bottomInset = MediaQuery.of(ctx).padding.bottom;
             return Container(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(ctx).size.height * 0.85,
               ),
               decoration: BoxDecoration(
-                color: const Color(0xFF17191E),
+                color: isLight ? Colors.white : const Color(0xFF17191E),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 border: Border.all(
-                  color: const Color(0xFF2E323A).withValues(alpha: 0.35),
+                  color: isLight
+                      ? const Color(0xFFE2E4E8)
+                      : const Color(0xFF2E323A).withValues(alpha: 0.35),
                   width: 1.0,
                 ),
               ),
@@ -1690,7 +1538,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                             height: 4,
                             margin: const EdgeInsets.only(bottom: 14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF2E323A),
+                              color: isLight
+                                  ? const Color(0xFFCBD5E1)
+                                  : const Color(0xFF2E323A),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -1715,13 +1565,13 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            const Text(
+                            Text(
                               '색상 선택',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: -0.3,
-                                color: Colors.white,
+                                color: isLight ? const Color(0xFF111418) : Colors.white,
                               ),
                             ),
                           ],
@@ -1786,14 +1636,16 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   side: BorderSide(
-                                    color: const Color(0xFF2E323A).withValues(alpha: 0.5),
+                                    color: isLight
+                                        ? const Color(0xFFCBD5E1)
+                                        : const Color(0xFF2E323A).withValues(alpha: 0.5),
                                   ),
                                 ),
                                 onPressed: () => Navigator.pop(ctx),
-                                child: const Text(
+                                child: Text(
                                   '취소',
                                   style: TextStyle(
-                                    color: Color(0xFFF4F6F8),
+                                    color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14,
                                   ),
@@ -1806,7 +1658,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                               child: FilledButton(
                                 style: FilledButton.styleFrom(
                                   backgroundColor: Color(tempColor),
-                                  foregroundColor: Colors.white,
+                                  foregroundColor: Color(tempColor).computeLuminance() > 0.6
+                                      ? Colors.black
+                                      : Colors.white,
                                   padding: const EdgeInsets.symmetric(vertical: 13),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -1874,3 +1728,822 @@ class DashedCirclePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+/// 렉 없이 60fps로 부드럽게 동작하는 새 폴더 생성 바텀시트
+class _AddFolderSheet extends StatefulWidget {
+  final List<String> existingAlbums;
+  final void Function(int currentColor, ValueChanged<int> onSelected) onPickCustomColor;
+  final Future<void> Function(String name, int colorValue) onCreated;
+
+  const _AddFolderSheet({
+    required this.existingAlbums,
+    required this.onPickCustomColor,
+    required this.onCreated,
+  });
+
+  @override
+  State<_AddFolderSheet> createState() => _AddFolderSheetState();
+}
+
+class _AddFolderSheetState extends State<_AddFolderSheet> {
+  late final TextEditingController _controller;
+  int _selectedColorValue = 0xFF81C784; // Default Soft Green
+  bool _isCreating = false;
+
+  static const List<int> _palette = [
+    0xFFEEEAE2,
+    0xFFD9ED72,
+    0xFFAFDE62,
+    0xFFFFCB74,
+    0xFFFFB7B2,
+    0xFFBEE6FF,
+    0xFF63B0F2,
+    0xFFADADFA,
+    0xFF8D775C,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final hasText = _controller.text.trim().isNotEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : const Color(0xFF17191E),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border.all(
+          color: isLight
+              ? const Color(0xFFE2E4E8)
+              : const Color(0xFF2E323A).withValues(alpha: 0.35),
+          width: 1.0,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Drag Indicator
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: isLight
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFF2E323A),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+
+                // Header
+                Text(
+                  '새 폴더 만들기',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
+                    color: isLight ? const Color(0xFF111418) : Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '사진을 분류할 새 폴더의 이름과 색상을 지정하세요',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // TextField (autofocus: false로 바텀시트 애니메이션 중 키보드 충돌 랙 방지)
+                TextField(
+                  controller: _controller,
+                  autofocus: false,
+                  maxLength: 15,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isLight ? const Color(0xFF111418) : const Color(0xFFF4F6F8),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: '폴더 이름 입력 (최대 15자)',
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: isLight
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF9AA1AC).withValues(alpha: 0.6),
+                    ),
+                    counterStyle: TextStyle(
+                      fontSize: 11,
+                      color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                    ),
+                    filled: true,
+                    fillColor: isLight ? const Color(0xFFF8FAFC) : const Color(0xFF22252C),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: isLight
+                            ? const Color(0xFFE2E4E8)
+                            : const Color(0xFF2E323A).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: isLight
+                            ? const Color(0xFFE2E4E8)
+                            : const Color(0xFF2E323A).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: Color(_selectedColorValue),
+                        width: 1.2,
+                      ),
+                    ),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 14),
+
+                // Color Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '폴더 색상 테마',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        widget.onPickCustomColor(
+                          _selectedColorValue,
+                          (newColor) {
+                            setState(() => _selectedColorValue = newColor);
+                          },
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          if (!_palette.contains(_selectedColorValue)) ...[
+                            Container(
+                              width: 13,
+                              height: 13,
+                              decoration: BoxDecoration(
+                                color: Color(_selectedColorValue),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isLight ? const Color(0xFFCBD5E1) : Colors.white54,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                          ],
+                          Icon(
+                            Icons.colorize,
+                            size: 14,
+                            color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '직접 선택',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Palette Circles (기본 팔레트 + 직접 선택한 커스텀 색상 원형 포함)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      ..._palette.map((colorValue) {
+                        final isColorSelected = _selectedColorValue == colorValue;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedColorValue = colorValue),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 10),
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: Color(colorValue),
+                              shape: BoxShape.circle,
+                              border: isColorSelected
+                                  ? Border.all(
+                                      color: isLight ? const Color(0xFF111418) : Colors.white,
+                                      width: 2,
+                                    )
+                                  : (isLight
+                                      ? Border.all(color: const Color(0xFFE2E4E8), width: 1)
+                                      : null),
+                              boxShadow: [
+                                if (isColorSelected)
+                                  BoxShadow(
+                                    color: Color(colorValue).withValues(alpha: 0.5),
+                                    blurRadius: 6,
+                                    spreadRadius: 1,
+                                  ),
+                              ],
+                            ),
+                            child: isColorSelected
+                                ? Icon(
+                                    Icons.check,
+                                    color: isLight && Color(colorValue).computeLuminance() > 0.6
+                                        ? Colors.black
+                                        : Colors.white,
+                                    size: 16,
+                                  )
+                                : null,
+                          ),
+                        );
+                      }),
+                      // 직접 선택한 커스텀 색상 원형
+                      if (!_palette.contains(_selectedColorValue))
+                        GestureDetector(
+                          onTap: () {},
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 10),
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: Color(_selectedColorValue),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isLight ? const Color(0xFF111418) : Colors.white,
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(_selectedColorValue).withValues(alpha: 0.6),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.check,
+                              color: isLight && Color(_selectedColorValue).computeLuminance() > 0.6
+                                  ? Colors.black
+                                  : Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Action Buttons (Cancel / Confirm)
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          side: BorderSide(
+                            color: isLight
+                                ? const Color(0xFFCBD5E1)
+                                : const Color(0xFF2E323A).withValues(alpha: 0.5),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          '취소',
+                          style: TextStyle(
+                            color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: hasText
+                              ? Color(_selectedColorValue)
+                              : (isLight ? const Color(0xFFF1F3F5) : const Color(0xFF22252C)),
+                          foregroundColor: hasText
+                              ? (Color(_selectedColorValue).computeLuminance() > 0.6
+                                  ? Colors.black
+                                  : Colors.white)
+                              : (isLight ? const Color(0xFF94A3B8) : const Color(0xFF9AA1AC)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: _isCreating || !hasText
+                            ? null
+                            : () async {
+                                final name = _controller.text.trim();
+                                if (name.isEmpty) return;
+                                if (widget.existingAlbums.contains(name)) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('이미 존재하는 폴더 이름입니다.')),
+                                  );
+                                  return;
+                                }
+
+                                setState(() => _isCreating = true);
+                                await widget.onCreated(name, _selectedColorValue);
+                                if (mounted && context.mounted) {
+                                  Navigator.pop(context);
+                                }
+                              },
+                        child: _isCreating
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text(
+                                '폴더 만들기',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 렉 없이 60fps로 부드럽게 동작하는 폴더 편집 바텀시트
+class _EditAlbumSheet extends StatefulWidget {
+  final String albumName;
+  final int initialColorValue;
+  final List<String> existingAlbums;
+  final void Function(int currentColor, ValueChanged<int> onSelected) onPickCustomColor;
+  final Future<bool> Function(String newName, int newColorValue) onSaved;
+
+  const _EditAlbumSheet({
+    required this.albumName,
+    required this.initialColorValue,
+    required this.existingAlbums,
+    required this.onPickCustomColor,
+    required this.onSaved,
+  });
+
+  @override
+  State<_EditAlbumSheet> createState() => _EditAlbumSheetState();
+}
+
+class _EditAlbumSheetState extends State<_EditAlbumSheet> {
+  late final TextEditingController _controller;
+  late int _selectedColorValue;
+  bool _isSaving = false;
+
+  static const List<int> _palette = [
+    0xFFEEEAE2,
+    0xFFD9ED72,
+    0xFFAFDE62,
+    0xFFFFCB74,
+    0xFFFFB7B2,
+    0xFFBEE6FF,
+    0xFF63B0F2,
+    0xFFADADFA,
+    0xFF8D775C,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.albumName);
+    _selectedColorValue = widget.initialColorValue;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDefaultAlbum = widget.albumName == '일상';
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final hasText = _controller.text.trim().isNotEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : const Color(0xFF17191E),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border.all(
+          color: isLight
+              ? const Color(0xFFE2E4E8)
+              : const Color(0xFF2E323A).withValues(alpha: 0.35),
+          width: 1.0,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Drag Indicator
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: isLight
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFF2E323A),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+
+                // Header
+                Text(
+                  '폴더 편집',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
+                    color: isLight ? const Color(0xFF111418) : Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isDefaultAlbum
+                      ? '기본 앨범의 색상 테마를 변경합니다'
+                      : '폴더의 이름과 색상 테마를 변경합니다',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // TextField
+                TextField(
+                  controller: _controller,
+                  enabled: !isDefaultAlbum,
+                  maxLength: 15,
+                  autofocus: false,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDefaultAlbum
+                        ? (isLight ? const Color(0xFF94A3B8) : const Color(0xFF64748B))
+                        : (isLight ? const Color(0xFF111418) : const Color(0xFFF4F6F8)),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: '폴더 이름 입력 (최대 15자)',
+                    hintStyle: TextStyle(
+                      fontSize: 13,
+                      color: isLight
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF9AA1AC).withValues(alpha: 0.6),
+                    ),
+                    counterStyle: TextStyle(
+                      fontSize: 11,
+                      color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                    ),
+                    helperText: isDefaultAlbum ? '기본 앨범의 이름은 변경할 수 없습니다.' : null,
+                    helperStyle: TextStyle(
+                      fontSize: 11,
+                      color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                    ),
+                    filled: true,
+                    fillColor: isLight ? const Color(0xFFF8FAFC) : const Color(0xFF22252C),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: isLight
+                            ? const Color(0xFFE2E4E8)
+                            : const Color(0xFF2E323A).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: isLight
+                            ? const Color(0xFFE2E4E8)
+                            : const Color(0xFF2E323A).withValues(alpha: 0.35),
+                      ),
+                    ),
+                    disabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: isLight
+                            ? const Color(0xFFE2E4E8).withValues(alpha: 0.5)
+                            : const Color(0xFF2E323A).withValues(alpha: 0.2),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: Color(_selectedColorValue),
+                        width: 1.2,
+                      ),
+                    ),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 14),
+
+                // Color Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '폴더 색상 테마',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        widget.onPickCustomColor(
+                          _selectedColorValue,
+                          (newColor) {
+                            setState(() => _selectedColorValue = newColor);
+                          },
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          if (!_palette.contains(_selectedColorValue)) ...[
+                            Container(
+                              width: 13,
+                              height: 13,
+                              decoration: BoxDecoration(
+                                color: Color(_selectedColorValue),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isLight ? const Color(0xFFCBD5E1) : Colors.white54,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                          ],
+                          Icon(
+                            Icons.colorize,
+                            size: 14,
+                            color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '직접 선택',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Palette Circles (기본 팔레트 + 직접 선택한 커스텀 색상 원형 포함)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      ..._palette.map((colorValue) {
+                        final isColorSelected = _selectedColorValue == colorValue;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedColorValue = colorValue),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 10),
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: Color(colorValue),
+                              shape: BoxShape.circle,
+                              border: isColorSelected
+                                  ? Border.all(
+                                      color: isLight ? const Color(0xFF111418) : Colors.white,
+                                      width: 2,
+                                    )
+                                  : (isLight
+                                      ? Border.all(color: const Color(0xFFE2E4E8), width: 1)
+                                      : null),
+                              boxShadow: [
+                                if (isColorSelected)
+                                  BoxShadow(
+                                    color: Color(colorValue).withValues(alpha: 0.5),
+                                    blurRadius: 6,
+                                    spreadRadius: 1,
+                                  ),
+                              ],
+                            ),
+                            child: isColorSelected
+                                ? Icon(
+                                    Icons.check,
+                                    color: isLight && Color(colorValue).computeLuminance() > 0.6
+                                        ? Colors.black
+                                        : Colors.white,
+                                    size: 16,
+                                  )
+                                : null,
+                          ),
+                        );
+                      }),
+                      // 직접 선택한 커스텀 색상 원형
+                      if (!_palette.contains(_selectedColorValue))
+                        GestureDetector(
+                          onTap: () {},
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 10),
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: Color(_selectedColorValue),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isLight ? const Color(0xFF111418) : Colors.white,
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(_selectedColorValue).withValues(alpha: 0.6),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.check,
+                              color: isLight && Color(_selectedColorValue).computeLuminance() > 0.6
+                                  ? Colors.black
+                                  : Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Action Buttons (Cancel / Save)
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          side: BorderSide(
+                            color: isLight
+                                ? const Color(0xFFCBD5E1)
+                                : const Color(0xFF2E323A).withValues(alpha: 0.5),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          '취소',
+                          style: TextStyle(
+                            color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: hasText
+                              ? Color(_selectedColorValue)
+                              : (isLight ? const Color(0xFFF1F3F5) : const Color(0xFF22252C)),
+                          foregroundColor: hasText
+                              ? (Color(_selectedColorValue).computeLuminance() > 0.6
+                                  ? Colors.black
+                                  : Colors.white)
+                              : (isLight ? const Color(0xFF94A3B8) : const Color(0xFF9AA1AC)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: _isSaving || !hasText
+                            ? null
+                            : () async {
+                                final name = _controller.text.trim();
+                                if (name.isEmpty) return;
+                                if (name != widget.albumName && widget.existingAlbums.contains(name)) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('이미 존재하는 폴더 이름입니다.')),
+                                  );
+                                  return;
+                                }
+
+                                setState(() => _isSaving = true);
+                                final ok = await widget.onSaved(name, _selectedColorValue);
+                                if (!ok) {
+                                  if (mounted && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('폴더 수정에 실패했습니다.')),
+                                    );
+                                    setState(() => _isSaving = false);
+                                  }
+                                  return;
+                                }
+
+                                if (mounted && context.mounted) {
+                                  Navigator.pop(context);
+                                }
+                              },
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text(
+                                '저장하기',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
