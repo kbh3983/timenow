@@ -259,19 +259,27 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
             Positioned(
               right: 12,
               top: topMenuH + screenW - 110,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _hoverButton(
-                    icon: Icons.open_with,
-                    onTap: _cycleAlignment,
-                  ),
-                  const SizedBox(height: 10),
-                  _hoverButton(
-                    label: "${_fontSizeIndex + 1}A",
-                    onTap: _cycleFontSize,
-                  ),
-                ],
+              child: Builder(
+                builder: (context) {
+                  final canAlign = TimestampMetadata.supportsAlignment(_selectedDesign);
+                  final canResize = TimestampMetadata.supportsFontSize(_selectedDesign);
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _hoverButton(
+                        icon: Icons.open_with,
+                        enabled: canAlign,
+                        onTap: canAlign ? _cycleAlignment : null,
+                      ),
+                      const SizedBox(height: 10),
+                      _hoverButton(
+                        label: "${_fontSizeIndex + 1}A",
+                        enabled: canResize,
+                        onTap: canResize ? _cycleFontSize : null,
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -280,34 +288,48 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
     );
   }
 
-  Widget _hoverButton({IconData? icon, String? label, VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: 0.4),
-          border: Border.all(color: Colors.white24, width: 1),
-        ),
-        child: Center(
-          child: icon != null 
-              ? Icon(icon, color: Colors.white, size: 20)
-              : Text(
-                  label!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+  Widget _hoverButton({
+    IconData? icon,
+    String? label,
+    VoidCallback? onTap,
+    bool enabled = true,
+  }) {
+    final fgColor = Colors.white.withValues(alpha: enabled ? 1.0 : 0.4);
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 180),
+      opacity: enabled ? 1.0 : 0.38,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.black.withValues(alpha: enabled ? 0.4 : 0.3),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: enabled ? 0.24 : 0.12),
+              width: 1,
+            ),
+          ),
+          child: Center(
+            child: icon != null
+                ? Icon(icon, color: fgColor, size: 20)
+                : Text(
+                    label!,
+                    style: TextStyle(
+                      color: fgColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );
   }
 
   void _cycleFontSize() {
+    if (!TimestampMetadata.supportsFontSize(_selectedDesign)) return;
     setState(() {
       final steps = TimestampMetadata.getFontSizeSteps(_selectedDesign);
       _fontSizeIndex = (_fontSizeIndex + 1) % steps.length;
@@ -316,6 +338,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
   }
 
   void _cycleAlignment() {
+    if (!TimestampMetadata.supportsAlignment(_selectedDesign)) return;
     setState(() {
       final index = CameraUX.alignments.indexOf(_selectedAlignment);
       final nextIndex = (index + 1) % CameraUX.alignments.length;

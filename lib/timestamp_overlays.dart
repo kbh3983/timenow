@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'services/timestamp_access_manager.dart';
 import 'services/app_settings_service.dart';
+import 'stamps/sample_stamp_renderer.dart';
+import 'stamps/stamp_text_store.dart';
+import 'widgets/stamp_text_edit_dialog.dart';
 import 'timestamp_metadata.dart';
 import 'ux_config.dart';
 
@@ -22,7 +25,28 @@ enum TimestampDesign {
   s3_1,
   s3_2,
   style1,
+  // ───── 샘플(timestamp_sample) 에서 이식한 스탬프 (lib/stamps/sample_stamp_renderer.dart 로 렌더링) ─────
+  // 일반
+  n1_3, n1_4, n1_5, n1_6, n1_7, n1_8, n1_9, n1_10, n1_11, n1_12, n1_13, n1_14,
+  n1_15, n1_16, n1_17, n1_18,
+  n2_3, n2_4, n2_5, n2_6, n2_7, n2_8, n2_9, n2_10, n2_11, n2_12, n2_13,
+  n3_3, n3_4, n3_5,
+  // 스탬프
+  s1_3, s1_4, s1_5, s1_6, s1_7, s1_8, s1_9, s1_10, s1_11, s1_12,
+  s2_3, s2_4, s2_5, s2_6,
+  s3_3, s3_4, s3_5, s3_6,
+  // 프레임
+  f1, f2, f3, f4, f5, f6, f7, f8, f9,
+  // 아날로그 시계
+  a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13,
+  // 스타일리시
+  style2, style3, style4, style5, style6, style7, style8, style9, style10, style11,
   none,
+}
+
+extension TimestampDesignSampleExt on TimestampDesign {
+  /// 샘플에서 이식한(데이터 기반 렌더러로 그리는) 스탬프인지 여부
+  bool get isSampleStamp => SampleStampLibrary.isSampleGroup(name);
 }
 
 // ───── Aspect Ratio Types ─────
@@ -61,6 +85,9 @@ class TimestampOverlayWidget extends StatefulWidget {
   final bool isLive;
   final double fontSize;
 
+  /// 스탬프 문구(예: style2 의 "On the table")를 탭해서 바꿀 수 있게 할지 여부
+  final bool editableText;
+
   const TimestampOverlayWidget({
     super.key,
     required this.design,
@@ -69,6 +96,7 @@ class TimestampOverlayWidget extends StatefulWidget {
     this.baseTime,
     this.isLive = true,
     this.fontSize = 25.0,
+    this.editableText = true,
   });
 
   @override
@@ -85,6 +113,10 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
     if (widget.isLive) {
       _tick();
     }
+  }
+
+  void _editText(String key) {
+    showStampTextEditDialog(context, key);
   }
 
   void _tick() {
@@ -173,6 +205,15 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
   }
 
   Widget _buildDesign() {
+    if (widget.design.isSampleStamp) {
+      return SampleStampOverlay(
+        groupId: widget.design.name,
+        scaleIndex: TimestampMetadata.sampleScaleIndexFor(widget.design, widget.fontSize),
+        now: _now,
+        alignment: widget.alignment,
+        onEditText: widget.editableText ? _editText : null,
+      );
+    }
     switch (widget.design) {
       case TimestampDesign.none:
         return const SizedBox.shrink();
@@ -201,7 +242,17 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
       case TimestampDesign.s3_2:
         return _S3_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
       case TimestampDesign.style1:
-        return _Style1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
+        return ListenableBuilder(
+          listenable: StampTextStore(),
+          builder: (context, _) => _Style1Stamp(
+            now: _now,
+            alignment: widget.alignment,
+            fontSize: widget.fontSize,
+            onEditText: widget.editableText ? _editText : null,
+          ),
+        );
+      default:
+        return const SizedBox.shrink();
     }
   }
 }
@@ -394,6 +445,9 @@ class TimestampThumbnail extends StatelessWidget {
   }
 
   static Widget _thumbnail(TimestampDesign design) {
+    if (design.isSampleStamp) {
+      return SampleStampThumbnail(groupId: design.name);
+    }
     final now = DateTime.now();
     final shadow = TimestampMetadata.getShadows(design);
 
@@ -851,7 +905,7 @@ class TimestampThumbnail extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _CurvedTextWidget(
-                    text: 'Many a little makes a miracle',
+                    text: _Style1Stamp.arcText(),
                     textStyle: TextStyle(
                       fontFamily: CameraUX.fontRondal,
                       fontSize: 4.8,
@@ -930,6 +984,8 @@ class TimestampThumbnail extends StatelessWidget {
             ),
           ),
         );
+      default:
+        return const SizedBox.shrink();
     }
   }
 }
@@ -1606,7 +1662,18 @@ class _Style1Stamp extends StatelessWidget {
   final DateTime now;
   final Alignment alignment;
   final double fontSize;
-  const _Style1Stamp({required this.now, required this.alignment, required this.fontSize});
+  final void Function(String editKey)? onEditText;
+  const _Style1Stamp({
+    required this.now,
+    required this.alignment,
+    required this.fontSize,
+    this.onEditText,
+  });
+
+  /// 곡선 문구 (사용자가 바꾼 문구가 있으면 그 문구)
+  static String arcText() =>
+      StampTextStore().customText('style1_rtxt1') ??
+      StampTextStore.fieldOf('style1_rtxt1')!.defaultText;
 
   @override
   Widget build(BuildContext context) {
@@ -1623,34 +1690,42 @@ class _Style1Stamp extends StatelessWidget {
     final arcRadius = 240.0 * scale;
 
     return _wrapAlign(
-      alignment: alignment,
+      alignment: Alignment.center,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Circular Arc Text: "Many a little makes a miracle" with exact bounding width
-          _CurvedTextWidget(
-            text: 'Many a little makes a miracle',
-            textStyle: TextStyle(
-              fontFamily: CameraUX.fontRondal,
-              fontSize: fontSize * 0.32,
-              color: Colors.white.withValues(alpha: 0.92),
-              letterSpacing: 0.8,
-              shadows: shadows,
+          // Circular Arc Text: 기본 "Many a little makes a miracle" (탭하면 문구 변경)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onEditText == null ? null : () => onEditText!('style1_rtxt1'),
+            child: _CurvedTextWidget(
+              text: arcText(),
+              textStyle: TextStyle(
+                fontFamily: CameraUX.fontRondal,
+                fontSize: fontSize * 0.32,
+                color: Colors.white.withValues(alpha: 0.92),
+                letterSpacing: 0.8,
+                shadows: shadows,
+              ),
+              radius: arcRadius,
             ),
-            radius: arcRadius,
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                monthStr,
-                style: TextStyle(
-                  fontFamily: CameraUX.fontLobster,
-                  fontSize: fontSize * 0.42,
-                  color: Colors.white,
-                  shadows: shadows,
+              SizedBox(
+                width: 26 * scale,
+                child: Text(
+                  monthStr,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontFamily: CameraUX.fontLobster,
+                    fontSize: fontSize * 0.42,
+                    color: Colors.white,
+                    shadows: shadows,
+                  ),
                 ),
               ),
               Padding(
@@ -1668,13 +1743,17 @@ class _Style1Stamp extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                dateStr,
-                style: TextStyle(
-                  fontFamily: CameraUX.fontLobster,
-                  fontSize: fontSize * 0.42,
-                  color: Colors.white,
-                  shadows: shadows,
+              SizedBox(
+                width: 26 * scale,
+                child: Text(
+                  dateStr,
+                  textAlign: TextAlign.left,
+                  style: TextStyle(
+                    fontFamily: CameraUX.fontLobster,
+                    fontSize: fontSize * 0.42,
+                    color: Colors.white,
+                    shadows: shadows,
+                  ),
                 ),
               ),
             ],
@@ -1727,20 +1806,42 @@ class _CurvedTextWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var effectiveStyle = textStyle.copyWith(
+      fontFamilyFallback: const ['stamp_nanum_myeongjo', 'stamp_nanum_square'],
+    );
     // 텍스트 호의 실제 시각적 가로 너비(양 끝점 간격)를 정밀 측정하여 불필요한 좌우 여백을 완전히 제거
     double totalTextLength = 0.0;
     double maxCharHeight = 0.0;
     for (int i = 0; i < text.length; i++) {
       final tp = TextPainter(
-        text: TextSpan(text: text[i], style: textStyle),
+        text: TextSpan(text: text[i], style: effectiveStyle),
         textDirection: TextDirection.ltr,
       )..layout();
       totalTextLength += tp.width;
       if (tp.height > maxCharHeight) maxCharHeight = tp.height;
     }
 
-    final totalAngle = totalTextLength / radius;
-    final fontSize = textStyle.fontSize ?? 10.0;
+    var totalAngle = totalTextLength / radius;
+    const maxAngle = 1.45;
+    if (totalAngle > maxAngle && totalAngle > 0) {
+      final baseSize = effectiveStyle.fontSize ?? 10.0;
+      effectiveStyle = effectiveStyle.copyWith(
+        fontSize: math.max(baseSize * 0.4, baseSize * maxAngle / totalAngle),
+      );
+      totalTextLength = 0.0;
+      maxCharHeight = 0.0;
+      for (int i = 0; i < text.length; i++) {
+        final tp = TextPainter(
+          text: TextSpan(text: text[i], style: effectiveStyle),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        totalTextLength += tp.width;
+        if (tp.height > maxCharHeight) maxCharHeight = tp.height;
+      }
+      totalAngle = totalTextLength / radius;
+    }
+
+    final fontSize = effectiveStyle.fontSize ?? 10.0;
     // 호의 양 끝점 사이의 chord 너비 + 양 끝 글자 너비 보정
     final exactArcWidth = (2 * radius * math.sin(totalAngle / 2)) + (fontSize * 0.9);
     final arcHeight = radius * (1 - math.cos(totalAngle / 2)) + maxCharHeight * 1.3;
@@ -1751,7 +1852,7 @@ class _CurvedTextWidget extends StatelessWidget {
       child: CustomPaint(
         painter: _CurvedTextPainter(
           text: text,
-          textStyle: textStyle,
+          textStyle: effectiveStyle,
           radius: radius,
           totalAngle: totalAngle,
         ),

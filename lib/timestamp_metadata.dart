@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'stamps/sample_stamp_renderer.dart';
 import 'timestamp_overlays.dart';
 import 'ux_config.dart';
 
@@ -144,11 +145,31 @@ class TimestampMetadata {
       defaultFontSize: 34.0,
       dateFormat: 'EEEE',
       timeFormat: 'a hh:mm',
-      fontSizeSteps: [28.0, 34.0, 40.0],
-      defaultFontSizeIndex: 1,
+      fontSizeSteps: [34.0],
+      defaultFontSizeIndex: 0,
     ),
     TimestampDesign.none: TimestampDesignConfig(designName: '없음'),
   };
+
+  /// 해당 스탬프가 위치(정렬) 변경을 지원하는지 여부
+  /// (프레임 f1~f9 및 스타일 style1~style11 은 전체 레이아웃이 고정되어 위치 변경 불가)
+  static bool supportsAlignment(TimestampDesign design) {
+    if (design == TimestampDesign.none || design == TimestampDesign.style1) {
+      return false;
+    }
+    if (design.isSampleStamp) {
+      return !SampleStampLibrary.isCanvasMode(design.name);
+    }
+    return true;
+  }
+
+  /// 해당 스탬프가 크기 단계 변경(1A/2A/3A)을 지원하는지 여부
+  static bool supportsFontSize(TimestampDesign design) {
+    if (design == TimestampDesign.none || design == TimestampDesign.style1) {
+      return false;
+    }
+    return getFontSizeSteps(design).length > 1;
+  }
 
   static bool isEnglishDesign(TimestampDesign design) {
     return design == TimestampDesign.n1_1 ||
@@ -163,7 +184,7 @@ class TimestampMetadata {
   }
 
   static String getName(TimestampDesign design) {
-    return designs[design]?.designName ?? '';
+    return designs[design]?.designName ?? design.name;
   }
 
   static Color getColor(TimestampDesign design) {
@@ -214,10 +235,27 @@ class TimestampMetadata {
   }
 
   static List<double> getFontSizeSteps(TimestampDesign design) {
+    if (design.isSampleStamp) {
+      // 샘플 스탬프는 글자 크기 대신 샘플의 크기 단계(groupScale 0/1/2)를 그대로 사용합니다.
+      // 값 = 단계 번호 + 1 (1.0, 2.0, 3.0). 실제 글자/이미지 크기는 샘플 데이터에 정의된 값으로 그려집니다.
+      final count = SampleStampLibrary.scaleCount(design.name);
+      return List<double>.generate(count, (i) => (i + 1).toDouble());
+    }
     return designs[design]?.fontSizeSteps ?? [18.0, 25.0, 30.0];
   }
 
+  /// 샘플 스탬프의 크기 단계 인덱스 (fontSize 값 = 단계 + 1, 영상 렌더링 시에는 fontSize 에 배율이 곱해져 들어옴)
+  static int sampleScaleIndexFor(TimestampDesign design, double fontSize, {double scale = 1.0}) {
+    final count = SampleStampLibrary.scaleCount(design.name);
+    final step = scale > 0 ? fontSize / scale : fontSize;
+    return (step.round() - 1).clamp(0, count - 1);
+  }
+
   static double getDefaultFontSize(TimestampDesign design) {
+    if (design.isSampleStamp) {
+      final steps = getFontSizeSteps(design);
+      return steps[getDefaultFontSizeIndex(design).clamp(0, steps.length - 1)];
+    }
     final conf = designs[design];
     if (conf == null) return 25.0;
     if (conf.fontSizeSteps != null && conf.fontSizeSteps!.isNotEmpty) {
@@ -231,6 +269,10 @@ class TimestampMetadata {
   }
 
   static int getDefaultFontSizeIndex(TimestampDesign design) {
+    if (design.isSampleStamp) {
+      // 다른 스탬프와 동일하게 3단계가 있으면 중간 크기를 기본값으로 사용
+      return SampleStampLibrary.scaleCount(design.name) >= 3 ? 1 : 0;
+    }
     return designs[design]?.defaultFontSizeIndex ?? 1;
   }
 }

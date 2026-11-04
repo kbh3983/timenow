@@ -9,6 +9,8 @@ import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 
 import 'package:intl/intl.dart' hide TextDirection;
+import '../stamps/sample_stamp_renderer.dart';
+import '../stamps/stamp_text_store.dart';
 import '../timestamp_overlays.dart';
 import '../timestamp_metadata.dart';
 import '../ux_config.dart';
@@ -1033,15 +1035,18 @@ class VideoProcessingService {
         final pillH = 34.0 * scale;
         final arcRadius = 240.0 * scale;
 
-        final curvedStyle = TextStyle(
+        var curvedStyle = TextStyle(
           fontFamily: CameraUX.fontRondal,
+          fontFamilyFallback: const ['stamp_nanum_myeongjo', 'stamp_nanum_square'],
           fontSize: fontSize * 0.32,
           color: Colors.white.withValues(alpha: 0.92),
           letterSpacing: 0.8,
           shadows: shadows,
         );
 
-        const curvedText = 'Many a little makes a miracle';
+        // 사용자가 바꾼 곡선 문구가 있으면 사용 (기본: Many a little makes a miracle)
+        final curvedText = StampTextStore().customText('style1_rtxt1') ??
+            StampTextStore.fieldOf('style1_rtxt1')!.defaultText;
         double totalTextLength = 0.0;
         double maxCharHeight = 0.0;
         for (int i = 0; i < curvedText.length; i++) {
@@ -1052,7 +1057,25 @@ class VideoProcessingService {
           totalTextLength += tp.width;
           if (tp.height > maxCharHeight) maxCharHeight = tp.height;
         }
-        final totalAngle = totalTextLength / arcRadius;
+        var totalAngle = totalTextLength / arcRadius;
+        const maxAngle = 1.45;
+        if (totalAngle > maxAngle && totalAngle > 0) {
+          final baseSize = curvedStyle.fontSize ?? 10.0;
+          curvedStyle = curvedStyle.copyWith(
+            fontSize: math.max(baseSize * 0.4, baseSize * maxAngle / totalAngle),
+          );
+          totalTextLength = 0.0;
+          maxCharHeight = 0.0;
+          for (int i = 0; i < curvedText.length; i++) {
+            final tp = TextPainter(
+              text: TextSpan(text: curvedText[i], style: curvedStyle),
+              textDirection: TextDirection.ltr,
+            )..layout();
+            totalTextLength += tp.width;
+            if (tp.height > maxCharHeight) maxCharHeight = tp.height;
+          }
+          totalAngle = totalTextLength / arcRadius;
+        }
         final curvedFontSize = curvedStyle.fontSize ?? 10.0;
         final arcWidth = (2 * arcRadius * math.sin(totalAngle / 2)) + (curvedFontSize * 0.9);
         final arcHeight = arcRadius * (1 - math.cos(totalAngle / 2)) + maxCharHeight * 1.3;
@@ -1114,13 +1137,14 @@ class VideoProcessingService {
           textDirection: TextDirection.ltr,
         )..layout();
 
-        final rowW = monthTp.width + (8 * scale) + dayTp.width + (8 * scale) + dateTp.width;
+        final sideW = math.max(monthTp.width, dateTp.width);
+        final rowW = sideW + (8 * scale) + dayTp.width + (8 * scale) + sideW;
         final rowH = math.max(dayTp.height, math.max(monthTp.height, dateTp.height));
 
         final totalW = math.max(arcWidth, math.max(rowW, pillW));
         final totalH = arcHeight + rowH + (18 * scale) + pillH;
 
-        final pos = _calcPos(alignment, activeBox, totalW, totalH);
+        final pos = _calcPos(Alignment.center, activeBox, totalW, totalH);
 
         // 1. Curved text
         _drawCurvedText(
@@ -1133,12 +1157,12 @@ class VideoProcessingService {
           boxHeight: arcHeight,
         );
 
-        // 2. Middle row (Month, Day, Date)
+        // 2. Middle row (Month, Day, Date) — 양옆 폭을 동일하게 맞춰 요일이 정중앙에 오도록 배치
         final rowY = pos.dy + arcHeight;
         final rowStartX = pos.dx + (totalW - rowW) / 2;
-        monthTp.paint(canvas, Offset(rowStartX, rowY + (rowH - monthTp.height) / 2));
-        dayTp.paint(canvas, Offset(rowStartX + monthTp.width + (8 * scale), rowY + (rowH - dayTp.height) / 2));
-        dateTp.paint(canvas, Offset(rowStartX + monthTp.width + (8 * scale) + dayTp.width + (8 * scale), rowY + (rowH - dateTp.height) / 2));
+        monthTp.paint(canvas, Offset(rowStartX + sideW - monthTp.width, rowY + (rowH - monthTp.height) / 2));
+        dayTp.paint(canvas, Offset(rowStartX + sideW + (8 * scale), rowY + (rowH - dayTp.height) / 2));
+        dateTp.paint(canvas, Offset(rowStartX + sideW + (8 * scale) + dayTp.width + (8 * scale), rowY + (rowH - dateTp.height) / 2));
 
         // 3. Bottom Pill
         final pillY = rowY + rowH + (18 * scale);
@@ -1170,6 +1194,26 @@ class VideoProcessingService {
         );
         break;
       }
+
+      default:
+        // 샘플에서 이식한 스탬프: 사진 모드와 동일한 데이터 기반 렌더러로 그림
+        if (design.isSampleStamp) {
+          final logicalScale = scale ?? 2.7;
+          await paintSampleStampForVideo(
+            canvas,
+            groupId: design.name,
+            scaleIndex: TimestampMetadata.sampleScaleIndexFor(
+              design,
+              fontSize,
+              scale: logicalScale,
+            ),
+            now: currentTime,
+            alignment: alignment,
+            area: activeBox,
+            logicalScale: logicalScale,
+          );
+        }
+        break;
     }
 
     // 위치 정보 표시가 켜져 있는 경우 비디오 오버레이 캔버스에도 위치 태그 렌더링 (사진 모드와 100% 동일한 디자인, 크기, 비율)

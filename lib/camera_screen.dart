@@ -23,6 +23,7 @@ import 'gallery_picker_screen.dart';
 import 'stamp_management_screen.dart';
 import 'settings_screen.dart';
 import 'services/app_settings_service.dart';
+import 'stamps/stamp_text_store.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -110,6 +111,7 @@ class _CameraScreenState extends State<CameraScreen>
   int _fontSizeIndex = 0;
 
   void _cycleFontSize() {
+    if (!TimestampMetadata.supportsFontSize(_currentDesign)) return;
     setState(() {
       final steps = _currentFontSizes;
       _fontSizeIndex = (_fontSizeIndex + 1) % steps.length;
@@ -168,7 +170,7 @@ class _CameraScreenState extends State<CameraScreen>
       // 성능 최적화: 분(Minute), 디자인, 비율, 정렬, 글자크기 변경 시에만 1080p 렌더링 및 네이티브 전송 수행.
       // 매초 발생하던 무의미한 8MB 비트맵 인코딩/IPC 호출을 98% 제거하여 발열과 프레임 드랍을 원천 차단합니다.
       final pushKey =
-          '${_aspectRatio.name}_${_currentDesign.name}_${_currentAlignment.x}_${_currentAlignment.y}_${_timestampFontSize}_${AppSettingsService().showLocation}_${AppSettingsService().locationText}_${AppSettingsService().locationPosition}_${now.year}${now.month}${now.day}${now.hour}${now.minute}';
+          '${_aspectRatio.name}_${_currentDesign.name}_${_currentAlignment.x}_${_currentAlignment.y}_${_timestampFontSize}_${AppSettingsService().showLocation}_${AppSettingsService().locationText}_${AppSettingsService().locationPosition}_${StampTextStore().version}_${now.year}${now.month}${now.day}${now.hour}${now.minute}';
       if (!force && pushKey == _lastOverlayPushKey) {
         return;
       }
@@ -461,6 +463,7 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   void _toggleAlignment() {
+    if (!TimestampMetadata.supportsAlignment(_currentDesign)) return;
     setState(() {
       final index = CameraUX.alignments.indexOf(_currentAlignment);
       final nextIndex = (index + 1) % CameraUX.alignments.length;
@@ -906,13 +909,13 @@ class _CameraScreenState extends State<CameraScreen>
                           child: _buildRatioCameraPreview(clearW, clearH, _aspectRatio),
                         ),
 
-                        // Timestamp overlay inside the viewfinder (only in photo mode; in video mode native OverlayEffect renders it on GPU)
-                        if (_currentDesign != TimestampDesign.none && _captureMode != CameraCaptureMode.video)
+                        // Timestamp overlay inside the viewfinder (in video mode native OverlayEffect renders pixels on GPU, while opacity 0 keeps editable text hit-targets active)
+                        if (_currentDesign != TimestampDesign.none)
                           Positioned.fill(
                             child: TimestampOverlayWidget(
                               design: _currentDesign,
                               alignment: _currentAlignment,
-                              opacity: _overlayOpacity,
+                              opacity: _captureMode == CameraCaptureMode.video ? 0.0 : _overlayOpacity,
                               fontSize: _timestampFontSize,
                             ),
                           ),
@@ -1017,44 +1020,69 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Widget _buildHoverButtons() {
+    final canAlign = TimestampMetadata.supportsAlignment(_currentDesign);
+    final canResize = TimestampMetadata.supportsFontSize(_currentDesign);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _hoverButton(icon: Icons.open_with, onTap: _toggleAlignment),
+        _hoverButton(
+          icon: Icons.open_with,
+          enabled: canAlign,
+          onTap: canAlign ? _toggleAlignment : null,
+        ),
         const SizedBox(height: 10),
-        _hoverButton(label: "${_fontSizeIndex + 1}A", onTap: _cycleFontSize),
+        _hoverButton(
+          label: "${_fontSizeIndex + 1}A",
+          enabled: canResize,
+          onTap: canResize ? _cycleFontSize : null,
+        ),
       ],
     );
   }
 
-  Widget _hoverButton({IconData? icon, String? label, VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: 0.5),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 4,
+  Widget _hoverButton({
+    IconData? icon,
+    String? label,
+    VoidCallback? onTap,
+    bool enabled = true,
+  }) {
+    final fgColor = Colors.white.withValues(alpha: enabled ? 1.0 : 0.4);
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 180),
+      opacity: enabled ? 1.0 : 0.38,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.black.withValues(alpha: enabled ? 0.5 : 0.35),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: enabled ? 0.25 : 0.12),
+              width: 1,
             ),
-          ],
-        ),
-        child: Center(
-          child: icon != null
-              ? Icon(icon, color: Colors.white, size: 20)
-              : Text(
-                  label!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+            boxShadow: enabled
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 4,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Center(
+            child: icon != null
+                ? Icon(icon, color: fgColor, size: 20)
+                : Text(
+                    label!,
+                    style: TextStyle(
+                      color: fgColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );

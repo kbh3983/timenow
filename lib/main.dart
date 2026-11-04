@@ -6,6 +6,7 @@ import 'services/ad_service.dart';
 import 'services/app_settings_service.dart';
 import 'services/timestamp_access_manager.dart';
 import 'services/timestamp_deck_manager.dart';
+import 'stamps/stamp_text_store.dart';
 import 'splash_screen.dart';
 
 List<CameraDescription> cameras = [];
@@ -36,6 +37,7 @@ Future<void> main() async {
     await AdService.initialize();
     await TimestampAccessManager().init();
     await TimestampDeckManager().init();
+    await StampTextStore().init();
   } catch (e) {
     debugPrint('Init error: $e');
   }

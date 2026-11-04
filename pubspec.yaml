@@ -82,6 +82,25 @@ flutter:
     - assets/images/timestamp/circle/
     - assets/icons/
     - assets/font/
+    # --- 샘플 스탬프 에셋 (tool/copy_sample_stamp_assets.py) ---
+    - assets/timestamp/analog/a1/
+    - assets/timestamp/analog/a2/
+    - assets/timestamp/analog/a3/
+    - assets/timestamp/analog/a4/
+    - assets/timestamp/analog/a5/
+    - assets/timestamp/analog/a6/
+    - assets/timestamp/analog/a7/
+    - assets/timestamp/analog/a8/
+    - assets/timestamp/analog/a9/
+    - assets/timestamp/analog/a10/
+    - assets/timestamp/analog/a11/
+    - assets/timestamp/analog/a12/
+    - assets/timestamp/analog/a13/
+    - assets/timestamp/image/circle/
+    - assets/timestamp/image/frame/
+    - assets/timestamp/image/rec/
+    - assets/timestamp/image/stamp/
+    - assets/timestamp/image/style/
 
   fonts:
     - family: Pretendard
@@ -126,6 +145,139 @@ flutter:
     - family: Lobster
       fonts:
         - asset: assets/font/lobster.otf
+    # --- 샘플 스탬프 폰트 (tool/copy_sample_stamp_assets.py) ---
+    - family: bailleul_roman
+      fonts:
+        - asset: assets/font/stamp/bailleul_roman.ttf
+    - family: bailleul_roman_italic
+      fonts:
+        - asset: assets/font/stamp/bailleul_roman_italic.ttf
+    - family: bebas_neue
+      fonts:
+        - asset: assets/font/stamp/bebas_neue.otf
+    - family: brewsky
+      fonts:
+        - asset: assets/font/stamp/brewsky.ttf
+    - family: cafe24_dangdanghae
+      fonts:
+        - asset: assets/font/stamp/cafe24_dangdanghae.ttf
+    - family: cafe24_danjunghae
+      fonts:
+        - asset: assets/font/stamp/cafe24_danjunghae.ttf
+    - family: cafe24_surround_air
+      fonts:
+        - asset: assets/font/stamp/cafe24_surround_air.ttf
+    - family: clarity_city_bold_italic
+      fonts:
+        - asset: assets/font/stamp/clarity_city_bold_italic.ttf
+    - family: curvilingus
+      fonts:
+        - asset: assets/font/stamp/curvilingus.otf
+    - family: datcub
+      fonts:
+        - asset: assets/font/stamp/datcub.ttf
+    - family: dita_sweet
+      fonts:
+        - asset: assets/font/stamp/dita_sweet.otf
+    - family: e1234
+      fonts:
+        - asset: assets/font/stamp/e1234.ttf
+    - family: emilio_20
+      fonts:
+        - asset: assets/font/stamp/emilio_20.ttf
+    - family: gmarket_sans
+      fonts:
+        - asset: assets/font/stamp/gmarket_sans.otf
+    - family: gmarket_sans_light
+      fonts:
+        - asset: assets/font/stamp/gmarket_sans_light.otf
+    - family: kangwon_all_study
+      fonts:
+        - asset: assets/font/stamp/kangwon_all_study.otf
+    - family: kangwon_study_saeum
+      fonts:
+        - asset: assets/font/stamp/kangwon_study_saeum.ttf
+    - family: kotra_hope
+      fonts:
+        - asset: assets/font/stamp/kotra_hope.otf
+    - family: manils
+      fonts:
+        - asset: assets/font/stamp/manils.otf
+    - family: nanum_ddobak
+      fonts:
+        - asset: assets/font/stamp/nanum_ddobak.ttf
+    - family: nanum_galmat
+      fonts:
+        - asset: assets/font/stamp/nanum_galmat.ttf
+    - family: nanum_hana_hand_write
+      fonts:
+        - asset: assets/font/stamp/nanum_hana_hand_write.ttf
+    - family: nanum_left_hand_also_good
+      fonts:
+        - asset: assets/font/stamp/nanum_left_hand_also_good.ttf
+    - family: nanum_mago
+      fonts:
+        - asset: assets/font/stamp/nanum_mago.ttf
+    - family: nanum_middle_school
+      fonts:
+        - asset: assets/font/stamp/nanum_middle_school.ttf
+    - family: nanum_myeongjo
+      fonts:
+        - asset: assets/font/stamp/nanum_myeongjo.ttf
+    - family: nanum_slowslow
+      fonts:
+        - asset: assets/font/stamp/nanum_slowslow.ttf
+    - family: nanum_square
+      fonts:
+        - asset: assets/font/stamp/nanum_square.otf
+    - family: nanum_square_bold
+      fonts:
+        - asset: assets/font/stamp/nanum_square_bold.ttf
+    - family: nanum_start_again
+      fonts:
+        - asset: assets/font/stamp/nanum_start_again.ttf
+    - family: nanum_yeonji
+      fonts:
+        - asset: assets/font/stamp/nanum_yeonji.ttf
+    - family: nanum_yuni_ddingddang
+      fonts:
+        - asset: assets/font/stamp/nanum_yuni_ddingddang.ttf
+    - family: nerko_one
+      fonts:
+        - asset: assets/font/stamp/nerko_one.otf
+    - family: nyghtserif
+      fonts:
+        - asset: assets/font/stamp/nyghtserif.ttf
+    - family: oooh_baby
+      fonts:
+        - asset: assets/font/stamp/oooh_baby.ttf
+    - family: oxanium
+      fonts:
+        - asset: assets/font/stamp/oxanium.ttf
+    - family: pacifico_regular
+      fonts:
+        - asset: assets/font/stamp/pacifico_regular.ttf
+    - family: rabanera_outline_shadow
+      fonts:
+        - asset: assets/font/stamp/rabanera_outline_shadow.ttf
+    - family: ssantokki
+      fonts:
+        - asset: assets/font/stamp/ssantokki.ttf
+    - family: tektur
+      fonts:
+        - asset: assets/font/stamp/tektur.ttf
+    - family: trs_million
+      fonts:
+        - asset: assets/font/stamp/trs_million.otf
+    - family: unna_bold
+      fonts:
+        - asset: assets/font/stamp/unna_bold.ttf
+    - family: unna_italic
+      fonts:
+        - asset: assets/font/stamp/unna_italic.ttf
+    - family: unna_regular
+      fonts:
+        - asset: assets/font/stamp/unna_regular.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
