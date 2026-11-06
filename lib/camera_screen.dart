@@ -13,8 +13,8 @@ import 'album_service.dart';
 import 'photo_review_screen.dart';
 import 'video_review_screen.dart';
 import 'services/video_processing_service.dart';
-import 'services/timestamp_access_manager.dart';
 import 'services/timestamp_deck_manager.dart';
+import 'services/timestamp_access_manager.dart';
 import 'widgets/unlock_timestamp_dialog.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/camera_native_view.dart';
@@ -159,6 +159,7 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   String? _lastOverlayPushKey;
+  double _lastClearW = 0.0;
 
   Future<void> _pushNativeOverlay({bool force = false}) async {
     if (_captureMode != CameraCaptureMode.video ||
@@ -185,7 +186,11 @@ class _CameraScreenState extends State<CameraScreen>
       final screenW = MediaQuery.of(context).size.width;
       final screenH = MediaQuery.of(context).size.height;
       final topMenuH = MediaQuery.of(context).padding.top + 60;
-      final maxH = screenH - topMenuH;
+      final bottomPadding = MediaQuery.of(context).padding.bottom;
+      final double clearTop = (_aspectRatio == CameraAspectRatio.ratio16x9)
+          ? (screenH - bottomPadding - screenW * (16.0 / 9.0)).clamp(0.0, topMenuH)
+          : topMenuH;
+      final maxH = screenH - clearTop;
 
       double clearW = screenW;
       if (_aspectRatio == CameraAspectRatio.ratio16x9 && screenW > 0 && maxH > 0) {
@@ -198,7 +203,8 @@ class _CameraScreenState extends State<CameraScreen>
       final Rect cropRect = Rect.fromLTWH(0, 0, canvasW, canvasH);
 
       // 사진 모드와 타임스탬프 크기가 1:1로 정확히 일치하도록 스케일 비율 계산 (캔버스 기준 스케일)
-      final effectiveScale = clearW > 0 ? (1080.0 / clearW) : 2.7;
+      final double effectiveClearW = _lastClearW > 0 ? _lastClearW : clearW;
+      final effectiveScale = effectiveClearW > 0 ? (1080.0 / effectiveClearW) : 2.7;
 
       final bytes = await VideoProcessingService().renderTimestampBytes(
         currentTime: now,
@@ -465,9 +471,10 @@ class _CameraScreenState extends State<CameraScreen>
   void _toggleAlignment() {
     if (!TimestampMetadata.supportsAlignment(_currentDesign)) return;
     setState(() {
-      final index = CameraUX.alignments.indexOf(_currentAlignment);
-      final nextIndex = (index + 1) % CameraUX.alignments.length;
-      _currentAlignment = CameraUX.alignments[nextIndex];
+      _currentAlignment = TimestampMetadata.nextAlignment(
+        _currentDesign,
+        _currentAlignment,
+      );
     });
     if (_captureMode == CameraCaptureMode.video) {
       _pushNativeOverlay(force: true);
@@ -690,7 +697,11 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
     );
 
     final bool isFullAuto = _aspectRatio == CameraAspectRatio.ratio16x9;
@@ -853,10 +864,16 @@ class _CameraScreenState extends State<CameraScreen>
         double clearLeft = 0;
 
         if (isFullAuto) {
-          clearTop = topMenuH;
+          final bottomPadding = MediaQuery.of(context).padding.bottom;
           clearW = screenW;
           clearH = screenW * (16.0 / 9.0); // 9:16 viewport
-          final maxH = screenH - topMenuH;
+
+          // 화면이 넉넉한 기기는 기존처럼 상단 메뉴 아래(topMenuH)를 유지하고,
+          // 9:16이 하단 소프트키(bottomPadding)나 바닥을 침범하는 작은 기기에서는
+          // 침범하는 만큼 위로 올려 최대 top: 0(화면 맨 위)까지 자연스럽게 이동
+          clearTop = (screenH - bottomPadding - clearH).clamp(0.0, topMenuH);
+
+          final maxH = screenH - clearTop;
           if (clearH > maxH) {
             clearH = maxH;
             clearW = maxH * (9.0 / 16.0);
@@ -873,6 +890,7 @@ class _CameraScreenState extends State<CameraScreen>
           clearTop = topMenuH;
         }
 
+        _lastClearW = clearW;
         return GestureDetector(
           onScaleStart: (_) => _baseZoom = _currentZoom,
           onScaleUpdate: (d) async {
@@ -1482,7 +1500,7 @@ class _CameraScreenState extends State<CameraScreen>
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            // designs (최대 20개) + 맨 마지막 아이템: '스탬프 관리' 버튼
+            // designs (최대 8개) + 맨 마지막 아이템: '스탬프 관리' 버튼
             itemCount: designs.length + 1,
             itemBuilder: (context, index) {
               if (index < designs.length) {

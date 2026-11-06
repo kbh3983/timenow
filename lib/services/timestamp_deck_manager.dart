@@ -10,7 +10,7 @@ class TimestampDeckManager extends ChangeNotifier {
   TimestampDeckManager._internal();
 
   static const int maxDeckSize = 8;
-  static const int maxMainScreenCount = 20;
+  static const int maxMainScreenCount = 8;
   static const String _storageKey = 'timestamp_deck_slots_v1';
 
   SharedPreferences? _prefs;
@@ -205,10 +205,9 @@ class TimestampDeckManager extends ChangeNotifier {
     _applyDefaultDeck();
   }
 
-  /// 메인 화면(카메라/사진리뷰)에 노출될 타임스탬프 리스트 계산 (최대 20개, none 제외)
+  /// 메인 화면(카메라/사진리뷰)에 노출될 타임스탬프 리스트 계산 (최대 8개, none 제외)
   /// 1. Deck에 등록된 스탬프들 (null 및 none 제외, 순서대로 최대 8개)
-  /// 2. 전체 스탬프 중 Deck에 없는 스탬프들이 9번째부터 순서대로 이어짐
-  /// 3. 전체 합계 최대 20개로 제한
+  /// 2. 빈 슬롯이 있으면 전체 스탬프 중 Deck에 없는 스탬프들을 순서대로 가져와 총 8개를 채움
   List<TimestampDesign> getMainScreenDesigns() {
     final List<TimestampDesign> result = [];
 
@@ -218,16 +217,19 @@ class TimestampDeckManager extends ChangeNotifier {
           design != TimestampDesign.none &&
           !result.contains(design)) {
         result.add(design);
+        if (result.length >= maxMainScreenCount) {
+          return result;
+        }
       }
     }
 
     // 2. Deck에 포함되지 않은 나머지 스탬프들 추가 (none 제외)
     for (final design in availableDesigns) {
+      if (result.length >= maxMainScreenCount) {
+        break;
+      }
       if (!result.contains(design)) {
         result.add(design);
-        if (result.length >= maxMainScreenCount) {
-          break;
-        }
       }
     }
 

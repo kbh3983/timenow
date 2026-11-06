@@ -131,17 +131,19 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
   @override
   Widget build(BuildContext context) {
     if (widget.design == TimestampDesign.none) return const SizedBox.shrink();
-    return Opacity(
-      opacity: widget.opacity,
-      child: DefaultTextStyle.merge(
-        style: const TextStyle(fontFamily: 'Pretendard'),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            _buildDesign(),
-            if (AppSettingsService().showLocation)
-              _buildLocationOverlay(),
-          ],
+    return MediaQuery.withNoTextScaling(
+      child: Opacity(
+        opacity: widget.opacity,
+        child: DefaultTextStyle.merge(
+          style: const TextStyle(fontFamily: 'Pretendard'),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildDesign(),
+              if (AppSettingsService().showLocation)
+                _buildLocationOverlay(),
+            ],
+          ),
         ),
       ),
     );
@@ -214,46 +216,57 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
         onEditText: widget.editableText ? _editText : null,
       );
     }
-    switch (widget.design) {
-      case TimestampDesign.none:
-        return const SizedBox.shrink();
-      case TimestampDesign.n1_1:
-        return _N1_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.n1_2:
-        return _N1_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.n2_1:
-        return _N2_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.n2_2:
-        return _N2_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.n3_1:
-        return _N3_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.n3_2:
-        return _N3_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.s1_1:
-        return _S1_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.s1_2:
-        return _S1_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.s2_1:
-        return _S2_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.s2_2:
-        return _S2_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.s3_1:
-        return _S3_1Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.s3_2:
-        return _S3_2Stamp(now: _now, alignment: widget.alignment, fontSize: widget.fontSize);
-      case TimestampDesign.style1:
-        return ListenableBuilder(
-          listenable: StampTextStore(),
-          builder: (context, _) => _Style1Stamp(
-            now: _now,
-            alignment: widget.alignment,
-            fontSize: widget.fontSize,
-            onEditText: widget.editableText ? _editText : null,
-          ),
-        );
-      default:
-        return const SizedBox.shrink();
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 80종 샘플 스탬프와 동일하게, 기기 화면 폭이나 앱 화면 비율(1:1, 4:5, 9:16)에 따른
+        // 실제 뷰파인더 가로폭을 390 기준 좌표계로 비례 스케일링합니다.
+        final viewScale = (constraints.maxWidth.isFinite && constraints.maxWidth > 0)
+            ? (constraints.maxWidth / kSampleBaseWidth)
+            : 1.0;
+        final scaledFontSize = widget.fontSize * viewScale;
+
+        switch (widget.design) {
+          case TimestampDesign.none:
+            return const SizedBox.shrink();
+          case TimestampDesign.n1_1:
+            return _N1_1Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.n1_2:
+            return _N1_2Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.n2_1:
+            return _N2_1Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.n2_2:
+            return _N2_2Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.n3_1:
+            return _N3_1Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.n3_2:
+            return _N3_2Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.s1_1:
+            return _S1_1Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.s1_2:
+            return _S1_2Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.s2_1:
+            return _S2_1Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.s2_2:
+            return _S2_2Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.s3_1:
+            return _S3_1Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.s3_2:
+            return _S3_2Stamp(now: _now, alignment: widget.alignment, fontSize: scaledFontSize);
+          case TimestampDesign.style1:
+            return ListenableBuilder(
+              listenable: StampTextStore(),
+              builder: (context, _) => _Style1Stamp(
+                now: _now,
+                alignment: widget.alignment,
+                fontSize: scaledFontSize,
+                onEditText: widget.editableText ? _editText : null,
+              ),
+            );
+          default:
+            return const SizedBox.shrink();
+        }
+      },
+    );
   }
 }
 
@@ -273,14 +286,28 @@ TextAlign _getTextAlign(Alignment alignment) {
 Widget _wrapAlign({
   required Alignment alignment,
   required Widget child,
-  EdgeInsetsGeometry margin = const EdgeInsets.all(16),
+  EdgeInsetsGeometry? margin,
 }) {
-  return Align(
-    alignment: alignment,
-    child: Container(
-      margin: margin,
-      child: child,
-    ),
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final viewScale = (constraints.maxWidth.isFinite && constraints.maxWidth > 0)
+          ? (constraints.maxWidth / kSampleBaseWidth)
+          : 1.0;
+      final effectiveMargin = margin ?? EdgeInsets.all(16.0 * viewScale);
+      return Align(
+        alignment: alignment,
+        child: Container(
+          margin: effectiveMargin,
+          // 배율(3A 등)이나 긴 텍스트로 인해 가용 가로폭을 넘더라도
+          // 다음 줄로 줄바꿈되거나 잘리지 않고 한 줄 비율 그대로 안전 영역 안에 맞춤
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: alignment,
+            child: child,
+          ),
+        ),
+      );
+    },
   );
 }
 
@@ -291,6 +318,9 @@ class TimestampThumbnail extends StatelessWidget {
   final VoidCallback onTap;
   final EdgeInsetsGeometry? margin;
   final BorderRadius? borderRadius;
+  final DateTime? time;
+
+  static final DateTime defaultThumbnailTime = DateTime(2026, 11, 6, 12, 34);
 
   const TimestampThumbnail({
     super.key,
@@ -299,6 +329,7 @@ class TimestampThumbnail extends StatelessWidget {
     required this.onTap,
     this.margin,
     this.borderRadius,
+    this.time,
   });
 
   @override
@@ -375,7 +406,7 @@ class TimestampThumbnail extends StatelessWidget {
                         opacity: isLocked ? 0.65 : 1.0,
                         child: DefaultTextStyle.merge(
                           style: const TextStyle(fontFamily: 'Pretendard'),
-                          child: _thumbnail(design),
+                          child: _thumbnail(design, time ?? defaultThumbnailTime),
                         ),
                       ),
                     ),
@@ -444,11 +475,11 @@ class TimestampThumbnail extends StatelessWidget {
     );
   }
 
-  static Widget _thumbnail(TimestampDesign design) {
+  static Widget _thumbnail(TimestampDesign design, [DateTime? targetTime]) {
+    final now = targetTime ?? defaultThumbnailTime;
     if (design.isSampleStamp) {
-      return SampleStampThumbnail(groupId: design.name);
+      return SampleStampThumbnail(groupId: design.name, time: now);
     }
-    final now = DateTime.now();
     final shadow = TimestampMetadata.getShadows(design);
 
     switch (design) {
@@ -1006,7 +1037,7 @@ class _N1_1Stamp extends StatelessWidget {
       child: Text(
         text,
         maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        softWrap: false,
         style: TextStyle(
           fontFamily: CameraUX.fontRubberNippleFactory,
           fontSize: fontSize,
@@ -1035,7 +1066,7 @@ class _N1_2Stamp extends StatelessWidget {
       child: Text(
         text,
         maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        softWrap: false,
         style: TextStyle(
           fontFamily: CameraUX.fontNixieOne,
           fontSize: fontSize,
@@ -1690,7 +1721,7 @@ class _Style1Stamp extends StatelessWidget {
     final arcRadius = 240.0 * scale;
 
     return _wrapAlign(
-      alignment: Alignment.center,
+      alignment: alignment,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1705,7 +1736,7 @@ class _Style1Stamp extends StatelessWidget {
                 fontFamily: CameraUX.fontRondal,
                 fontSize: fontSize * 0.32,
                 color: Colors.white.withValues(alpha: 0.92),
-                letterSpacing: 0.8,
+                letterSpacing: 0.8 * scale,
                 shadows: shadows,
               ),
               radius: arcRadius,
@@ -1737,7 +1768,7 @@ class _Style1Stamp extends StatelessWidget {
                     fontSize: fontSize,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    letterSpacing: 1.0,
+                    letterSpacing: 1.0 * scale,
                     height: 1.0,
                     shadows: shadows,
                   ),

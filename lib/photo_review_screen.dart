@@ -8,9 +8,9 @@ import 'album_service.dart';
 import 'calendar_album_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/ad_banner_widget.dart';
-import 'widgets/unlock_timestamp_dialog.dart';
-import 'services/timestamp_access_manager.dart';
 import 'services/timestamp_deck_manager.dart';
+import 'services/timestamp_access_manager.dart';
+import 'widgets/unlock_timestamp_dialog.dart';
 import 'timestamp_metadata.dart';
 import 'ux_config.dart';
 import 'gallery_picker_screen.dart';
@@ -340,9 +340,10 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
   void _cycleAlignment() {
     if (!TimestampMetadata.supportsAlignment(_selectedDesign)) return;
     setState(() {
-      final index = CameraUX.alignments.indexOf(_selectedAlignment);
-      final nextIndex = (index + 1) % CameraUX.alignments.length;
-      _selectedAlignment = CameraUX.alignments[nextIndex];
+      _selectedAlignment = TimestampMetadata.nextAlignment(
+        _selectedDesign,
+        _selectedAlignment,
+      );
     });
   }
 
@@ -506,7 +507,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            // designs (최대 20개) + 맨 마지막 아이템: '스탬프 관리' 버튼
+            // designs (최대 8개) + 맨 마지막 아이템: '스탬프 관리' 버튼
             itemCount: designs.length + 1,
             itemBuilder: (context, index) {
               if (index < designs.length) {

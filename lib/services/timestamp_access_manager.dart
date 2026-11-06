@@ -100,6 +100,15 @@ class TimestampAccessManager extends ChangeNotifier {
     }
   }
 
+  /// 모든 임시 해금 내역 초기화 (출시 전 / 테스트 초기화)
+  Future<void> clearAllUnlocks() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    for (final design in TimestampDesign.values) {
+      await _prefs!.remove(_getStorageKey(design));
+    }
+    notifyListeners();
+  }
+
   String _getStorageKey(TimestampDesign design) {
     return 'unlocked_until_${design.name}';
   }

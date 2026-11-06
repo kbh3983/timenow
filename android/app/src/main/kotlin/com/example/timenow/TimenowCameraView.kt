@@ -211,13 +211,22 @@ class TimenowCameraView(
                         logicalH = canvasH
                     }
 
-                    // 1:1, 4:5는 CameraX ViewPort(FILL_CENTER)가 적용되어 4:3 전체 버퍼의 중앙 영역을 크롭하여 표시합니다.
-                    // 따라서 오버레이 비트맵도 전체 버퍼에 늘려 그리지 않고, ViewPort의 가시 영역(Center crop window)에 1:1로 정확히 매핑합니다.
-                    val visibleW = logicalW
-                    val visibleH = when (currentAspectRatioStr) {
-                        "1:1" -> logicalW * 1.0f
-                        "4:5" -> logicalW * 1.25f
-                        else -> logicalH
+                    // 1:1, 4:5, 16:9 모두 CameraX ViewPort(FILL_CENTER)가 적용되어 전체 버퍼의 중앙 영역을 크롭하여 표시합니다.
+                    // 따라서 오버레이 비트맵도 전체 버퍼에 늘려 그리지 않고, ViewPort의 가시 영역(Center crop window)에 1:1로 정확히 매핑하여 가로/세로 스케일(scaleX == scaleY)을 완벽히 일치시킵니다.
+                    val targetAspect = when (currentAspectRatioStr) {
+                        "1:1" -> 1.0f
+                        "4:5" -> 4.0f / 5.0f
+                        else -> 9.0f / 16.0f
+                    }
+                    val currentAspect = logicalW / logicalH
+                    val visibleW: Float
+                    val visibleH: Float
+                    if (currentAspect > targetAspect) {
+                        visibleH = logicalH
+                        visibleW = logicalH * targetAspect
+                    } else {
+                        visibleW = logicalW
+                        visibleH = logicalW / targetAspect
                     }
                     val offsetX = (logicalW - visibleW) / 2f
                     val offsetY = (logicalH - visibleH) / 2f

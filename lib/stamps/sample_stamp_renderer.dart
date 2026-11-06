@@ -66,6 +66,35 @@ class SampleStampLibrary {
     's1_1', 's1_2', 's2_1', 's2_2', 's3_1', 's3_2', 'style1',
   };
 
+  /// 위치 이동 시에도 가로 위치를 항상 화면 중앙에 고정하는 스탬프 그룹
+  static const Set<String> horizontalCenterLockedGroups = {
+    's1_4',
+    's1_8',
+    's1_10',
+    's1_11',
+    's1_12',
+  };
+
+  /// 기본 배율(1A~3A)에서 폰트·스탬프 크기가 과도하게 큰 그룹의 축소 비율
+  static const Map<String, double> groupSizeScale = {
+    's2_5': 0.78,
+    's2_6': 0.76,
+    's3_3': 0.75,
+    's3_4': 0.75,
+    's3_5': 0.75,
+    's3_6': 0.75,
+  };
+
+  /// 원본 데이터는 단일 크기(groupScale 0)이나 앱에서 3단계(1A/2A/3A) 크기 조절을 지원하는 스타일 그룹
+  static const Set<String> syntheticThreeStepGroups = {
+    'style2',
+    'style3',
+    'style4',
+    'style5',
+    'style7',
+    'style9',
+  };
+
   static Map<String, TimestampGroupEntity>? _groups;
   static final Map<String, List<int>> _scaleCache = {};
 
@@ -99,6 +128,11 @@ class SampleStampLibrary {
   static List<int> scalesOf(String id) {
     final cached = _scaleCache[id];
     if (cached != null) return cached;
+    if (syntheticThreeStepGroups.contains(id)) {
+      const list = <int>[0, 1, 2];
+      _scaleCache[id] = list;
+      return list;
+    }
     SampleStampRepository.ensureLoaded();
     final set = <int>{};
     for (final t in SampleStampRepository.timestampBox.values) {
@@ -138,18 +172,104 @@ class SampleStampLibrary {
     required int scaleIndex,
     required DateTime now,
     double canvasHeight = kSampleBaseWidth,
+    Alignment alignment = Alignment.centerLeft,
   }) {
     SampleStampRepository.ensureLoaded();
     final scales = scalesOf(groupId);
-    final scale = scales[scaleIndex.clamp(0, scales.length - 1)];
+    final clampedIndex = scaleIndex.clamp(0, scales.length - 1);
+    final isSynthetic3Step = syntheticThreeStepGroups.contains(groupId);
+    final scale = isSynthetic3Step ? 0 : scales[clampedIndex];
     final canvasMode = isCanvasMode(groupId);
     final extra = canvasMode ? math.max(0.0, canvasHeight - kSampleBaseWidth) : 0.0;
+    const syntheticStepScales = <double>[0.85, 1.0, 1.15];
+    final sizeScale = isSynthetic3Step
+        ? syntheticStepScales[clampedIndex]
+        : (groupSizeScale[groupId] ?? 1.0);
+
+    Rect scaleBox(double x, double y, double w, double h) {
+      if (sizeScale == 1.0) return Rect.fromLTWH(x, y, w, h);
+      double ax = kSampleBaseWidth / 2;
+      double ay = kSampleBaseWidth / 2;
+      switch (groupId) {
+        case 'style2':
+          if (y < 135) {
+            ax = kSampleBaseWidth / 2;
+            ay = 20.0;
+          } else if (x < kSampleBaseWidth / 2) {
+            ax = 10.0;
+            ay = 385.0 + extra;
+          } else {
+            ax = 380.0;
+            ay = 385.0 + extra;
+          }
+          break;
+        case 'style3':
+          if (y < kSampleBaseWidth * 2 / 3 + extra / 2) {
+            ax = kSampleBaseWidth / 2;
+            ay = 180.0 + extra / 2;
+          } else {
+            ax = kSampleBaseWidth / 2;
+            ay = 370.0 + extra;
+          }
+          break;
+        case 'style4':
+          if (y <= kSampleBaseWidth * 2 / 3) {
+            ax = 28.0;
+            ay = 15.0;
+          } else {
+            ax = kSampleBaseWidth / 2;
+            ay = 384.0 + extra;
+          }
+          break;
+        case 'style5':
+          ax = kSampleBaseWidth / 2;
+          ay = 170.0 + extra / 2;
+          break;
+        case 'style7':
+          if (y < 140) {
+            ax = 10.0;
+            ay = 5.0;
+          } else if (y < kSampleBaseWidth * 2 / 3 + extra / 2) {
+            ax = kSampleBaseWidth / 2;
+            ay = 192.5 + extra / 2;
+          } else {
+            ax = kSampleBaseWidth / 2;
+            ay = 385.0 + extra;
+          }
+          break;
+        case 'style9':
+          if (y < 135) {
+            ax = kSampleBaseWidth / 2;
+            ay = 63.0;
+          } else {
+            ax = kSampleBaseWidth / 2;
+            ay = 195.0 + extra / 2;
+          }
+          break;
+      }
+      return Rect.fromLTWH(
+        ax + (x - ax) * sizeScale,
+        ay + (y - ay) * sizeScale,
+        w * sizeScale,
+        h * sizeScale,
+      );
+    }
 
     // 1:1 이 아닌 사진에서 프레임/스타일 레이아웃의 세로 위치 보정
     // (상단 영역은 위쪽 고정, 하단 영역은 아래쪽 고정, 가운데는 중앙 유지)
     double dyFor(double top, double height) {
+      if (groupId == 'style8') {
+        // style8 은 가로 전체를 쓰는 밴드(y: 10..120) 구조로,
+        // 위(topCenter, y=-1) / 가운데(center, y=0) / 아래(bottomCenter, y=1) 세로 위치를 지원합니다.
+        final effectiveH = math.max(canvasHeight, kSampleBaseWidth);
+        return math.max(0.0, effectiveH - 130.0) * (alignment.y + 1.0) / 2.0;
+      }
       if (extra <= 0) return 0;
       if (groupId == 'style5') return extra / 2;
+      if (groupId == 'style4') {
+        // style4 는 비율(4:5, 9:16)을 늘려도 상단 문구(Good Morning.)와 시간(hh:mm a)의 간격을 1:1과 동일하게 유지
+        return top > kSampleBaseWidth * 2 / 3 ? extra : 0;
+      }
       final cy = top + height / 2;
       if (cy < 135) return 0;
       if (cy > kSampleBaseWidth * 2 / 3) return extra;
@@ -170,10 +290,10 @@ class SampleStampLibrary {
       add(t.z, _TextElement.timestamp(
         id: StampTextStore.canonicalKey(t.id),
         text: text,
-        box: Rect.fromLTWH(t.x, t.y + dyFor(t.y, t.height), t.width, t.height),
+        box: scaleBox(t.x, t.y + dyFor(t.y, t.height), t.width, t.height),
         align: t.align,
         family: t.fontFamily,
-        fontSize: t.fontSize,
+        fontSize: t.fontSize * sizeScale,
         fontHeight: t.fontHeight,
         weight: t.fontWeight,
         color: t.color,
@@ -187,9 +307,13 @@ class SampleStampLibrary {
       add(i.z, _ImageElement(
         id: StampTextStore.canonicalKey(i.id),
         path: i.path,
-        box: Rect.fromLTWH(i.x, i.y + (stretch ? 0 : dy), i.width,
-            i.height + (stretch ? extra : 0)),
-        originalHeight: i.height,
+        box: scaleBox(
+          i.x,
+          i.y + (stretch ? 0 : dy),
+          i.width,
+          i.height + (stretch ? extra : 0),
+        ),
+        originalHeight: i.height * sizeScale,
         flip: i.flip,
         rotate: i.rotate,
         color: i.color,
@@ -231,9 +355,9 @@ class SampleStampLibrary {
         anchorRight: field?.anchorRight ?? false,
         maxCustomWidth: field?.maxWidth,
         editKey: editable ? key : null,
-        box: Rect.fromLTWH(t.x, t.y + dyFor(t.y, t.height), t.width, t.height),
+        box: scaleBox(t.x, t.y + dyFor(t.y, t.height), t.width, t.height),
         family: t.fontFamily,
-        fontSize: fontSize,
+        fontSize: fontSize * sizeScale,
         weight: t.fontWeight,
         color: t.color,
         backgroundColor: t.backgroundColor,
@@ -251,11 +375,11 @@ class SampleStampLibrary {
         defaultText: r.text,
         isCustom: custom != null,
         editKey: editable ? key : null,
-        box: Rect.fromLTWH(r.x, r.y + dyFor(r.y, r.height), r.width, r.height),
+        box: scaleBox(r.x, r.y + dyFor(r.y, r.height), r.width, r.height),
         family: r.fontFamily,
-        fontSize: r.fontSize,
+        fontSize: r.fontSize * sizeScale,
         color: r.color,
-        radius: r.radius,
+        radius: r.radius * sizeScale,
         rotate: r.rotate,
       ));
     }
@@ -277,7 +401,17 @@ class SampleStampLibrary {
       return c != 0 ? c : a.seq.compareTo(b.seq);
     });
     final elements = ordered.map((o) => o.element).toList();
-    _applyRelationalLayout(groupId, elements);
+    _applyRelationalLayout(groupId, elements, alignment: alignment);
+
+    // 캔버스 모드에서도 단일 텍스트 요소가 캔버스 안전 폭을 넘으면 줄바꿈 대신 한 줄 축소
+    if (canvasMode) {
+      for (int i = 0; i < elements.length; i++) {
+        final e = elements[i];
+        if (e is _TextElement && e.painter.width > _kTimestampMaxTextWidth) {
+          elements[i] = e.withMaxWidth(_kTimestampMaxTextWidth);
+        }
+      }
+    }
 
     Rect? bounds;
     for (final e in elements) {
@@ -288,12 +422,17 @@ class SampleStampLibrary {
       contentBounds: bounds ?? Rect.zero,
       canvasMode: canvasMode,
       canvasHeight: canvasMode ? math.max(canvasHeight, kSampleBaseWidth) : canvasHeight,
+      lockHorizontalCenter: horizontalCenterLockedGroups.contains(groupId),
     );
   }
 
   /// 날짜/요일/월 이름이나 사용자 편집 문구의 길이가 달라져도
   /// 나란히 놓인 요소들이 항상 가운데 정렬·균형 간격을 유지하도록 보정합니다.
-  static void _applyRelationalLayout(String groupId, List<_SampleElement> elements) {
+  static void _applyRelationalLayout(
+    String groupId,
+    List<_SampleElement> elements, {
+    Alignment alignment = Alignment.centerLeft,
+  }) {
     int indexOfText(String id) =>
         elements.indexWhere((e) => e is _TextElement && e.id == id);
     int indexOfImage(String id) =>
@@ -357,20 +496,33 @@ class SampleStampLibrary {
         }
         break;
 
+      case 'n1_16':
       case 'n1_17':
-        // 하단 "yyyy.MM.dd" (n1_17_t2) 오른쪽 끝을
-        // 상단 "EEEE a hh:mm" (n1_17_t1) 의 실제 오른쪽 끝에 맞춥니다.
-        final iT1 = indexOfText('n1_17_t1');
-        final iT2 = indexOfText('n1_17_t2');
-        if (iT1 != -1 && iT2 != -1) {
-          final t1 = elements[iT1] as _TextElement;
-          final t2 = elements[iT2] as _TextElement;
-          elements[iT2] = t2.withOrigin(
-            Offset(
-              t1.origin.dx + t1.painter.width - t2.painter.width,
-              t2.origin.dy,
-            ),
-          );
+      case 'n2_6':
+      case 'n2_8':
+      case 'n2_9':
+      case 'n3_5':
+        // 위치 이동 시 왼쪽(및 기본) 위치에서는 왼쪽 정렬, 오른쪽(alignment.x > 0.2) 위치에서는 오른쪽 정렬
+        final textIndices = <int>[];
+        double minLeft = double.infinity;
+        double maxW = 0.0;
+        for (int i = 0; i < elements.length; i++) {
+          final e = elements[i];
+          if (e is _TextElement) {
+            textIndices.add(i);
+            minLeft = math.min(minLeft, e.origin.dx);
+            maxW = math.max(maxW, e.painter.width);
+          }
+        }
+        if (textIndices.length >= 2 && minLeft.isFinite) {
+          final alignRight = alignment.x > 0.2;
+          for (final idx in textIndices) {
+            final t = elements[idx] as _TextElement;
+            final newX = alignRight
+                ? (minLeft + maxW - t.painter.width)
+                : minLeft;
+            elements[idx] = t.withOrigin(Offset(newX, t.origin.dy));
+          }
         }
         break;
 
@@ -391,6 +543,37 @@ class SampleStampLibrary {
           elements[iI2] = img2.withHorizontalLeft(
             t1.origin.dx + t1.painter.width + gap,
           );
+        }
+        break;
+
+      case 's1_8':
+        // 밑줄 이미지(s1_8_i1)는 항상 가로 중앙(195.0)에 고정하고,
+        // 글자(s1_8_t1)는 위치에 따라 밑줄 기준 좌, 가운데, 우로 정렬합니다.
+        final iT1 = indexOfText('s1_8_t1');
+        final iI1 = indexOfImage('s1_8_i1');
+        if (iT1 != -1 && iI1 != -1) {
+          var t1 = elements[iT1] as _TextElement;
+          final img1 = elements[iI1] as _ImageElement;
+          final centeredImg = img1.withHorizontalLeft(
+            (kSampleBaseWidth - img1.dst.width) / 2,
+          );
+          elements[iI1] = centeredImg;
+          if (t1.painter.width > centeredImg.dst.width) {
+            t1 = t1.withMaxWidth(centeredImg.dst.width);
+          }
+          final double textX;
+          if (alignment.x < -0.2) {
+            // 좌측 정렬: 밑줄 좌측 시작점에 맞춤
+            textX = centeredImg.dst.left;
+          } else if (alignment.x > 0.2) {
+            // 우측 정렬: 밑줄 우측 끝점에 맞춤
+            textX = centeredImg.dst.right - t1.painter.width;
+          } else {
+            // 가운데 정렬: 밑줄 정중앙에 배치
+            textX = centeredImg.dst.left +
+                (centeredImg.dst.width - t1.painter.width) / 2;
+          }
+          elements[iT1] = t1.withOrigin(Offset(textX, t1.origin.dy));
         }
         break;
 
@@ -439,11 +622,15 @@ class SampleStampScene {
   /// 390 폭 기준 캔버스 높이
   final double canvasHeight;
 
+  /// 위치 이동 시에도 전체 스탬프의 가로 위치를 중앙에 고정할지 여부 (예: s1_8 밑줄)
+  final bool lockHorizontalCenter;
+
   SampleStampScene({
     required this.elements,
     required this.contentBounds,
     required this.canvasMode,
     required this.canvasHeight,
+    this.lockHorizontalCenter = false,
   });
 
   Set<String> get imagePaths {
@@ -466,9 +653,24 @@ class SampleStampScene {
     final b = contentBounds;
     final availW = kSampleBaseWidth - marginDesign * 2;
     final availH = designH - marginDesign * 2;
-    final left = marginDesign + (availW - b.width) * (alignment.x + 1) / 2;
-    final top = marginDesign + (availH - b.height) * (alignment.y + 1) / 2;
-    return (scale: s, offset: Offset(left - b.left, top - b.top));
+    // 배율(1A/2A/3A)이나 긴 월/요일 이름 등으로 인해 스탬프 외곽이 가용 안전 영역(availW/availH)을
+    // 초과할 경우, 다음 줄로 넘기거나 잘라내지 않고 스탬프 전체 비율을 유지하며 안전 영역 안에 자동 축소
+    final fitW = (b.width > availW && b.width > 0 && availW > 0)
+        ? (availW / b.width)
+        : 1.0;
+    final fitH = (b.height > availH && b.height > 0 && availH > 0)
+        ? (availH / b.height)
+        : 1.0;
+    final fit = math.min(fitW, fitH);
+    final scaledW = b.width * fit;
+    final scaledH = b.height * fit;
+    final alignX = lockHorizontalCenter ? 0.0 : alignment.x;
+    final left = marginDesign + (availW - scaledW) * (alignX + 1) / 2;
+    final top = marginDesign + (availH - scaledH) * (alignment.y + 1) / 2;
+    return (
+      scale: s * fit,
+      offset: Offset(left / fit - b.left, top / fit - b.top),
+    );
   }
 
   /// [size] 영역(사진/오버레이)에 장면을 그립니다.
@@ -633,7 +835,7 @@ class _TextElement extends _SampleElement {
     final span = painter.text as TextSpan;
     final style = span.style ?? const TextStyle();
     final curSize = style.fontSize ?? 16.0;
-    final shrunkSize = math.max(curSize * 0.4, curSize * maxWidth / painter.width);
+    final shrunkSize = curSize * maxWidth / painter.width;
     final newTp = TextPainter(
       text: TextSpan(
         text: span.text,
@@ -641,11 +843,15 @@ class _TextElement extends _SampleElement {
       ),
       textAlign: painter.textAlign,
       textDirection: TextDirection.ltr,
-    )..layout(maxWidth: maxWidth);
+    )..layout();
+    final newOrigin = Offset(
+      origin.dx + (painter.width - newTp.width) / 2,
+      origin.dy + (painter.height - newTp.height) / 2,
+    );
     return _TextElement._(
       id: id,
       painter: newTp,
-      origin: origin,
+      origin: newOrigin,
       box: box,
       rotate: rotate,
       background: background,
@@ -700,13 +906,17 @@ class _TextElement extends _SampleElement {
     required int color,
     required double rotate,
   }) {
-    final tp = _layout(text,
-        family: family,
-        fontSize: fontSize,
-        height: fontHeight,
-        weight: weight,
-        color: color,
-        maxWidth: _kTimestampMaxTextWidth);
+    // 배율(1A/2A/3A)이나 긴 월/요일 이름(예: n1_11 3A + November/September)에서도
+    // 절대 다음 줄로 줄바꿈되지 않도록 무제한 가로폭(한 줄)으로 레이아웃합니다.
+    // (전체 스탬프 폭이 화면 안전 여백을 넘으면 SampleStampScene._transformFor 에서 비율 유지 축소)
+    final tp = _layout(
+      text,
+      family: family,
+      fontSize: fontSize,
+      height: fontHeight,
+      weight: weight,
+      color: color,
+    );
     final origin = Offset(
       _alignedX(box, align, tp.width),
       box.top + (box.height - tp.height) / 2,
@@ -743,13 +953,15 @@ class _TextElement extends _SampleElement {
     }
 
     if (!isCustom) {
-      final tp = _layout(text,
-          family: family,
-          fontSize: fontSize,
-          weight: weight,
-          color: color,
-          align: TextAlign.center,
-          maxWidth: box.width);
+      final tp = _layout(
+        text,
+        family: family,
+        fontSize: fontSize,
+        weight: weight,
+        color: color,
+        align: TextAlign.center,
+        maxWidth: box.width,
+      );
       final origin = Offset(
         box.left + (box.width - tp.width) / 2,
         box.top + 2 + (box.height - 2 - tp.height) / 2,
@@ -767,13 +979,15 @@ class _TextElement extends _SampleElement {
     }
 
     // 원래 문구의 배치 (기준점과 배경 여백 계산용)
-    final defTp = _layout(defaultText,
-        family: family,
-        fontSize: fontSize,
-        weight: weight,
-        color: color,
-        align: TextAlign.center,
-        maxWidth: box.width);
+    final defTp = _layout(
+      defaultText,
+      family: family,
+      fontSize: fontSize,
+      weight: weight,
+      color: color,
+      align: TextAlign.center,
+      maxWidth: box.width,
+    );
     final defLeft = box.left + (box.width - defTp.width) / 2;
     final defRight = defLeft + defTp.width;
     const edge = 10.0;
@@ -794,14 +1008,15 @@ class _TextElement extends _SampleElement {
     var tp = _layout(text,
         family: family, fontSize: fontSize, weight: weight, color: color, align: TextAlign.center);
     if (tp.width > textMax) {
-      final shrunk = math.max(fontSize * 0.4, fontSize * textMax / tp.width);
-      tp = _layout(text,
-          family: family,
-          fontSize: shrunk,
-          weight: weight,
-          color: color,
-          align: TextAlign.center,
-          maxWidth: textMax);
+      final shrunk = fontSize * textMax / tp.width;
+      tp = _layout(
+        text,
+        family: family,
+        fontSize: shrunk,
+        weight: weight,
+        color: color,
+        align: TextAlign.center,
+      );
     }
     final double x;
     if (anchorLeft) {
@@ -933,6 +1148,12 @@ class _ImageElement extends _SampleElement {
 
   @override
   void paint(Canvas canvas, Map<String, ui.Image> images) {
+    if (path == 'assets/timestamp/image/frame/frame_6.png') {
+      _withRotation(canvas, rotate, box.center, () {
+        _drawSmoothOvalFrame(canvas, dst, color: color);
+      });
+      return;
+    }
     final image = images[path];
     if (image == null) return;
     _withRotation(canvas, rotate, box.center, () {
@@ -949,6 +1170,20 @@ class _ImageElement extends _SampleElement {
       }
       if (flip) canvas.restore();
     });
+  }
+
+  /// f6(원형/타원 프레임)은 4:5, 9:16 비율에서 3분할 늘림 시 곡률이 꺾이지 않도록
+  /// 일정한 선 두께의 매끄러운 벡터 원/타원으로 그립니다.
+  void _drawSmoothOvalFrame(Canvas canvas, Rect dst, {int color = 0xFFFFFFFF}) {
+    final strokeWidth = dst.width * (7.0 / 1000.0);
+    final inset = dst.width * (5.5 / 1000.0);
+    final ovalRect = dst.deflate(inset);
+    final paint = Paint()
+      ..color = Color(color)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..isAntiAlias = true;
+    canvas.drawOval(ovalRect, paint);
   }
 
   /// 상단/하단 1/3 은 가로 기준 배율로 그대로, 가운데 1/3 만 세로로 늘려서 그림
@@ -1283,6 +1518,7 @@ class _SampleStampOverlayState extends State<SampleStampOverlay> {
           scaleIndex: widget.scaleIndex,
           now: widget.now,
           canvasHeight: h / s,
+          alignment: widget.alignment,
         );
         _ensureImages(scene.imagePaths);
         final marginDesign = widget.margin / s;
@@ -1328,15 +1564,17 @@ class _SampleStampOverlayState extends State<SampleStampOverlay> {
   }
 }
 
-/// 스탬프 목록/피커용 썸네일 (현재 시각으로 실제 렌더링)
+/// 스탬프 목록/피커용 썸네일 (대표 고정 시각으로 렌더링하여 스크롤 시 부하 제거)
 class SampleStampThumbnail extends StatefulWidget {
   final String groupId;
   final EdgeInsets padding;
+  final DateTime? time;
 
   const SampleStampThumbnail({
     super.key,
     required this.groupId,
     this.padding = const EdgeInsets.all(6),
+    this.time,
   });
 
   @override
@@ -1344,29 +1582,47 @@ class SampleStampThumbnail extends StatefulWidget {
 }
 
 class _SampleStampThumbnailState extends State<SampleStampThumbnail> {
+  static final DateTime defaultThumbnailTime = DateTime(2026, 11, 6, 12, 34);
+
+  SampleStampScene? _cachedScene;
+  int? _cachedScaleIndex;
+  DateTime? _cachedTime;
+
   @override
   Widget build(BuildContext context) {
     final count = SampleStampLibrary.scaleCount(widget.groupId);
-    final scene = SampleStampLibrary.buildScene(
-      widget.groupId,
-      scaleIndex: count >= 3 ? 1 : 0,
-      now: DateTime.now(),
-    );
+    final scaleIndex = count >= 3 ? 1 : 0;
+    final targetTime = widget.time ?? defaultThumbnailTime;
+
+    if (_cachedScene == null ||
+        _cachedScaleIndex != scaleIndex ||
+        _cachedTime != targetTime) {
+      _cachedScaleIndex = scaleIndex;
+      _cachedTime = targetTime;
+      _cachedScene = SampleStampLibrary.buildScene(
+        widget.groupId,
+        scaleIndex: scaleIndex,
+        now: targetTime,
+      );
+    }
+    final scene = _cachedScene!;
     final paths = scene.imagePaths;
     if (paths.isNotEmpty && !SampleStampImageCache.hasAll(paths)) {
       SampleStampImageCache.loadAll(paths).then((_) {
         if (mounted) setState(() {});
       });
     }
-    return Padding(
-      padding: widget.padding,
-      child: CustomPaint(
-        size: Size.infinite,
-        painter: _SampleScenePainter(
-          scene: scene,
-          alignment: Alignment.center,
-          marginDesign: 0,
-          fitted: true,
+    return RepaintBoundary(
+      child: Padding(
+        padding: widget.padding,
+        child: CustomPaint(
+          size: Size.infinite,
+          painter: _SampleScenePainter(
+            scene: scene,
+            alignment: Alignment.center,
+            marginDesign: 0,
+            fitted: true,
+          ),
         ),
       ),
     );
@@ -1398,7 +1654,12 @@ class _SampleScenePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SampleScenePainter oldDelegate) => true;
+  bool shouldRepaint(covariant _SampleScenePainter oldDelegate) {
+    return scene != oldDelegate.scene ||
+        alignment != oldDelegate.alignment ||
+        marginDesign != oldDelegate.marginDesign ||
+        fitted != oldDelegate.fitted;
+  }
 }
 
 /// 영상 오버레이(PNG) 렌더링용: 이미지 로딩 후 [area] 에 그립니다.
@@ -1420,6 +1681,7 @@ Future<void> paintSampleStampForVideo(
     scaleIndex: scaleIndex,
     now: now,
     canvasHeight: area.height / s,
+    alignment: alignment,
   );
   await SampleStampImageCache.loadAll(scene.imagePaths);
   scene.paintInto(

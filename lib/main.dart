@@ -7,7 +7,7 @@ import 'services/app_settings_service.dart';
 import 'services/timestamp_access_manager.dart';
 import 'services/timestamp_deck_manager.dart';
 import 'stamps/stamp_text_store.dart';
-import 'splash_screen.dart';
+import 'camera_screen.dart';
 
 List<CameraDescription> cameras = [];
 
@@ -62,7 +62,7 @@ class TimenowApp extends StatelessWidget {
         final isLight = settings.isLight;
 
         return MaterialApp(
-          title: 'Log',
+          title: 'LOG',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             brightness: isLight ? Brightness.light : Brightness.dark,
@@ -96,7 +96,7 @@ class TimenowApp extends StatelessWidget {
             useMaterial3: true,
             fontFamily: 'NanumSquareB',
           ),
-          home: SplashScreen(cameras: cameras),
+          home: CameraScreen(cameras: cameras),
         );
       },
     );

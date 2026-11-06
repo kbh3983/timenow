@@ -207,12 +207,12 @@ class SampleStampRepository {
     TimestampEntity n2_1_t2_x2 = TimestampEntity.init(ratio, "n2_1_t2_x2", "n2_1", "cafe24_one_pretty_night", "a h:mm", Constants.ALIGN_CENTER, Constants.LOCALE_KR, 100, 188, 190, 50, 54, RegexUtil.TYPE_AMPM_TO_KR, 2);
 
     TimestampGroupEntity n2_7 = TimestampGroupEntity("n2_7", Constants.TIMESTAMP_CATEGORY_NORMAL, "assets/timestamp/group/n2_7.png", null, Colors.black.value, 11);
-    TimestampEntity n2_7_t1_x0 = TimestampEntity.init(ratio, "n2_7_t1_x0", "n2_7", "gmarket_sans", "yyyy.MM.dd (E)", Constants.ALIGN_LEFT, Constants.LOCALE_KR, 10, 310, 140, 40, 16, RegexUtil.TYPE_DAY_TO_KR, 0);
-    TimestampEntity n2_7_t2_x0 = TimestampEntity.init(ratio, "n2_7_t2_x0", "n2_7", "gmarket_sans", "a hh:mm", Constants.ALIGN_LEFT, Constants.LOCALE_KR_EN, 10, 335, 160, 50, 28, null, 0);
-    TimestampEntity n2_7_t1_x1 = TimestampEntity.init(ratio, "n2_7_t1_x1", "n2_7", "gmarket_sans", "yyyy.MM.dd (E)", Constants.ALIGN_LEFT, Constants.LOCALE_KR, 10, 299, 160, 40, 20, RegexUtil.TYPE_DAY_TO_KR, 1);
-    TimestampEntity n2_7_t2_x1 = TimestampEntity.init(ratio, "n2_7_t2_x1", "n2_7", "gmarket_sans", "a hh:mm", Constants.ALIGN_LEFT, Constants.LOCALE_KR_EN, 10, 330, 175, 50, 35, null, 1);
-    TimestampEntity n2_7_t1_x2 = TimestampEntity.init(ratio, "n2_7_t1_x2", "n2_7", "gmarket_sans", "yyyy.MM.dd (E)", Constants.ALIGN_LEFT, Constants.LOCALE_KR, 10, 288, 180, 40, 22, RegexUtil.TYPE_DAY_TO_KR, 2);
-    TimestampEntity n2_7_t2_x2 = TimestampEntity.init(ratio, "n2_7_t2_x2", "n2_7", "gmarket_sans", "a hh:mm", Constants.ALIGN_LEFT, Constants.LOCALE_KR_EN, 10, 325, 190, 50, 38.5, null, 2);
+    TimestampEntity n2_7_t1_x0 = TimestampEntity.init(ratio, "n2_7_t1_x0", "n2_7", "gmarket_sans", "yyyy.MM.dd (E)", Constants.ALIGN_CENTER, Constants.LOCALE_KR, 125, 310, 140, 40, 16, RegexUtil.TYPE_DAY_TO_KR, 0);
+    TimestampEntity n2_7_t2_x0 = TimestampEntity.init(ratio, "n2_7_t2_x0", "n2_7", "gmarket_sans", "a hh:mm", Constants.ALIGN_CENTER, Constants.LOCALE_KR_EN, 115, 335, 160, 50, 28, null, 0);
+    TimestampEntity n2_7_t1_x1 = TimestampEntity.init(ratio, "n2_7_t1_x1", "n2_7", "gmarket_sans", "yyyy.MM.dd (E)", Constants.ALIGN_CENTER, Constants.LOCALE_KR, 115, 299, 160, 40, 20, RegexUtil.TYPE_DAY_TO_KR, 1);
+    TimestampEntity n2_7_t2_x1 = TimestampEntity.init(ratio, "n2_7_t2_x1", "n2_7", "gmarket_sans", "a hh:mm", Constants.ALIGN_CENTER, Constants.LOCALE_KR_EN, 107.5, 330, 175, 50, 35, null, 1);
+    TimestampEntity n2_7_t1_x2 = TimestampEntity.init(ratio, "n2_7_t1_x2", "n2_7", "gmarket_sans", "yyyy.MM.dd (E)", Constants.ALIGN_CENTER, Constants.LOCALE_KR, 105, 288, 180, 40, 22, RegexUtil.TYPE_DAY_TO_KR, 2);
+    TimestampEntity n2_7_t2_x2 = TimestampEntity.init(ratio, "n2_7_t2_x2", "n2_7", "gmarket_sans", "a hh:mm", Constants.ALIGN_CENTER, Constants.LOCALE_KR_EN, 100, 325, 190, 50, 38.5, null, 2);
 
     TimestampGroupEntity n2_2 = TimestampGroupEntity("n2_2", Constants.TIMESTAMP_CATEGORY_NORMAL, "assets/timestamp/group/n2_2.png", null, Colors.black.value, 14);
     TimestampEntity n2_2_t1_x0 = TimestampEntity.init(ratio, "n2_2_t1_x0", "n2_2", "nanum_amsterdam", "yyyy년 MM월 dd일", Constants.ALIGN_CENTER, Constants.LOCALE_KR, 105, 159, 180, 40, 24, null, 0);
@@ -1925,10 +1925,6 @@ class SampleStampRepository {
     timestampImageBox.put("style11_i1", style11_i1);
     timestampImageBox.put("style11_i2", style11_i2);
     textBox.put("style11_txt1", style11_txt1);
-    textBox.put("style11_txt2", style11_txt2);
-    textBox.put("style11_txt3", style11_txt3);
-    textBox.put("style11_txt4", style11_txt4);
-    textBox.put("style11_txt5", style11_txt5);
 }
 
   static String getEatTime() {

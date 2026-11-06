@@ -145,17 +145,58 @@ class TimestampMetadata {
       defaultFontSize: 34.0,
       dateFormat: 'EEEE',
       timeFormat: 'a hh:mm',
-      fontSizeSteps: [34.0],
-      defaultFontSizeIndex: 0,
+      fontSizeSteps: [28.0, 34.0, 40.0],
+      defaultFontSizeIndex: 1,
     ),
     TimestampDesign.none: TimestampDesignConfig(designName: '없음'),
   };
 
+  /// 위·가운데·아래(세로 3위치)로만 이동하고 가로 위치는 항상 중앙에 고정되는 스탬프 목록
+  static const Set<TimestampDesign> verticalCenterOnlyDesigns = {
+    TimestampDesign.s1_4,
+    TimestampDesign.s1_10,
+    TimestampDesign.s1_11,
+    TimestampDesign.s1_12,
+    TimestampDesign.style8,
+  };
+
+  /// 해당 스탬프에서 순환 가능한 위치(Alignment) 목록 반환
+  static List<Alignment> getSupportedAlignments(TimestampDesign design) {
+    if (verticalCenterOnlyDesigns.contains(design)) {
+      return const [
+        Alignment.center,
+        Alignment.topCenter,
+        Alignment.bottomCenter,
+      ];
+    }
+    return CameraUX.alignments;
+  }
+
+  /// 스탬프가 지원하는 유효 위치로 보정 (가로 중앙 고정 스탬프면 x = 0.0 으로 보정)
+  static Alignment normalizeAlignment(TimestampDesign design, Alignment current) {
+    if (verticalCenterOnlyDesigns.contains(design) && current.x != 0.0) {
+      return Alignment(0.0, current.y);
+    }
+    return current;
+  }
+
+  /// 현재 위치([current])에서 다음 위치로 순환한 Alignment 반환
+  static Alignment nextAlignment(TimestampDesign design, Alignment current) {
+    final list = getSupportedAlignments(design);
+    final normalized = normalizeAlignment(design, current);
+    final index = list.indexOf(normalized);
+    final nextIndex = (index + 1) % list.length;
+    return list[nextIndex];
+  }
+
   /// 해당 스탬프가 위치(정렬) 변경을 지원하는지 여부
-  /// (프레임 f1~f9 및 스타일 style1~style11 은 전체 레이아웃이 고정되어 위치 변경 불가)
+  /// (프레임 f1~f9 및 스타일 style2~style7, style9~style11 은 전체 레이아웃이 고정되어 위치 변경 불가)
   static bool supportsAlignment(TimestampDesign design) {
-    if (design == TimestampDesign.none || design == TimestampDesign.style1) {
+    if (design == TimestampDesign.none) {
       return false;
+    }
+    if (design == TimestampDesign.style8) {
+      return true;
     }
     if (design.isSampleStamp) {
       return !SampleStampLibrary.isCanvasMode(design.name);
@@ -165,7 +206,7 @@ class TimestampMetadata {
 
   /// 해당 스탬프가 크기 단계 변경(1A/2A/3A)을 지원하는지 여부
   static bool supportsFontSize(TimestampDesign design) {
-    if (design == TimestampDesign.none || design == TimestampDesign.style1) {
+    if (design == TimestampDesign.none) {
       return false;
     }
     return getFontSizeSteps(design).length > 1;

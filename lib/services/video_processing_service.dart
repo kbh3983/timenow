@@ -71,6 +71,7 @@ class VideoProcessingService {
           fontSize: scaledFontSize,
           canvasWidth: canvasW,
           canvasHeight: canvasH,
+          scale: 2.7,
         );
 
         final frameFile = File('${overlayDir.path}/frame_$s.png');
@@ -259,8 +260,13 @@ class VideoProcessingService {
     }
   }
 
-  Offset _calcPos(Alignment alignment, Rect activeBox, double w, double h) {
-    const padding = 40.0;
+  Offset _calcPos(
+    Alignment alignment,
+    Rect activeBox,
+    double w,
+    double h, {
+    double padding = 40.0,
+  }) {
     double x;
     double y;
 
@@ -410,11 +416,58 @@ class VideoProcessingService {
       Rect.fromLTWH(0, 0, canvasWidth, canvasHeight),
     );
 
-    final shadows =
-        TimestampMetadata.getShadows(design) ?? CameraUX.defaultShadows;
-
     final activeBox =
         cropRect ?? Rect.fromLTWH(0, 0, canvasWidth, canvasHeight);
+    // 사진 모드의 390 기준 좌표계(viewScale = width / 390.0)와 100% 동일한 비례 스케일
+    final double baseScale = activeBox.width / kSampleBaseWidth;
+    final double incomingScale = (scale != null && scale > 0) ? scale : baseScale;
+    final double logicalFontSize = fontSize / incomingScale;
+    final double effectiveFontSize = logicalFontSize * baseScale;
+    final double effectiveScale = baseScale;
+    // 사진 모드의 Container(margin: EdgeInsets.all(16 * viewScale))와 동일한 여백 스케일
+    final double edgePadding = 16.0 * effectiveScale;
+
+    final rawShadows =
+        TimestampMetadata.getShadows(design) ?? CameraUX.defaultShadows;
+    final shadows = rawShadows
+        .map(
+          (s) => Shadow(
+            color: s.color,
+            offset: s.offset * effectiveScale,
+            blurRadius: s.blurRadius * effectiveScale,
+          ),
+        )
+        .toList();
+
+    final maxTextWidth = math.max(0.0, activeBox.width - edgePadding * 2);
+
+    // 스탬프 가로폭(w)이 가용 안전 폭(maxTextWidth)을 초과할 경우,
+    // 줄바꿈이나 말줄임표('...') 없이 한 줄 비율을 유지하며 안전 영역 안에 맞추는 헬퍼
+    void paintFittedStamp(
+      double w,
+      double h,
+      void Function(Offset origin) draw,
+    ) {
+      final fit = (w > maxTextWidth && w > 0 && maxTextWidth > 0)
+          ? (maxTextWidth / w)
+          : 1.0;
+      final pos = _calcPos(
+        alignment,
+        activeBox,
+        w * fit,
+        h * fit,
+        padding: edgePadding,
+      );
+      if (fit == 1.0) {
+        draw(pos);
+      } else {
+        canvas.save();
+        canvas.translate(pos.dx, pos.dy);
+        canvas.scale(fit);
+        draw(Offset.zero);
+        canvas.restore();
+      }
+    }
 
     TextAlign textAlign = TextAlign.center;
     if (alignment.x < -0.2) {
@@ -434,17 +487,19 @@ class VideoProcessingService {
             text: text,
             style: TextStyle(
               fontFamily: CameraUX.fontRubberNippleFactory,
-              fontSize: fontSize,
+              fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
             ),
           ),
+          maxLines: 1,
           textDirection: TextDirection.ltr,
           textAlign: textAlign,
-        )..layout(maxWidth: activeBox.width - 80);
-        final pos = _calcPos(alignment, activeBox, tp.width, tp.height);
-        tp.paint(canvas, pos);
+        )..layout();
+        paintFittedStamp(tp.width, tp.height, (pos) {
+          tp.paint(canvas, pos);
+        });
         break;
       }
 
@@ -455,17 +510,19 @@ class VideoProcessingService {
             text: text,
             style: TextStyle(
               fontFamily: CameraUX.fontNixieOne,
-              fontSize: fontSize,
+              fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
             ),
           ),
+          maxLines: 1,
           textDirection: TextDirection.ltr,
           textAlign: textAlign,
-        )..layout(maxWidth: activeBox.width - 80);
-        final pos = _calcPos(alignment, activeBox, tp.width, tp.height);
-        tp.paint(canvas, pos);
+        )..layout();
+        paintFittedStamp(tp.width, tp.height, (pos) {
+          tp.paint(canvas, pos);
+        });
         break;
       }
 
@@ -476,29 +533,54 @@ class VideoProcessingService {
             '${DateFormat('yyyy년 MM월 dd일').format(currentTime)} ($weekday)';
         final period = currentTime.hour < 12 ? '오전' : '오후';
         final timeStr = '$period ${DateFormat('h:mm').format(currentTime)}';
-        final tp = TextPainter(
+        final dateTp = TextPainter(
           text: TextSpan(
+            text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24OnePrettyNight,
-              shadows: shadows,
+              fontSize: effectiveFontSize * 0.36,
               color: Colors.white,
+              height: 1.1,
+              shadows: shadows,
             ),
-            children: [
-              TextSpan(
-                text: '$dateStr\n',
-                style: TextStyle(fontSize: fontSize * 0.36, height: 1.1),
-              ),
-              TextSpan(
-                text: timeStr,
-                style: TextStyle(fontSize: fontSize, height: 1.0),
-              ),
-            ],
           ),
+          maxLines: 1,
           textDirection: TextDirection.ltr,
-          textAlign: textAlign,
-        )..layout(maxWidth: activeBox.width - 80);
-        final pos = _calcPos(alignment, activeBox, tp.width, tp.height);
-        tp.paint(canvas, pos);
+          textAlign: TextAlign.center,
+        )..layout();
+
+        final timeTp = TextPainter(
+          text: TextSpan(
+            text: timeStr,
+            style: TextStyle(
+              fontFamily: CameraUX.fontCafe24OnePrettyNight,
+              fontSize: effectiveFontSize,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+          maxLines: 1,
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.center,
+        )..layout();
+
+        final gap = 2.0 * effectiveScale;
+        final totalW = math.max(dateTp.width, timeTp.width);
+        final totalH = dateTp.height + gap + timeTp.height;
+        paintFittedStamp(totalW, totalH, (pos) {
+          dateTp.paint(
+            canvas,
+            Offset(pos.dx + (totalW - dateTp.width) / 2, pos.dy),
+          );
+          timeTp.paint(
+            canvas,
+            Offset(
+              pos.dx + (totalW - timeTp.width) / 2,
+              pos.dy + dateTp.height + gap,
+            ),
+          );
+        });
         break;
       }
 
@@ -506,29 +588,54 @@ class VideoProcessingService {
         final dateStr = DateFormat('yyyy년 MM월 dd일').format(currentTime);
         final period = currentTime.hour < 12 ? '오전' : '오후';
         final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
-        final tp = TextPainter(
+        final dateTp = TextPainter(
           text: TextSpan(
+            text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumAmsterdam,
-              shadows: shadows,
+              fontSize: effectiveFontSize * 0.52,
               color: Colors.white,
+              height: 1.1,
+              shadows: shadows,
             ),
-            children: [
-              TextSpan(
-                text: '$dateStr\n',
-                style: TextStyle(fontSize: fontSize * 0.52, height: 1.1),
-              ),
-              TextSpan(
-                text: timeStr,
-                style: TextStyle(fontSize: fontSize, height: 1.0),
-              ),
-            ],
           ),
+          maxLines: 1,
           textDirection: TextDirection.ltr,
-          textAlign: textAlign,
-        )..layout(maxWidth: activeBox.width - 80);
-        final pos = _calcPos(alignment, activeBox, tp.width, tp.height);
-        tp.paint(canvas, pos);
+          textAlign: TextAlign.center,
+        )..layout();
+
+        final timeTp = TextPainter(
+          text: TextSpan(
+            text: timeStr,
+            style: TextStyle(
+              fontFamily: CameraUX.fontNanumAmsterdam,
+              fontSize: effectiveFontSize,
+              color: Colors.white,
+              height: 1.0,
+              shadows: shadows,
+            ),
+          ),
+          maxLines: 1,
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.center,
+        )..layout();
+
+        final gap = 2.0 * effectiveScale;
+        final totalW = math.max(dateTp.width, timeTp.width);
+        final totalH = dateTp.height + gap + timeTp.height;
+        paintFittedStamp(totalW, totalH, (pos) {
+          dateTp.paint(
+            canvas,
+            Offset(pos.dx + (totalW - dateTp.width) / 2, pos.dy),
+          );
+          timeTp.paint(
+            canvas,
+            Offset(
+              pos.dx + (totalW - timeTp.width) / 2,
+              pos.dy + dateTp.height + gap,
+            ),
+          );
+        });
         break;
       }
 
@@ -537,26 +644,54 @@ class VideoProcessingService {
         final dayStr = DateFormat('EEEE', 'en_US').format(currentTime);
         final period = currentTime.hour < 12 ? 'AM' : 'PM';
         final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
-        final tp = TextPainter(
-          text: TextSpan(
-            style: TextStyle(
-              fontFamily: CameraUX.fontNanumBarunpen,
-              shadows: shadows,
-              color: Colors.white,
-              fontSize: fontSize,
-              height: 1.1,
-            ),
-            children: [
-              TextSpan(text: '$dateStr\n'),
-              TextSpan(text: '$dayStr\n'),
-              TextSpan(text: timeStr),
-            ],
-          ),
+        final lineStyle = TextStyle(
+          fontFamily: CameraUX.fontNanumBarunpen,
+          shadows: shadows,
+          color: Colors.white,
+          fontSize: effectiveFontSize,
+          height: 1.1,
+        );
+        final line1Tp = TextPainter(
+          text: TextSpan(text: dateStr, style: lineStyle),
+          maxLines: 1,
           textDirection: TextDirection.ltr,
-          textAlign: textAlign,
-        )..layout(maxWidth: activeBox.width - 80);
-        final pos = _calcPos(alignment, activeBox, tp.width, tp.height);
-        tp.paint(canvas, pos);
+        )..layout();
+        final line2Tp = TextPainter(
+          text: TextSpan(text: dayStr, style: lineStyle),
+          maxLines: 1,
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final line3Tp = TextPainter(
+          text: TextSpan(text: timeStr, style: lineStyle),
+          maxLines: 1,
+          textDirection: TextDirection.ltr,
+        )..layout();
+
+        final totalW = math.max(
+          line1Tp.width,
+          math.max(line2Tp.width, line3Tp.width),
+        );
+        final totalH = line1Tp.height + line2Tp.height + line3Tp.height;
+        paintFittedStamp(totalW, totalH, (pos) {
+          double getX(double w) {
+            if (alignment.x < -0.2) return pos.dx;
+            if (alignment.x > 0.2) return pos.dx + (totalW - w);
+            return pos.dx + (totalW - w) / 2;
+          }
+
+          line1Tp.paint(canvas, Offset(getX(line1Tp.width), pos.dy));
+          line2Tp.paint(
+            canvas,
+            Offset(getX(line2Tp.width), pos.dy + line1Tp.height),
+          );
+          line3Tp.paint(
+            canvas,
+            Offset(
+              getX(line3Tp.width),
+              pos.dy + line1Tp.height + line2Tp.height,
+            ),
+          );
+        });
         break;
       }
 
@@ -565,26 +700,56 @@ class VideoProcessingService {
         final dateStr = DateFormat('MMMM dd', 'en_US').format(currentTime);
         final period = currentTime.hour < 12 ? 'AM' : 'PM';
         final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
-        final tp = TextPainter(
-          text: TextSpan(
-            style: TextStyle(
-              fontFamily: CameraUX.fontCafe24Simplehae,
-              shadows: shadows,
-              color: Colors.white,
-              fontSize: fontSize,
-              height: 1.0,
-            ),
-            children: [
-              TextSpan(text: '$yearStr\n'),
-              TextSpan(text: '$dateStr\n'),
-              TextSpan(text: timeStr),
-            ],
-          ),
+        final lineStyle = TextStyle(
+          fontFamily: CameraUX.fontCafe24Simplehae,
+          shadows: shadows,
+          color: Colors.white,
+          fontSize: effectiveFontSize,
+          height: 1.0,
+        );
+        final line1Tp = TextPainter(
+          text: TextSpan(text: yearStr, style: lineStyle),
+          maxLines: 1,
           textDirection: TextDirection.ltr,
-          textAlign: textAlign,
-        )..layout(maxWidth: activeBox.width - 80);
-        final pos = _calcPos(alignment, activeBox, tp.width, tp.height);
-        tp.paint(canvas, pos);
+        )..layout();
+        final line2Tp = TextPainter(
+          text: TextSpan(text: dateStr, style: lineStyle),
+          maxLines: 1,
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final line3Tp = TextPainter(
+          text: TextSpan(text: timeStr, style: lineStyle),
+          maxLines: 1,
+          textDirection: TextDirection.ltr,
+        )..layout();
+
+        final gap = 2.0 * effectiveScale;
+        final totalW = math.max(
+          line1Tp.width,
+          math.max(line2Tp.width, line3Tp.width),
+        );
+        final totalH =
+            line1Tp.height + gap + line2Tp.height + gap + line3Tp.height;
+        paintFittedStamp(totalW, totalH, (pos) {
+          double getX(double w) {
+            if (alignment.x < -0.2) return pos.dx;
+            if (alignment.x > 0.2) return pos.dx + (totalW - w);
+            return pos.dx + (totalW - w) / 2;
+          }
+
+          line1Tp.paint(canvas, Offset(getX(line1Tp.width), pos.dy));
+          line2Tp.paint(
+            canvas,
+            Offset(getX(line2Tp.width), pos.dy + line1Tp.height + gap),
+          );
+          line3Tp.paint(
+            canvas,
+            Offset(
+              getX(line3Tp.width),
+              pos.dy + line1Tp.height + gap + line2Tp.height + gap,
+            ),
+          );
+        });
         break;
       }
 
@@ -594,7 +759,7 @@ class VideoProcessingService {
         final period = currentTime.hour < 12 ? '오전' : '오후';
         final text =
             '${DateFormat('yyyy.MM.dd').format(currentTime)}.$weekday $period ${DateFormat('hh:mm').format(currentTime)}';
-        final scale = fontSize / 24.0;
+        final scale = effectiveFontSize / 24.0;
         final frameW = 280.0 * scale;
         final frameH = 50.0 * scale;
 
@@ -603,7 +768,7 @@ class VideoProcessingService {
             text: text,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
-              fontSize: fontSize,
+              fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -613,30 +778,30 @@ class VideoProcessingService {
           textAlign: TextAlign.center,
         )..layout();
 
-        final pos = _calcPos(alignment, activeBox, frameW, frameH);
-        final dstRect = Rect.fromLTWH(pos.dx, pos.dy, frameW, frameH);
-
         final frameImg = await _loadUiImage(CameraUX.stampImg1);
-        if (frameImg != null) {
-          final paint = Paint()
-            ..colorFilter =
-                const ColorFilter.mode(Colors.white, BlendMode.srcIn);
-          canvas.drawImageRect(
-            frameImg,
-            Rect.fromLTWH(0, 0, frameImg.width.toDouble(),
-                frameImg.height.toDouble()),
-            dstRect,
-            paint,
-          );
-        }
+        paintFittedStamp(frameW, frameH, (pos) {
+          final dstRect = Rect.fromLTWH(pos.dx, pos.dy, frameW, frameH);
+          if (frameImg != null) {
+            final paint = Paint()
+              ..colorFilter =
+                  const ColorFilter.mode(Colors.white, BlendMode.srcIn);
+            canvas.drawImageRect(
+              frameImg,
+              Rect.fromLTWH(0, 0, frameImg.width.toDouble(),
+                  frameImg.height.toDouble()),
+              dstRect,
+              paint,
+            );
+          }
 
-        tp.paint(
-          canvas,
-          Offset(
-            dstRect.left + (frameW - tp.width) / 2,
-            dstRect.top + (frameH - tp.height) / 2,
-          ),
-        );
+          tp.paint(
+            canvas,
+            Offset(
+              dstRect.left + (frameW - tp.width) / 2,
+              dstRect.top + (frameH - tp.height) / 2,
+            ),
+          );
+        });
         break;
       }
 
@@ -646,7 +811,7 @@ class VideoProcessingService {
         final period = currentTime.hour < 12 ? '오전' : '오후';
         final text =
             '${DateFormat('yyyy.MM.dd').format(currentTime)}.$weekday $period ${DateFormat('hh:mm').format(currentTime)}';
-        final scale = fontSize / 26.0;
+        final scale = effectiveFontSize / 26.0;
         final frameW = 280.0 * scale;
         final frameH = 50.0 * scale;
 
@@ -655,7 +820,7 @@ class VideoProcessingService {
             text: text,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24Shiningstar,
-              fontSize: fontSize,
+              fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -665,30 +830,30 @@ class VideoProcessingService {
           textAlign: TextAlign.center,
         )..layout();
 
-        final pos = _calcPos(alignment, activeBox, frameW, frameH);
-        final dstRect = Rect.fromLTWH(pos.dx, pos.dy, frameW, frameH);
-
         final frameImg = await _loadUiImage(CameraUX.stampImg2);
-        if (frameImg != null) {
-          final paint = Paint()
-            ..colorFilter =
-                const ColorFilter.mode(Colors.white, BlendMode.srcIn);
-          canvas.drawImageRect(
-            frameImg,
-            Rect.fromLTWH(0, 0, frameImg.width.toDouble(),
-                frameImg.height.toDouble()),
-            dstRect,
-            paint,
-          );
-        }
+        paintFittedStamp(frameW, frameH, (pos) {
+          final dstRect = Rect.fromLTWH(pos.dx, pos.dy, frameW, frameH);
+          if (frameImg != null) {
+            final paint = Paint()
+              ..colorFilter =
+                  const ColorFilter.mode(Colors.white, BlendMode.srcIn);
+            canvas.drawImageRect(
+              frameImg,
+              Rect.fromLTWH(0, 0, frameImg.width.toDouble(),
+                  frameImg.height.toDouble()),
+              dstRect,
+              paint,
+            );
+          }
 
-        tp.paint(
-          canvas,
-          Offset(
-            dstRect.left + (frameW - tp.width) / 2,
-            dstRect.top + (frameH - tp.height) / 2,
-          ),
-        );
+          tp.paint(
+            canvas,
+            Offset(
+              dstRect.left + (frameW - tp.width) / 2,
+              dstRect.top + (frameH - tp.height) / 2,
+            ),
+          );
+        });
         break;
       }
 
@@ -696,7 +861,7 @@ class VideoProcessingService {
         final dateStr = DateFormat('yyyy/MM/dd').format(currentTime);
         final period = currentTime.hour < 12 ? '오전' : '오후';
         final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
-        final scale = fontSize / 25.0;
+        final scale = effectiveFontSize / 25.0;
         final barW = 100.0 * scale;
         final barH = 2.2 * scale;
         final barMargin = 5.0 * scale;
@@ -706,7 +871,7 @@ class VideoProcessingService {
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
-              fontSize: fontSize * 0.9,
+              fontSize: effectiveFontSize * 0.9,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -721,7 +886,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
-              fontSize: fontSize * 0.9,
+              fontSize: effectiveFontSize * 0.9,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -734,27 +899,32 @@ class VideoProcessingService {
         final totalW = math.max(dateTp.width, math.max(barW, timeTp.width));
         final totalH = dateTp.height + (barMargin * 2) + barH + timeTp.height;
 
-        final pos = _calcPos(alignment, activeBox, totalW, totalH);
+        paintFittedStamp(totalW, totalH, (pos) {
+          double getElementX(double elementW) {
+            if (alignment.x < -0.2) return pos.dx;
+            if (alignment.x > 0.2) return pos.dx + (totalW - elementW);
+            return pos.dx + (totalW - elementW) / 2;
+          }
 
-        // Alignment에 따른 각 요소 X 좌표 계산
-        double getElementX(double elementW) {
-          if (alignment.x < -0.2) return pos.dx;
-          if (alignment.x > 0.2) return pos.dx + (totalW - elementW);
-          return pos.dx + (totalW - elementW) / 2;
-        }
+          dateTp.paint(canvas, Offset(getElementX(dateTp.width), pos.dy));
 
-        dateTp.paint(canvas, Offset(getElementX(dateTp.width), pos.dy));
+          final barY = pos.dy + dateTp.height + barMargin;
+          final barX = getElementX(barW);
+          final rrect = RRect.fromRectAndRadius(
+            Rect.fromLTWH(barX, barY, barW, barH),
+            Radius.circular(1.0 * scale),
+          );
+          for (final s in shadows) {
+            final shadowPaint = Paint()
+              ..color = s.color
+              ..maskFilter = MaskFilter.blur(BlurStyle.normal, s.blurRadius);
+            canvas.drawRRect(rrect.shift(s.offset), shadowPaint);
+          }
+          canvas.drawRRect(rrect, Paint()..color = Colors.white);
 
-        final barY = pos.dy + dateTp.height + barMargin;
-        final barX = getElementX(barW);
-        final rrect = RRect.fromRectAndRadius(
-          Rect.fromLTWH(barX, barY, barW, barH),
-          Radius.circular(1.0 * scale),
-        );
-        canvas.drawRRect(rrect, Paint()..color = Colors.white);
-
-        final timeY = barY + barH + barMargin;
-        timeTp.paint(canvas, Offset(getElementX(timeTp.width), timeY));
+          final timeY = barY + barH + barMargin;
+          timeTp.paint(canvas, Offset(getElementX(timeTp.width), timeY));
+        });
         break;
       }
 
@@ -762,14 +932,14 @@ class VideoProcessingService {
         final period = currentTime.hour < 12 ? '오전' : '오후';
         final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
         final dateStr = DateFormat('yyyy MMM dd', 'en_US').format(currentTime);
-        final scale = fontSize / 25.0;
+        final scale = effectiveFontSize / 25.0;
 
         final timeTp = TextPainter(
           text: TextSpan(
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
-              fontSize: fontSize * 0.82,
+              fontSize: effectiveFontSize * 0.82,
               color: Colors.black87,
               fontWeight: FontWeight.bold,
               height: 1.0,
@@ -786,7 +956,7 @@ class VideoProcessingService {
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
-              fontSize: fontSize * 0.85,
+              fontSize: effectiveFontSize * 0.85,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -799,31 +969,31 @@ class VideoProcessingService {
         final totalW = math.max(pillW, dateTp.width);
         final totalH = pillH + (4 * scale) + dateTp.height;
 
-        final pos = _calcPos(alignment, activeBox, totalW, totalH);
+        paintFittedStamp(totalW, totalH, (pos) {
+          double getElementX(double elementW) {
+            if (alignment.x < -0.2) return pos.dx;
+            if (alignment.x > 0.2) return pos.dx + (totalW - elementW);
+            return pos.dx + (totalW - elementW) / 2;
+          }
 
-        double getElementX(double elementW) {
-          if (alignment.x < -0.2) return pos.dx;
-          if (alignment.x > 0.2) return pos.dx + (totalW - elementW);
-          return pos.dx + (totalW - elementW) / 2;
-        }
+          final pillX = getElementX(pillW);
+          final pillRRect = RRect.fromRectAndRadius(
+            Rect.fromLTWH(pillX, pos.dy, pillW, pillH),
+            Radius.circular(pillH / 2),
+          );
+          canvas.drawRRect(pillRRect, Paint()..color = Colors.white);
 
-        final pillX = getElementX(pillW);
-        final pillRRect = RRect.fromRectAndRadius(
-          Rect.fromLTWH(pillX, pos.dy, pillW, pillH),
-          Radius.circular(pillH / 2),
-        );
-        canvas.drawRRect(pillRRect, Paint()..color = Colors.white);
+          timeTp.paint(
+            canvas,
+            Offset(
+              pillX + (pillW - timeTp.width) / 2,
+              pos.dy + (pillH - timeTp.height) / 2,
+            ),
+          );
 
-        timeTp.paint(
-          canvas,
-          Offset(
-            pillX + (pillW - timeTp.width) / 2,
-            pos.dy + (pillH - timeTp.height) / 2,
-          ),
-        );
-
-        final dateY = pos.dy + pillH + (4 * scale);
-        dateTp.paint(canvas, Offset(getElementX(dateTp.width), dateY));
+          final dateY = pos.dy + pillH + (4 * scale);
+          dateTp.paint(canvas, Offset(getElementX(dateTp.width), dateY));
+        });
         break;
       }
 
@@ -832,7 +1002,7 @@ class VideoProcessingService {
         final dateStr = DateFormat('MMMM dd', 'en_US').format(currentTime);
         final period = currentTime.hour < 12 ? '오전' : '오후';
         final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
-        final scale = fontSize / 32.0;
+        final scale = effectiveFontSize / 32.0;
         final dividerW = 140.0 * scale;
         final dividerH = 20.0 * scale;
 
@@ -841,7 +1011,7 @@ class VideoProcessingService {
             text: yearStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
-              fontSize: fontSize * 0.85,
+              fontSize: effectiveFontSize * 0.85,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -855,7 +1025,7 @@ class VideoProcessingService {
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
-              fontSize: fontSize * 0.85,
+              fontSize: effectiveFontSize * 0.85,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -869,7 +1039,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
-              fontSize: fontSize * 0.85,
+              fontSize: effectiveFontSize * 0.85,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -881,45 +1051,45 @@ class VideoProcessingService {
         final totalW = math.max(dividerW, math.max(yearTp.width, math.max(dateTp.width, timeTp.width)));
         final totalH = yearTp.height + dividerH + dateTp.height + dividerH + timeTp.height;
 
-        final pos = _calcPos(alignment, activeBox, totalW, totalH);
-
         final ribbonImg = await _loadUiImage(CameraUX.stampImg10);
         final ribbonPaint = Paint()
           ..colorFilter =
               const ColorFilter.mode(Colors.white, BlendMode.srcIn);
 
-        // 1. Year
-        yearTp.paint(canvas, Offset(pos.dx + (totalW - yearTp.width) / 2, pos.dy));
+        paintFittedStamp(totalW, totalH, (pos) {
+          // 1. Year
+          yearTp.paint(canvas, Offset(pos.dx + (totalW - yearTp.width) / 2, pos.dy));
 
-        // 2. Ribbon 1
-        final ribbon1Y = pos.dy + yearTp.height;
-        if (ribbonImg != null) {
-          canvas.drawImageRect(
-            ribbonImg,
-            Rect.fromLTWH(0, 0, ribbonImg.width.toDouble(), ribbonImg.height.toDouble()),
-            Rect.fromLTWH(pos.dx + (totalW - dividerW) / 2, ribbon1Y, dividerW, dividerH),
-            ribbonPaint,
-          );
-        }
+          // 2. Ribbon 1
+          final ribbon1Y = pos.dy + yearTp.height;
+          if (ribbonImg != null) {
+            canvas.drawImageRect(
+              ribbonImg,
+              Rect.fromLTWH(0, 0, ribbonImg.width.toDouble(), ribbonImg.height.toDouble()),
+              Rect.fromLTWH(pos.dx + (totalW - dividerW) / 2, ribbon1Y, dividerW, dividerH),
+              ribbonPaint,
+            );
+          }
 
-        // 3. Date
-        final dateY = ribbon1Y + dividerH;
-        dateTp.paint(canvas, Offset(pos.dx + (totalW - dateTp.width) / 2, dateY));
+          // 3. Date
+          final dateY = ribbon1Y + dividerH;
+          dateTp.paint(canvas, Offset(pos.dx + (totalW - dateTp.width) / 2, dateY));
 
-        // 4. Ribbon 2
-        final ribbon2Y = dateY + dateTp.height;
-        if (ribbonImg != null) {
-          canvas.drawImageRect(
-            ribbonImg,
-            Rect.fromLTWH(0, 0, ribbonImg.width.toDouble(), ribbonImg.height.toDouble()),
-            Rect.fromLTWH(pos.dx + (totalW - dividerW) / 2, ribbon2Y, dividerW, dividerH),
-            ribbonPaint,
-          );
-        }
+          // 4. Ribbon 2
+          final ribbon2Y = dateY + dateTp.height;
+          if (ribbonImg != null) {
+            canvas.drawImageRect(
+              ribbonImg,
+              Rect.fromLTWH(0, 0, ribbonImg.width.toDouble(), ribbonImg.height.toDouble()),
+              Rect.fromLTWH(pos.dx + (totalW - dividerW) / 2, ribbon2Y, dividerW, dividerH),
+              ribbonPaint,
+            );
+          }
 
-        // 5. Time
-        final timeY = ribbon2Y + dividerH;
-        timeTp.paint(canvas, Offset(pos.dx + (totalW - timeTp.width) / 2, timeY));
+          // 5. Time
+          final timeY = ribbon2Y + dividerH;
+          timeTp.paint(canvas, Offset(pos.dx + (totalW - timeTp.width) / 2, timeY));
+        });
         break;
       }
 
@@ -929,16 +1099,17 @@ class VideoProcessingService {
         final weekdayStr = weekdays[currentTime.weekday - 1];
         final period = currentTime.hour < 12 ? '오전' : '오후';
         final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
-        final scale = fontSize / 26.0;
+        final scale = effectiveFontSize / 26.0;
         final bracketW = 100.0 * scale;
         final bracketH = 22.0 * scale;
+        final flowerGap = 2.0 * effectiveScale;
 
         final dateTp = TextPainter(
           text: TextSpan(
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
-              fontSize: fontSize * 0.75,
+              fontSize: effectiveFontSize * 0.75,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -952,7 +1123,7 @@ class VideoProcessingService {
             text: weekdayStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
-              fontSize: fontSize * 1.15,
+              fontSize: effectiveFontSize * 1.15,
               fontWeight: FontWeight.bold,
               color: Colors.white,
               height: 1.1,
@@ -967,7 +1138,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
-              fontSize: fontSize * 0.75,
+              fontSize: effectiveFontSize * 0.75,
               color: Colors.white,
               height: 1.0,
               shadows: shadows,
@@ -977,50 +1148,50 @@ class VideoProcessingService {
         )..layout();
 
         final totalW = math.max(bracketW, math.max(dateTp.width, math.max(weekdayTp.width, timeTp.width)));
-        final totalH = bracketH + (2 * scale) + dateTp.height + weekdayTp.height + timeTp.height + (2 * scale) + bracketH;
-
-        final pos = _calcPos(alignment, activeBox, totalW, totalH);
+        final totalH = bracketH + flowerGap + dateTp.height + weekdayTp.height + timeTp.height + flowerGap + bracketH;
 
         final flowerImg = await _loadUiImage(CameraUX.stampImg11);
 
-        // 1. Top Flower (original colors)
-        final topFlowerRect = Rect.fromLTWH(pos.dx + (totalW - bracketW) / 2, pos.dy, bracketW, bracketH);
-        if (flowerImg != null) {
-          canvas.drawImageRect(
-            flowerImg,
-            Rect.fromLTWH(0, 0, flowerImg.width.toDouble(), flowerImg.height.toDouble()),
-            topFlowerRect,
-            Paint(),
-          );
-        }
+        paintFittedStamp(totalW, totalH, (pos) {
+          // 1. Top Flower (original colors)
+          final topFlowerRect = Rect.fromLTWH(pos.dx + (totalW - bracketW) / 2, pos.dy, bracketW, bracketH);
+          if (flowerImg != null) {
+            canvas.drawImageRect(
+              flowerImg,
+              Rect.fromLTWH(0, 0, flowerImg.width.toDouble(), flowerImg.height.toDouble()),
+              topFlowerRect,
+              Paint(),
+            );
+          }
 
-        // 2. Date
-        final dateY = pos.dy + bracketH + (2 * scale);
-        dateTp.paint(canvas, Offset(pos.dx + (totalW - dateTp.width) / 2, dateY));
+          // 2. Date
+          final dateY = pos.dy + bracketH + flowerGap;
+          dateTp.paint(canvas, Offset(pos.dx + (totalW - dateTp.width) / 2, dateY));
 
-        // 3. Weekday
-        final weekdayY = dateY + dateTp.height;
-        weekdayTp.paint(canvas, Offset(pos.dx + (totalW - weekdayTp.width) / 2, weekdayY));
+          // 3. Weekday
+          final weekdayY = dateY + dateTp.height;
+          weekdayTp.paint(canvas, Offset(pos.dx + (totalW - weekdayTp.width) / 2, weekdayY));
 
-        // 4. Time
-        final timeY = weekdayY + weekdayTp.height;
-        timeTp.paint(canvas, Offset(pos.dx + (totalW - timeTp.width) / 2, timeY));
+          // 4. Time
+          final timeY = weekdayY + weekdayTp.height;
+          timeTp.paint(canvas, Offset(pos.dx + (totalW - timeTp.width) / 2, timeY));
 
-        // 5. Bottom Flower (flipped vertically)
-        final bottomFlowerY = timeY + timeTp.height + (2 * scale);
-        final bottomFlowerRect = Rect.fromLTWH(pos.dx + (totalW - bracketW) / 2, bottomFlowerY, bracketW, bracketH);
-        if (flowerImg != null) {
-          canvas.save();
-          canvas.translate(0, bottomFlowerRect.top + bottomFlowerRect.height);
-          canvas.scale(1.0, -1.0);
-          canvas.drawImageRect(
-            flowerImg,
-            Rect.fromLTWH(0, 0, flowerImg.width.toDouble(), flowerImg.height.toDouble()),
-            Rect.fromLTWH(bottomFlowerRect.left, 0, bottomFlowerRect.width, bottomFlowerRect.height),
-            Paint(),
-          );
-          canvas.restore();
-        }
+          // 5. Bottom Flower (flipped vertically)
+          final bottomFlowerY = timeY + timeTp.height + flowerGap;
+          final bottomFlowerRect = Rect.fromLTWH(pos.dx + (totalW - bracketW) / 2, bottomFlowerY, bracketW, bracketH);
+          if (flowerImg != null) {
+            canvas.save();
+            canvas.translate(0, bottomFlowerRect.top + bottomFlowerRect.height);
+            canvas.scale(1.0, -1.0);
+            canvas.drawImageRect(
+              flowerImg,
+              Rect.fromLTWH(0, 0, flowerImg.width.toDouble(), flowerImg.height.toDouble()),
+              Rect.fromLTWH(bottomFlowerRect.left, 0, bottomFlowerRect.width, bottomFlowerRect.height),
+              Paint(),
+            );
+            canvas.restore();
+          }
+        });
         break;
       }
 
@@ -1030,7 +1201,7 @@ class VideoProcessingService {
         final dateStr = DateFormat('dd').format(currentTime);
         final period = currentTime.hour < 12 ? 'AM' : 'PM';
         final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
-        final scale = fontSize / 34.0;
+        final scale = effectiveFontSize / 34.0;
         final pillW = 85.0 * scale;
         final pillH = 34.0 * scale;
         final arcRadius = 240.0 * scale;
@@ -1038,9 +1209,9 @@ class VideoProcessingService {
         var curvedStyle = TextStyle(
           fontFamily: CameraUX.fontRondal,
           fontFamilyFallback: const ['stamp_nanum_myeongjo', 'stamp_nanum_square'],
-          fontSize: fontSize * 0.32,
+          fontSize: effectiveFontSize * 0.32,
           color: Colors.white.withValues(alpha: 0.92),
-          letterSpacing: 0.8,
+          letterSpacing: 0.8 * scale,
           shadows: shadows,
         );
 
@@ -1078,14 +1249,15 @@ class VideoProcessingService {
         }
         final curvedFontSize = curvedStyle.fontSize ?? 10.0;
         final arcWidth = (2 * arcRadius * math.sin(totalAngle / 2)) + (curvedFontSize * 0.9);
-        final arcHeight = arcRadius * (1 - math.cos(totalAngle / 2)) + maxCharHeight * 1.3;
+        final arcHeight = (arcRadius * (1 - math.cos(totalAngle / 2)) + maxCharHeight * 1.3)
+            .clamp(maxCharHeight * 1.4, double.infinity);
 
         final monthTp = TextPainter(
           text: TextSpan(
             text: monthStr,
             style: TextStyle(
               fontFamily: CameraUX.fontLobster,
-              fontSize: fontSize * 0.42,
+              fontSize: effectiveFontSize * 0.42,
               color: Colors.white,
               shadows: shadows,
             ),
@@ -1098,10 +1270,10 @@ class VideoProcessingService {
             text: dayStr,
             style: TextStyle(
               fontFamily: CameraUX.fontRondalBold,
-              fontSize: fontSize,
+              fontSize: effectiveFontSize,
               fontWeight: FontWeight.bold,
               color: Colors.white,
-              letterSpacing: 1.0,
+              letterSpacing: 1.0 * scale,
               height: 1.0,
               shadows: shadows,
             ),
@@ -1114,7 +1286,7 @@ class VideoProcessingService {
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontLobster,
-              fontSize: fontSize * 0.42,
+              fontSize: effectiveFontSize * 0.42,
               color: Colors.white,
               shadows: shadows,
             ),
@@ -1127,7 +1299,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontRondal,
-              fontSize: fontSize * 0.34,
+              fontSize: effectiveFontSize * 0.34,
               color: Colors.white,
               fontWeight: FontWeight.bold,
               shadows: shadows,
@@ -1137,61 +1309,62 @@ class VideoProcessingService {
           textDirection: TextDirection.ltr,
         )..layout();
 
-        final sideW = math.max(monthTp.width, dateTp.width);
+        final sideW = 26.0 * scale;
         final rowW = sideW + (8 * scale) + dayTp.width + (8 * scale) + sideW;
         final rowH = math.max(dayTp.height, math.max(monthTp.height, dateTp.height));
 
         final totalW = math.max(arcWidth, math.max(rowW, pillW));
         final totalH = arcHeight + rowH + (18 * scale) + pillH;
 
-        final pos = _calcPos(Alignment.center, activeBox, totalW, totalH);
-
-        // 1. Curved text
-        _drawCurvedText(
-          canvas: canvas,
-          text: curvedText,
-          textStyle: curvedStyle,
-          radius: arcRadius,
-          centerOffset: Offset(pos.dx + (totalW - arcWidth) / 2, pos.dy),
-          boxWidth: arcWidth,
-          boxHeight: arcHeight,
-        );
-
-        // 2. Middle row (Month, Day, Date) — 양옆 폭을 동일하게 맞춰 요일이 정중앙에 오도록 배치
-        final rowY = pos.dy + arcHeight;
-        final rowStartX = pos.dx + (totalW - rowW) / 2;
-        monthTp.paint(canvas, Offset(rowStartX + sideW - monthTp.width, rowY + (rowH - monthTp.height) / 2));
-        dayTp.paint(canvas, Offset(rowStartX + sideW + (8 * scale), rowY + (rowH - dayTp.height) / 2));
-        dateTp.paint(canvas, Offset(rowStartX + sideW + (8 * scale) + dayTp.width + (8 * scale), rowY + (rowH - dateTp.height) / 2));
-
-        // 3. Bottom Pill
-        final pillY = rowY + rowH + (18 * scale);
-        final pillX = pos.dx + (totalW - pillW) / 2;
-        final pillDst = Rect.fromLTWH(pillX, pillY, pillW, pillH);
-
         final pillImg = await _loadUiImage(CameraUX.stampImgCircle1);
-        if (pillImg != null) {
-          final paint = Paint()
-            ..colorFilter =
-                const ColorFilter.mode(Colors.white, BlendMode.srcIn);
-          canvas.drawImageRect(
-            pillImg,
-            Rect.fromLTWH(0, 0, pillImg.width.toDouble(), pillImg.height.toDouble()),
-            pillDst,
-            paint,
-          );
-        } else {
-          final rrect = RRect.fromRectAndRadius(pillDst, Radius.circular(pillH / 2));
-          canvas.drawRRect(rrect, Paint()..color = Colors.white.withValues(alpha: 0.25));
-        }
 
-        timeTp.paint(
-          canvas,
-          Offset(
-            pillDst.left + (pillW - timeTp.width) / 2,
-            pillDst.top + (pillH - timeTp.height) / 2,
-          ),
-        );
+        paintFittedStamp(totalW, totalH, (pos) {
+          // 1. Curved text
+          _drawCurvedText(
+            canvas: canvas,
+            text: curvedText,
+            textStyle: curvedStyle,
+            radius: arcRadius,
+            centerOffset: Offset(pos.dx + (totalW - arcWidth) / 2, pos.dy),
+            boxWidth: arcWidth,
+            boxHeight: arcHeight,
+          );
+
+          // 2. Middle row (Month, Day, Date) — 양옆 폭을 동일하게 맞춰 요일이 정중앙에 오도록 배치
+          final rowY = pos.dy + arcHeight;
+          final rowStartX = pos.dx + (totalW - rowW) / 2;
+          monthTp.paint(canvas, Offset(rowStartX + sideW - monthTp.width, rowY + (rowH - monthTp.height) / 2));
+          dayTp.paint(canvas, Offset(rowStartX + sideW + (8 * scale), rowY + (rowH - dayTp.height) / 2));
+          dateTp.paint(canvas, Offset(rowStartX + sideW + (8 * scale) + dayTp.width + (8 * scale), rowY + (rowH - dateTp.height) / 2));
+
+          // 3. Bottom Pill
+          final pillY = rowY + rowH + (18 * scale);
+          final pillX = pos.dx + (totalW - pillW) / 2;
+          final pillDst = Rect.fromLTWH(pillX, pillY, pillW, pillH);
+
+          if (pillImg != null) {
+            final paint = Paint()
+              ..colorFilter =
+                  const ColorFilter.mode(Colors.white, BlendMode.srcIn);
+            canvas.drawImageRect(
+              pillImg,
+              Rect.fromLTWH(0, 0, pillImg.width.toDouble(), pillImg.height.toDouble()),
+              pillDst,
+              paint,
+            );
+          } else {
+            final rrect = RRect.fromRectAndRadius(pillDst, Radius.circular(pillH / 2));
+            canvas.drawRRect(rrect, Paint()..color = Colors.white.withValues(alpha: 0.25));
+          }
+
+          timeTp.paint(
+            canvas,
+            Offset(
+              pillDst.left + (pillW - timeTp.width) / 2,
+              pillDst.top + (pillH - timeTp.height) / 2,
+            ),
+          );
+        });
         break;
       }
 

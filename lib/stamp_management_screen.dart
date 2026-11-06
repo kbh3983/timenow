@@ -45,11 +45,13 @@ class StampManagementScreen extends StatelessWidget {
             centerTitle: true,
             actions: [
               TextButton(
-                onPressed: () {
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
                   deckManager.resetToDefault();
+                  await TimestampAccessManager().clearAllUnlocks();
                   HapticFeedback.mediumImpact();
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.hideCurrentSnackBar();
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text(
                         '즐겨찾기가 기본 순서로 초기화되었습니다.',
@@ -267,6 +269,64 @@ class StampManagementScreen extends StatelessWidget {
                             slotNumber: slotNumber,
                             onTap: () {
                               HapticFeedback.lightImpact();
+
+                              // 이미 덱에 들어가 있는 스탬프는 누르면 덱에서 제거
+                              if (isSelectedInDeck) {
+                                deckManager.removeDesign(design);
+                                return;
+                              }
+
+                              // 덱에 추가하려는 경우:
+                              // 잠겨있는 스탬프라면 먼저 3일 광고 해금 다이얼로그 표시
+                              if (!TimestampAccessManager().isUnlocked(design)) {
+                                UnlockTimestampDialog.show(
+                                  context,
+                                  design: design,
+                                  onUnlocked: () {
+                                    final res = deckManager.addToDeck(design);
+                                    if (!res) {
+                                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.info_outline_rounded,
+                                                color: accentColor,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Text(
+                                                  '즐겨찾기가 가득 찼습니다 (최대 8개)\n상단에서 스탬프를 눌러 비운 후 추가해주세요.',
+                                                  style: TextStyle(
+                                                    color: settings.textColor,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                    height: 1.35,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          duration: const Duration(seconds: 2),
+                                          behavior: SnackBarBehavior.floating,
+                                          backgroundColor: settings.cardBackgroundColor,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            side: BorderSide(
+                                              color: settings.borderColor,
+                                              width: 1,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                );
+                                return;
+                              }
+
                               final result = deckManager.toggleDeck(design);
                               if (result == null) {
                                 // 덱이 꽉 참
@@ -455,80 +515,72 @@ class StampManagementScreen extends StatelessWidget {
     required int? slotNumber,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: () {
-        // 잠긴 스탬프인 경우 길게 누르면 바로 3일 해금 다이얼로그 노출
-        if (!TimestampAccessManager().isUnlocked(design)) {
-          UnlockTimestampDialog.show(
-            context,
-            design: design,
-            onUnlocked: () {},
-          );
-        }
-      },
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 기본 썸네일 (여백 없이 딱 맞게 표시)
-          TimestampThumbnail(
-            design: design,
-            isSelected: false,
-            onTap: onTap,
-            margin: EdgeInsets.zero,
-            borderRadius: BorderRadius.zero,
-          ),
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 기본 썸네일 (여백 없이 딱 맞게 표시)
+            TimestampThumbnail(
+              design: design,
+              isSelected: false,
+              onTap: onTap,
+              margin: EdgeInsets.zero,
+              borderRadius: BorderRadius.zero,
+            ),
 
-          // 덱에 이미 등록된 경우 음영 처리 + 체크 뱃지 오버레이
-          if (isInDeck) ...[
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.zero,
-                border: Border.all(
-                  color: accentColor,
-                  width: 2.0,
+            // 덱에 이미 등록된 경우 음영 처리 + 체크 뱃지 오버레이
+            if (isInDeck) ...[
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.zero,
+                  border: Border.all(
+                    color: accentColor,
+                    width: 2.0,
+                  ),
                 ),
               ),
-            ),
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: accentColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check_rounded,
-                      color: Colors.black,
-                      size: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Deck #$slotNumber',
-                      style: TextStyle(
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
                         color: accentColor,
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.bold,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: Colors.black,
+                        size: 16,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 3),
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Deck #$slotNumber',
+                        style: TextStyle(
+                          color: accentColor,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

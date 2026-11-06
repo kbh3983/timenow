@@ -147,18 +147,6 @@ class StampTextStore extends ChangeNotifier {
   static const List<StampTextField> _style11Title = [
     StampTextField(key: 'style11_txt1', label: '문구', defaultText: '오늘의 브런치', maxWidth: 230),
   ];
-  static const List<StampTextField> _style11Item2 = [
-    StampTextField(key: 'style11_txt2', label: '문구', defaultText: '새우', maxWidth: 130),
-  ];
-  static const List<StampTextField> _style11Item3 = [
-    StampTextField(key: 'style11_txt3', label: '문구', defaultText: '루꼴라', maxWidth: 150),
-  ];
-  static const List<StampTextField> _style11Item4 = [
-    StampTextField(key: 'style11_txt4', label: '문구', defaultText: '계란', maxWidth: 140),
-  ];
-  static const List<StampTextField> _style11Item5 = [
-    StampTextField(key: 'style11_txt5', label: '문구', defaultText: '방울토마토', maxWidth: 160),
-  ];
 
   /// 탭한 요소 키 → 함께 편집할 문구 목록
   static const Map<String, List<StampTextField>> _editableGroups = {
@@ -179,10 +167,6 @@ class StampTextStore extends ChangeNotifier {
     'style8_txt2': _style8Title,
     'style8_rtxt1': _style8Arc,
     'style11_txt1': _style11Title,
-    'style11_txt2': _style11Item2,
-    'style11_txt3': _style11Item3,
-    'style11_txt4': _style11Item4,
-    'style11_txt5': _style11Item5,
   };
 
   /// 해당 요소를 탭했을 때 편집할 문구 목록 (편집 불가면 null)
