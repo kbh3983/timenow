@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOG (로그) - 타임스탬프 카메라</title>
+  
+  <!-- 구글 서치 콘솔 소유권 인증 메타태그 (발급받은 코드를 아래 content 값에 입력하세요) -->
+  <meta name="google-site-verification" content="GOOGLE_VERIFICATION_CODE_PLACEHOLDER" />
+  
+  <meta name="description" content="지금 이 순간을 가장 선명하고 세련되게 기록하는 타임스탬프 카메라 앱, LOG">
+  <meta property="og:title" content="LOG - 타임스탬프 카메라">
+  <meta property="og:description" content="매일의 일상, 운동, 식단, 공부를 타임스탬프로 세련되게 기록하세요.">
+  <meta property="og:type" content="website">
+
+  <link rel="icon" type="image/png" href="assets/icons/app_logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-color: #0b0c0e;
+      --card-bg: rgba(26, 29, 36, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-color: #C3FB28;
+      --accent-glow: rgba(195, 251, 40, 0.35);
+      --text-main: #FFFFFF;
+      --text-sub: #9EADB8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      padding: 24px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-badge {
+      background: var(--accent-color);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 12px;
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+    }
+
+    .hero-tag {
+      display: inline-block;
+      color: var(--accent-color);
+      border: 1px solid rgba(195, 251, 40, 0.3);
+      background: rgba(195, 251, 40, 0.08);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 30px;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 20px;
+      letter-spacing: -1px;
+    }
+
+    .hero h1 span {
+      color: var(--accent-color);
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-sub);
+      max-width: 620px;
+      margin: 0 auto 36px;
+    }
+
+    .hero-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--accent-color);
+      color: #000;
+      font-weight: 700;
+      font-size: 16px;
+      padding: 14px 28px;
+      border-radius: 14px;
+      text-decoration: none;
+      box-shadow: 0 8px 24px var(--accent-glow);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .hero-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px var(--accent-glow);
+    }
+
+    /* Features Grid */
+    .features {
+      padding: 60px 0 80px;
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 32px 24px;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(195, 251, 40, 0.4);
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 18px;
+      display: inline-block;
+    }
+
+    .feature-card h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .feature-card p {
+      color: var(--text-sub);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* Developer / Business Info Section */
+    .company-info {
+      background: rgba(18, 20, 24, 0.8);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 40px 32px;
+      margin: 40px 0 80px;
+    }
+
+    .company-info h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--accent-color);
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      font-size: 14px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      color: var(--text-sub);
+      font-size: 13px;
+    }
+
+    .info-value {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .info-value a {
+      color: var(--accent-color);
+      text-decoration: none;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 32px 0;
+      text-align: center;
+      color: var(--text-sub);
+      font-size: 13px;
+    }
+
+    footer a {
+      color: var(--text-sub);
+      margin: 0 10px;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: var(--text-main);
+    }
+
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 34px;
+      }
+      .hero p {
+        font-size: 16px;
+      }
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <a href="#" class="brand">
+        <img src="assets/icons/app_logo.png" alt="LOG Logo" onerror="this.style.display='none'">
+        <span class="brand-title">LOG</span>
+        <span class="brand-badge">Camera</span>
+      </a>
+      <div style="font-size: 14px; color: var(--text-sub);">
+        타임스탬프 카메라
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-tag">✨ 순간을 선명하게 기록하는 타임스탬프 카메라</div>
+      <h1>당신의 일상을 가장 감성적으로<br><span>기록하는 순간, LOG</span></h1>
+      <p>운동, 식단, 공부 인증부터 일상의 모든 순간까지 실시간 타임스탬프와 위치 태그로 기록하고 스마트하게 관리하세요.</p>
+      <a href="https://play.google.com/store/apps/details?id=com.kbh3983.log" class="hero-btn" target="_blank" rel="noopener">
+        Google Play에서 다운로드
+      </a>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+      <h2 class="section-title">주요 기능 안내</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">⏱️</div>
+          <h3>실시간 고정밀 타임스탬프</h3>
+          <p>촬영 순간의 날짜, 요일, 시간(초 단위)을 사진과 동영상에 자연스럽고 선명하게 합성합니다.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎥</div>
+          <h3>고화질 사진 및 동영상 녹화</h3>
+          <p>1:1, 4:5, 16:9 등 다양한 종횡비와 함께 노이즈 없는 깨끗한 오디오가 담긴 고화질 비디오를 촬영할 수 있습니다.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📍</div>
+          <h3>GPS 위치 스탬프 연동</h3>
+          <p>현재 위치 정보를 실시간으로 감지하여 사진과 비디오에 감성적인 위치 배지로 함께 기록할 수 있습니다.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📅</div>
+          <h3>캘린더 기반 앨범 관리</h3>
+          <p>날짜별, 앨범별로 기록을 깔끔하게 정리하여 언제든 과거의 소중한 순간들을 한눈에 모아볼 수 있습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Developer & Business Info (Google Play Console 심사용 공식 정보) -->
+    <section class="company-info">
+      <h2>서비스 및 개발자 정보</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">서비스명</span>
+          <span class="info-value">LOG (로그 - 타임스탬프 카메라)</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">개발자 / 운영자</span>
+          <span class="info-value">kbh3983</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">대표 문의 이메일</span>
+          <span class="info-value"><a href="mailto:kbh3983@gmail.com">kbh3983@gmail.com</a></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">패키지 ID</span>
+          <span class="info-value">com.kbh3983.log</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">공식 웹사이트</span>
+          <span class="info-value"><a href="https://kbh3983.github.io/timenow/">https://kbh3983.github.io/timenow/</a></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">카테고리</span>
+          <span class="info-value">사진 / 유틸리티</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2026 LOG (timenow). All rights reserved.</p>
+      <div style="margin-top: 12px;">
+        <a href="#privacy" onclick="alert('LOG는 이용자의 개인 사진을 서버로 전송하지 않으며, 모든 데이터는 기기 로컬에 안전하게 보관됩니다.'); return false;">개인정보처리방침</a>
+        <span>·</span>
+        <a href="mailto:kbh3983@gmail.com">문의하기</a>
+      </div>
+    </footer>
+  </div>
+
+</body>
+</html>
+
