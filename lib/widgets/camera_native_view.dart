@@ -26,6 +26,30 @@ class TimenowNativeCameraController {
     });
   }
 
+  Future<bool> checkAudioPermission() async {
+    if (_channel == null) return false;
+    try {
+      final bool? granted =
+          await _channel!.invokeMethod<bool>('checkAudioPermission');
+      return granted ?? false;
+    } catch (e) {
+      debugPrint('checkAudioPermission error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> requestAudioPermission() async {
+    if (_channel == null) return false;
+    try {
+      final bool? granted =
+          await _channel!.invokeMethod<bool>('requestAudioPermission');
+      return granted ?? false;
+    } catch (e) {
+      debugPrint('requestAudioPermission error: $e');
+      return false;
+    }
+  }
+
   Future<bool> isCameraReady() async {
     if (_channel == null) return false;
     try {
@@ -34,6 +58,13 @@ class TimenowNativeCameraController {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<void> resumeCamera() async {
+    if (_channel == null) return;
+    try {
+      await _channel!.invokeMethod('resumeCamera');
+    } catch (_) {}
   }
 
   void detachChannel() {
@@ -119,6 +150,15 @@ class TimenowNativeCameraController {
     }
   }
 
+  Future<void> setFocusPoint(double x, double y) async {
+    if (_channel == null) return;
+    try {
+      await _channel!.invokeMethod('setFocusPoint', {'x': x, 'y': y});
+    } catch (e) {
+      debugPrint('Native setFocusPoint error: $e');
+    }
+  }
+
   Future<void> setAspectRatio(String ratio) async {
     if (_channel == null) return;
     try {
@@ -146,20 +186,35 @@ class CameraNativeView extends StatefulWidget {
 class _CameraNativeViewState extends State<CameraNativeView> {
   @override
   Widget build(BuildContext context) {
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      return const Center(child: Text('Android only'));
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return IgnorePointer(
+        child: AndroidView(
+          viewType: 'timenow_camera_view',
+          onPlatformViewCreated: (id) {
+            widget.controller.attachChannel(id);
+          },
+          creationParams: {
+            'isFrontCamera': widget.isFrontCamera,
+          },
+          creationParamsCodec: const StandardMessageCodec(),
+        ),
+      );
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return IgnorePointer(
+        child: UiKitView(
+          viewType: 'timenow_camera_view',
+          onPlatformViewCreated: (id) {
+            widget.controller.attachChannel(id);
+          },
+          creationParams: {
+            'isFrontCamera': widget.isFrontCamera,
+          },
+          creationParamsCodec: const StandardMessageCodec(),
+        ),
+      );
     }
 
-    return AndroidView(
-      viewType: 'timenow_camera_view',
-      onPlatformViewCreated: (id) {
-        widget.controller.attachChannel(id);
-      },
-      creationParams: {
-        'isFrontCamera': widget.isFrontCamera,
-      },
-      creationParamsCodec: const StandardMessageCodec(),
-    );
+    return const Center(child: Text('Unsupported Platform'));
   }
 
   @override

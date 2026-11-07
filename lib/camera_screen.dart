@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -76,6 +77,11 @@ class _CameraScreenState extends State<CameraScreen>
   String? _timerStatusText;
   Timer? _statusOverlayTimer;
 
+  // Focus Indicator State
+  Offset? _focusPoint;
+  bool _showFocusIndicator = false;
+  Timer? _focusIndicatorTimer;
+
   @override
   void initState() {
     super.initState();
@@ -100,7 +106,11 @@ class _CameraScreenState extends State<CameraScreen>
 
   Future<void> _checkPhotoPermissionsOnLaunch() async {
     try {
-      await PhotoManager.requestPermissionExtend();
+      final state = await PhotoManager.requestPermissionExtend();
+      if (state.isAuth) {
+        // 백그라운드에서 사진 선택 화면 캐시 워밍업 (첫 진입 즉시 로딩)
+        GalleryPickerScreen.warmUpCache();
+      }
     } catch (e) {
       debugPrint('Photo permission check on launch error: $e');
     }
@@ -235,13 +245,9 @@ class _CameraScreenState extends State<CameraScreen>
     try {
       if (mode == CameraCaptureMode.video) {
         // 1. Flutter 사진 카메라를 먼저 완전히 닫고 하드웨어 자원을 안전하게 반환합니다.
-        final oldController = _controller;
-        _controller = null;
-        if (oldController != null) {
-          try {
-            await oldController.dispose();
-          } catch (_) {}
-          // Android Camera HAL이 카메라 센서 점유를 완전히 해제할 시간을 부여합니다.
+        if (_controller != null) {
+          await _disposePhotoController();
+          // Camera HAL이 카메라 센서 점유를 완전히 해제할 시간을 부여합니다.
           await Future.delayed(const Duration(milliseconds: 150));
         }
 
@@ -252,6 +258,8 @@ class _CameraScreenState extends State<CameraScreen>
         });
 
         _updateVideoAspectRatio(_aspectRatio);
+        // 동영상 모드 진입 시 마이크 권한 확인 및 요청
+        _nativeController.requestAudioPermission();
 
         _nativeOverlayTimer?.cancel();
         _nativeOverlayTimer = Timer.periodic(
@@ -289,22 +297,50 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   bool _isCameraInitializing = false;
+  Future<void>? _disposingControllerFuture;
+
+  Future<void> _disposePhotoController() async {
+    final oldController = _controller;
+    if (oldController == null) return;
+    _controller = null;
+    if (mounted) {
+      setState(() {});
+    }
+    final future = oldController.dispose();
+    _disposingControllerFuture = future;
+    try {
+      await future;
+    } catch (_) {
+    } finally {
+      if (_disposingControllerFuture == future) {
+        _disposingControllerFuture = null;
+      }
+    }
+  }
+
+  Future<void> _ensurePhotoCameraActive() async {
+    if (!mounted || _captureMode != CameraCaptureMode.photo) return;
+    if (_controller == null || !_controller!.value.isInitialized) {
+      await _initCamera();
+    } else {
+      try {
+        await _controller!.resumePreview();
+        if (mounted) setState(() {});
+      } catch (_) {
+        await _disposePhotoController();
+        await _initCamera();
+      }
+    }
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 1. 앱이 비활성화되거나 백그라운드로 전환될 때 (화면 잠금, 홈 화면 전환, 전체화면 광고 노출 등)
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
-        state == AppLifecycleState.hidden) {
+    // 1. 앱이 백그라운드로 완전히 전환될 때
+    // (iOS에서 알림센터/제어센터/홈바 터치/광고 오버레이 등으로 잠깐 발생하는 inactive에서는
+    // 카메라를 파괴하지 않아야 복귀 시 검은 화면 경쟁 상태가 발생하지 않습니다)
+    if (state == AppLifecycleState.paused) {
       if (_captureMode == CameraCaptureMode.photo) {
-        final oldController = _controller;
-        if (oldController != null) {
-          // 화면이 다시 빌드되더라도 폐기된 컨트롤러를 참조하지 않도록 즉시 null 처리
-          setState(() {
-            _controller = null;
-          });
-          oldController.dispose();
-        }
+        _disposePhotoController();
       } else {
         // 비디오 녹화 중 잠금이나 백그라운드 전환 시 녹화 안전 종료
         if (_isRecording) {
@@ -315,11 +351,10 @@ class _CameraScreenState extends State<CameraScreen>
     // 2. 앱으로 복귀했을 때 (화면 잠금 해제, 광고 닫기, 앱 재진입 등)
     else if (state == AppLifecycleState.resumed) {
       if (_captureMode == CameraCaptureMode.photo) {
-        if (!_isCameraInitializing) {
-          _initCamera();
-        }
+        _ensurePhotoCameraActive();
       } else {
-        // 비디오 모드인 경우 네이티브 오버레이 갱신
+        // 비디오 모드인 경우 네이티브 카메라 세션 복구 및 오버레이 갱신
+        _nativeController.resumeCamera();
         _lastOverlayPushKey = null;
         _pushNativeOverlay(force: true);
       }
@@ -332,12 +367,21 @@ class _CameraScreenState extends State<CameraScreen>
     _isCameraInitializing = true;
 
     try {
+      // 이전 컨트롤러가 해제 중이라면 완전히 끝날 때까지 대기하여 하드웨어 충돌(검은 화면) 방지
+      if (_disposingControllerFuture != null) {
+        try {
+          await _disposingControllerFuture;
+        } catch (_) {}
+      }
+
+      if (!mounted || _captureMode != CameraCaptureMode.photo) return;
+
       final camera = widget.cameras[_selectedCameraIndex];
-      // ResolutionPreset.max → full-sensor 4:3 output (same as stock camera).
-      CameraController controller = CameraController(
+      // 사진 전용 컨트롤러는 enableAudio: false로 설정하여 iOS 오디오 세션 인터럽트로 인한 프리뷰 멈춤/검은 화면 원천 차단
+      final CameraController controller = CameraController(
         camera,
         ResolutionPreset.max,
-        enableAudio: true,
+        enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
       try {
@@ -347,26 +391,14 @@ class _CameraScreenState extends State<CameraScreen>
         } catch (_) {}
         await controller.setFlashMode(_flashMode);
       } catch (e) {
-        debugPrint('Camera init with audio failed, retrying without audio: $e');
+        debugPrint('Camera init error: $e');
         try {
-          controller = CameraController(
-            camera,
-            ResolutionPreset.max,
-            enableAudio: false,
-            imageFormatGroup: ImageFormatGroup.jpeg,
-          );
-          await controller.initialize();
-          try {
-            await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
-          } catch (_) {}
-          await controller.setFlashMode(_flashMode);
-        } catch (e2) {
-          debugPrint('Camera init error: $e2');
-          return;
-        }
+          await controller.dispose();
+        } catch (_) {}
+        return;
       }
-      if (!mounted) {
-        controller.dispose();
+      if (!mounted || _captureMode != CameraCaptureMode.photo) {
+        await controller.dispose();
         return;
       }
       double minZoom = 1.0;
@@ -382,7 +414,7 @@ class _CameraScreenState extends State<CameraScreen>
           _maxZoom = maxZoom;
         });
       } else {
-        controller.dispose();
+        await controller.dispose();
       }
     } finally {
       _isCameraInitializing = false;
@@ -402,9 +434,39 @@ class _CameraScreenState extends State<CameraScreen>
     } else {
       if (widget.cameras.length < 2) return;
       _selectedCameraIndex = _selectedCameraIndex == 0 ? 1 : 0;
-      await _controller?.dispose();
-      setState(() => _controller = null);
+      await _disposePhotoController();
       await _initCamera();
+    }
+  }
+
+  Future<void> _handleTapToFocus(Offset localPosition, double width, double height) async {
+    if (width <= 0 || height <= 0) return;
+    final double nx = (localPosition.dx / width).clamp(0.0, 1.0);
+    final double ny = (localPosition.dy / height).clamp(0.0, 1.0);
+
+    setState(() {
+      _focusPoint = localPosition;
+      _showFocusIndicator = true;
+    });
+
+    _focusIndicatorTimer?.cancel();
+    _focusIndicatorTimer = Timer(const Duration(milliseconds: 1400), () {
+      if (mounted) {
+        setState(() => _showFocusIndicator = false);
+      }
+    });
+
+    HapticFeedback.selectionClick();
+
+    try {
+      if (_captureMode == CameraCaptureMode.video) {
+        await _nativeController.setFocusPoint(nx, ny);
+      } else if (_controller != null && _controller!.value.isInitialized) {
+        await _controller!.setFocusPoint(Offset(nx, ny));
+        await _controller!.setExposurePoint(Offset(nx, ny));
+      }
+    } catch (e) {
+      debugPrint('Error setting focus point: $e');
     }
   }
 
@@ -500,7 +562,7 @@ class _CameraScreenState extends State<CameraScreen>
 
       if (mounted) {
         final now = DateTime.now();
-        final result = await Navigator.push(
+        var result = await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PhotoReviewScreen(
@@ -516,7 +578,27 @@ class _CameraScreenState extends State<CameraScreen>
           ),
         );
 
+        while (result is GalleryResult) {
+          final gr = result;
+          if (!mounted) break;
+          result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PhotoReviewScreen(
+                imageFile: gr.file,
+                initialDesign: _currentDesign,
+                initialAlbum: _currentAlbum,
+                aspectRatio: _aspectRatio.value,
+                captureTime: gr.creationTime,
+                initialAlignment: _currentAlignment,
+                initialFontSizeIndex: _fontSizeIndex,
+              ),
+            ),
+          );
+        }
+
         if (mounted) {
+          await _ensurePhotoCameraActive();
           if (result == true) {
             _showSavedSnackbar();
             _loadAlbums();
@@ -542,11 +624,18 @@ class _CameraScreenState extends State<CameraScreen>
     if (_isRecording || _isVideoActionBusy) return;
     _isVideoActionBusy = true;
     try {
+      // 녹화 시작 전 마이크 권한 확인 (권한 없을 시 요청)
+      final hasMic = await _nativeController.checkAudioPermission();
+      if (!hasMic) {
+        await _nativeController.requestAudioPermission();
+      }
+
       final tempDir = await getTemporaryDirectory();
       final outputPath =
           '${tempDir.path}/timenow_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
       _currentRecordingPath = outputPath;
 
+      await _pushNativeOverlay(force: true);
       await _nativeController.startRecording(outputPath);
       _recordingStartTime = DateTime.now();
       _recordDurationSeconds = 0;
@@ -603,14 +692,18 @@ class _CameraScreenState extends State<CameraScreen>
                   CameraLensDirection.front;
 
           // 녹화 직후 비디오 최적화:
-          // 1. 전면 카메라 거울 모드 (hflip)
-          // 2. 1:1 / 4:5 화면 비율 크롭
-          // 3. 마이크 전원 인가 시 발생하는 시작 지점 팝 노이즈("뚝!" 소리) 원천 제거
+          // 1. 전면 카메라 거울 모드 (hflip):
+          //    - iOS 네이티브 뷰는 이미 AVCaptureConnection에서 isVideoMirrored 및 종횡비 크롭 처리가 되어 있으므로 추가 비디오 필터 불필요
+          //    - Android일 때만 hflip 및 종횡비 크롭 적용
+          // 2. 마이크 전원 인가 시 발생하는 시작 지점 팝 노이즈("뚝!" 소리) 원천 제거
+          final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+          final shouldMirror = isAndroid && isFront;
+
           final processedFile =
               await VideoProcessingService().processRecordedVideo(
             rawVideoFile: videoFile,
-            aspectRatioValue: _aspectRatio.value,
-            mirrorHorizontally: isFront,
+            aspectRatioValue: isAndroid ? _aspectRatio.value : null,
+            mirrorHorizontally: shouldMirror,
           );
 
           if (!mounted) return;
@@ -629,6 +722,11 @@ class _CameraScreenState extends State<CameraScreen>
           );
 
           if (mounted) {
+            if (_captureMode == CameraCaptureMode.video) {
+              await _nativeController.resumeCamera();
+              _lastOverlayPushKey = null;
+              _pushNativeOverlay(force: true);
+            }
             if (result == true) {
               _loadAlbums();
             } else if (result is String && result != "전체") {
@@ -927,14 +1025,64 @@ class _CameraScreenState extends State<CameraScreen>
                           child: _buildRatioCameraPreview(clearW, clearH, _aspectRatio),
                         ),
 
-                        // Timestamp overlay inside the viewfinder (in video mode native OverlayEffect renders pixels on GPU, while opacity 0 keeps editable text hit-targets active)
+                        // Tap-to-Focus detector
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTapUp: (details) {
+                              _handleTapToFocus(details.localPosition, clearW, clearH);
+                            },
+                          ),
+                        ),
+
+                        // Timestamp overlay inside the viewfinder
+                        // iOS/Android 모두 화면 프리뷰 상에서는 Flutter의 TimestampOverlayWidget이 항상 실시간으로 보이고 터치 인터랙션을 받습니다.
+                        // (녹화 시에는 네이티브 비디오 프레임에 동일한 타임스탬프가 실시간 인코딩됩니다)
                         if (_currentDesign != TimestampDesign.none)
                           Positioned.fill(
                             child: TimestampOverlayWidget(
                               design: _currentDesign,
                               alignment: _currentAlignment,
-                              opacity: _captureMode == CameraCaptureMode.video ? 0.0 : _overlayOpacity,
+                              opacity: _overlayOpacity,
                               fontSize: _timestampFontSize,
+                            ),
+                          ),
+
+                        // Focus Indicator Ring (Yellow Camera Focus Box)
+                        if (_showFocusIndicator && _focusPoint != null)
+                          Positioned(
+                            left: _focusPoint!.dx - 32,
+                            top: _focusPoint!.dy - 32,
+                            child: TweenAnimationBuilder<double>(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutBack,
+                              tween: Tween<double>(begin: 1.35, end: 1.0),
+                              builder: (context, scale, child) {
+                                return Transform.scale(
+                                  scale: scale,
+                                  child: Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: const Color(0xFFFFD700),
+                                        width: 1.5,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Center(
+                                      child: Container(
+                                        width: 4,
+                                        height: 4,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFFFD700),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                       ],
@@ -1354,7 +1502,16 @@ class _CameraScreenState extends State<CameraScreen>
           context,
           MaterialPageRoute(builder: (_) => const SettingsScreen()),
         );
-        if (mounted) setState(() {});
+        if (mounted) {
+          if (_captureMode == CameraCaptureMode.video) {
+            await _nativeController.resumeCamera();
+            _lastOverlayPushKey = null;
+            _pushNativeOverlay(force: true);
+          } else {
+            await _ensurePhotoCameraActive();
+          }
+          setState(() {});
+        }
       },
       onPhotoPickerPressed: () async {
         final GalleryResult? galleryResult = await Navigator.push<GalleryResult>(
@@ -1407,6 +1564,15 @@ class _CameraScreenState extends State<CameraScreen>
             }
           }
         }
+        if (mounted) {
+          if (_captureMode == CameraCaptureMode.video) {
+            await _nativeController.resumeCamera();
+            _lastOverlayPushKey = null;
+            _pushNativeOverlay(force: true);
+          } else {
+            await _ensurePhotoCameraActive();
+          }
+        }
       },
       onAlbumPressed: () async {
         final result = await Navigator.push(
@@ -1417,6 +1583,13 @@ class _CameraScreenState extends State<CameraScreen>
           ),
         );
         if (mounted) {
+          if (_captureMode == CameraCaptureMode.video) {
+            await _nativeController.resumeCamera();
+            _lastOverlayPushKey = null;
+            _pushNativeOverlay(force: true);
+          } else {
+            await _ensurePhotoCameraActive();
+          }
           final albums = await AlbumService.getAlbums();
           if (result != null && result is String && result != "전체" && albums.contains(result)) {
             setState(() {
@@ -1442,6 +1615,13 @@ class _CameraScreenState extends State<CameraScreen>
           ),
         );
         if (mounted) {
+          if (_captureMode == CameraCaptureMode.video) {
+            await _nativeController.resumeCamera();
+            _lastOverlayPushKey = null;
+            _pushNativeOverlay(force: true);
+          } else {
+            await _ensurePhotoCameraActive();
+          }
           setState(() {});
         }
       },
@@ -1523,13 +1703,22 @@ class _CameraScreenState extends State<CameraScreen>
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () {
+                      onTap: () async {
                         HapticFeedback.lightImpact();
-                        Navigator.of(context).push(
+                        await Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const StampManagementScreen(),
                           ),
                         );
+                        if (mounted) {
+                          if (_captureMode == CameraCaptureMode.video) {
+                            await _nativeController.resumeCamera();
+                            _lastOverlayPushKey = null;
+                            _pushNativeOverlay(force: true);
+                          } else {
+                            await _ensurePhotoCameraActive();
+                          }
+                        }
                       },
                       borderRadius: BorderRadius.circular(6),
                       child: Container(
@@ -1550,10 +1739,12 @@ class _CameraScreenState extends State<CameraScreen>
                                 color: AppSettingsService().accentColor.withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(
-                                Icons.approval_rounded,
+                              child: Image.asset(
+                                'assets/icons/stamp_manage.png',
                                 color: AppSettingsService().accentColor,
-                                size: 18,
+                                width: 18,
+                                height: 18,
+                                fit: BoxFit.contain,
                               ),
                             ),
                             const SizedBox(height: 4),

@@ -159,10 +159,6 @@ class VideoProcessingService {
       final bool needsRatioCrop = aspectRatioValue != null &&
           (aspectRatioValue - (9.0 / 16.0)).abs() > 0.05;
 
-      final tempDir = await getTemporaryDirectory();
-      final outputPath =
-          '${tempDir.path}/processed_${DateTime.now().millisecondsSinceEpoch}.mp4';
-
       final List<String> vFilters = [];
       if (needsRatioCrop) {
         if ((aspectRatioValue - 1.0).abs() < 0.05) {
@@ -178,6 +174,10 @@ class VideoProcessingService {
         vFilters.add('hflip');
       }
 
+      final tempDir = await getTemporaryDirectory();
+      final outputPath =
+          '${tempDir.path}/processed_${DateTime.now().millisecondsSinceEpoch}.mp4';
+
       // 오디오 시작 하드웨어 팝 노이즈(0.0~0.5초) 및 녹화 종료 팝(마지막 0.08초) 원천 제거
       const audioFilter =
           "volume=0:enable='between(t\\,0\\,0.5)',afade=t=in:ss=0.5:d=0.08,areverse,volume=0:enable='between(t\\,0\\,0.08)',afade=t=in:ss=0.08:d=0.1,areverse,aresample=async=1:first_pts=0";
@@ -186,7 +186,7 @@ class VideoProcessingService {
       if (vFilters.isNotEmpty) {
         final vf = vFilters.join(',');
         command =
-            '-y -i "${rawVideoFile.path}" -vf "$vf" -af "$audioFilter" -c:v libx264 -preset ultrafast -crf 20 -c:a aac -b:a 192k -avoid_negative_ts make_zero -max_muxing_queue_size 1024 "$outputPath"';
+            '-y -i "${rawVideoFile.path}" -vf "$vf" -af "$audioFilter" -c:v libx264 -preset ultrafast -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -avoid_negative_ts make_zero -max_muxing_queue_size 1024 "$outputPath"';
       } else {
         // 비디오 필터가 없으면 비디오 스트림은 copy하여 0.05초 만에 오디오만 고속 클린업 (타임스탬프 동기화 보장)
         command =
@@ -199,8 +199,9 @@ class VideoProcessingService {
       if (ReturnCode.isSuccess(returnCode)) {
         return File(outputPath);
       } else {
+        final logs = await session.getAllLogsAsString();
         debugPrint(
-            'VideoProcessingService: process video failed, returning original');
+            'VideoProcessingService: process video failed: $logs, returning original');
         return rawVideoFile;
       }
     } catch (e) {

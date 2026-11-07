@@ -159,7 +159,7 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
 
               // 타이틀
               Text(
-                '감성 타임스탬프 해금',
+                '타임스탬프 사용하기',
                 style: TextStyle(
                   color: settings.textColor,
                   fontSize: 19,

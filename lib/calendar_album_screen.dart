@@ -773,7 +773,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     return GestureDetector(
       onTap: tapEnabled
           ? () async {
-              final result = await Navigator.push(
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => PhotoDetailScreen(
@@ -782,8 +782,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                   ),
                 ),
               );
-              if (result == true) {
-                _loadData(); // Refresh if photo was deleted
+              // 삭제 또는 메모 변경 여부와 관계없이 상세 화면에서 돌아오면 항상 최신 상태로 새로고침
+              if (mounted) {
+                _loadData();
               }
             }
           : null,
@@ -898,7 +899,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     final isLight = AppSettingsService().isLight;
     return GestureDetector(
       onTap: () async {
-        final result = await Navigator.push(
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PhotoDetailScreen(
@@ -907,7 +908,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             ),
           ),
         );
-        if (result == true) {
+        if (mounted) {
           _loadData();
         }
       },

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'ux_config.dart';
 import 'services/app_settings_service.dart';
+import 'widgets/ad_banner_widget.dart';
 
 /// Result from gallery picker containing the selected file and its creation time.
 class GalleryResult {
@@ -14,6 +15,12 @@ class GalleryResult {
 
 class GalleryPickerScreen extends StatefulWidget {
   const GalleryPickerScreen({super.key});
+
+  /// 앱 시작 시 백그라운드에서 최근 사진 목록과 상단 썸네일을 미리 프리페치하여
+  /// 첫 진입 시에도 0ms로 즉시 화면이 열리도록 워밍업합니다.
+  static Future<void> warmUpCache() async {
+    await _GalleryPickerScreenState.warmUp();
+  }
 
   @override
   State<GalleryPickerScreen> createState() => _GalleryPickerScreenState();
@@ -28,6 +35,56 @@ enum PermissionStatusView {
 
 class _GalleryPickerScreenState extends State<GalleryPickerScreen>
     with WidgetsBindingObserver {
+  // Static cache for instant 0ms re-open
+  static List<AssetPathEntity>? _cachedAlbums;
+  static List<AssetEntity>? _cachedRecentPhotos;
+  static final Map<String, Uint8List> _thumbCache = {};
+  static PermissionStatusView? _cachedPermissionStatus;
+
+  static Future<void> warmUp() async {
+    try {
+      if (_cachedRecentPhotos != null && _cachedRecentPhotos!.isNotEmpty) {
+        return;
+      }
+      final filterOption = FilterOptionGroup(
+        containsPathModified: true,
+        orders: [
+          const OrderOption(type: OrderOptionType.createDate, asc: false),
+        ],
+      );
+      final recentAlbums = await PhotoManager.getAssetPathList(
+        type: RequestType.image,
+        hasAll: true,
+        onlyAll: true,
+        filterOption: filterOption,
+      );
+      if (recentAlbums.isNotEmpty) {
+        final recentAlbum = recentAlbums.first;
+        final initialAssets = await recentAlbum.getAssetListPaged(
+          page: 0,
+          size: _pageSize,
+        );
+        _cachedRecentPhotos = initialAssets;
+        _cachedAlbums ??= [recentAlbum];
+
+        // 첫 화면에 보이는 상위 24개 썸네일 미리 캐싱
+        final topAssets = initialAssets.take(24);
+        await Future.wait(
+          topAssets.map((asset) async {
+            if (_thumbCache.containsKey(asset.id)) return;
+            final data = await asset.thumbnailDataWithSize(
+              const ThumbnailSize.square(240),
+              quality: 75,
+            );
+            if (data != null) {
+              _thumbCache[asset.id] = data;
+            }
+          }),
+        );
+      }
+    } catch (_) {}
+  }
+
   List<AssetPathEntity> _albums = [];
   int _selectedAlbumIndex = 0;
   List<AssetEntity> _photos = [];
@@ -35,8 +92,9 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
   bool _isLoadingMore = false;
   bool _hasMore = true;
   bool _isInitialLoading = true;
+  bool _isSelectingPhoto = false;
   PermissionStatusView _permissionStatus = PermissionStatusView.loading;
-  static const int _pageSize = 80;
+  static const int _pageSize = 60;
 
   final ScrollController _scrollController = ScrollController();
 
@@ -44,6 +102,20 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (_cachedPermissionStatus != null) {
+      _permissionStatus = _cachedPermissionStatus!;
+    }
+    // 캐시가 있으면 첫 프레임부터 즉시 렌더링 (0ms 체감 속도)
+    if (_cachedAlbums != null &&
+        _cachedAlbums!.isNotEmpty &&
+        _cachedRecentPhotos != null &&
+        _cachedRecentPhotos!.isNotEmpty) {
+      _albums = List<AssetPathEntity>.from(_cachedAlbums!);
+      _photos = List<AssetEntity>.from(_cachedRecentPhotos!);
+      _currentPage = 1;
+      _hasMore = _photos.length >= _pageSize;
+      _isInitialLoading = false;
+    }
     _requestPermissionAndLoad();
     _scrollController.addListener(_onScroll);
   }
@@ -75,19 +147,27 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
         await PhotoManager.requestPermissionExtend();
     if (!mounted) return;
 
-    if (permission.isAuth) {
+    final newStatus = permission.isAuth
+        ? PermissionStatusView.authorized
+        : (permission.isLimited
+            ? PermissionStatusView.limited
+            : PermissionStatusView.denied);
+
+    _cachedPermissionStatus = newStatus;
+
+    if (newStatus == PermissionStatusView.authorized ||
+        newStatus == PermissionStatusView.limited) {
       setState(() {
-        _permissionStatus = PermissionStatusView.authorized;
+        _permissionStatus = newStatus;
       });
       await _loadAlbums();
-    } else if (permission.isLimited) {
-      setState(() {
-        _permissionStatus = PermissionStatusView.limited;
-        _isInitialLoading = false;
-      });
     } else {
+      _cachedAlbums = null;
+      _cachedRecentPhotos = null;
       setState(() {
         _permissionStatus = PermissionStatusView.denied;
+        _photos = [];
+        _albums = [];
         _isInitialLoading = false;
       });
     }
@@ -98,65 +178,119 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
         await PhotoManager.requestPermissionExtend();
     if (!mounted) return;
 
-    if (permission.isAuth) {
-      if (_permissionStatus != PermissionStatusView.authorized || _albums.isEmpty) {
-        setState(() {
-          _permissionStatus = PermissionStatusView.authorized;
+    final newStatus = permission.isAuth
+        ? PermissionStatusView.authorized
+        : (permission.isLimited
+            ? PermissionStatusView.limited
+            : PermissionStatusView.denied);
+
+    _cachedPermissionStatus = newStatus;
+
+    if (_permissionStatus != newStatus || _albums.isEmpty) {
+      setState(() {
+        _permissionStatus = newStatus;
+        if (newStatus == PermissionStatusView.denied) {
+          _photos = [];
+          _albums = [];
+          _isInitialLoading = false;
+        } else {
           _isInitialLoading = true;
-        });
+        }
+      });
+      if (newStatus != PermissionStatusView.denied) {
         await _loadAlbums();
       }
-    } else if (permission.isLimited) {
-      setState(() {
-        _permissionStatus = PermissionStatusView.limited;
-      });
-    } else {
-      setState(() {
-        _permissionStatus = PermissionStatusView.denied;
-      });
     }
   }
 
   Future<void> _loadAlbums() async {
-    final albums = await PhotoManager.getAssetPathList(
-      type: RequestType.image,
-      hasAll: true,
-      onlyAll: false, // 명시적으로 전체 폴더 검색
-      filterOption: FilterOptionGroup(
-        containsPathModified: true, // 일부 단말기 앨범 누락 방지
-        orders: [
-          const OrderOption(type: OrderOptionType.createDate, asc: false),
-        ],
-      ),
+    final filterOption = FilterOptionGroup(
+      containsPathModified: true,
+      orders: [
+        const OrderOption(type: OrderOptionType.createDate, asc: false),
+      ],
     );
 
-    if (!mounted) return;
+    // 1단계: '최근 항목(전체)' 앨범만 먼저 초고속 조회하여 그리드 즉시 표시
+    if (_photos.isEmpty) {
+      final recentAlbums = await PhotoManager.getAssetPathList(
+        type: RequestType.image,
+        hasAll: true,
+        onlyAll: true,
+        filterOption: filterOption,
+      );
+      if (!mounted) return;
 
-    // Filter out empty albums
-    final validAlbums = <AssetPathEntity>[];
-    for (final album in albums) {
-      final count = await album.assetCountAsync;
-      if (count > 0) {
-        validAlbums.add(album);
+      if (recentAlbums.isNotEmpty) {
+        final recentAlbum = recentAlbums.first;
+        final initialAssets = await recentAlbum.getAssetListPaged(
+          page: 0,
+          size: _pageSize,
+        );
+        if (!mounted) return;
+
+        _cachedRecentPhotos = initialAssets;
+        setState(() {
+          if (_albums.isEmpty) {
+            _albums = [recentAlbum];
+          }
+          _selectedAlbumIndex = 0;
+          _photos = List<AssetEntity>.from(initialAssets);
+          _currentPage = 1;
+          _hasMore = initialAssets.length >= _pageSize;
+          _isInitialLoading = false;
+        });
+      }
+    } else if (_selectedAlbumIndex == 0 && _albums.isNotEmpty) {
+      // 캐시로 즉시 열렸을 때 최신 사진 목록만 백그라운드 갱신
+      final latestAssets = await _albums.first.getAssetListPaged(
+        page: 0,
+        size: _pageSize,
+      );
+      if (!mounted) return;
+      _cachedRecentPhotos = latestAssets;
+      if (_selectedAlbumIndex == 0 && _currentPage <= 1) {
+        setState(() {
+          _photos = List<AssetEntity>.from(latestAssets);
+          _hasMore = latestAssets.length >= _pageSize;
+        });
       }
     }
 
-    // Sort: "Recent" (isAll) first, then alphabetical
+    // 2단계: 전체 앨범 목록을 백그라운드에서 병렬(Future.wait)로 카운트하여 상단 탭 업데이트
+    final allAlbums = await PhotoManager.getAssetPathList(
+      type: RequestType.image,
+      hasAll: true,
+      onlyAll: false,
+      filterOption: filterOption,
+    );
+    if (!mounted) return;
+
+    final counts = await Future.wait(
+      allAlbums.map((album) => album.assetCountAsync),
+    );
+    if (!mounted) return;
+
+    final validAlbums = <AssetPathEntity>[];
+    for (int i = 0; i < allAlbums.length; i++) {
+      if (counts[i] > 0) {
+        validAlbums.add(allAlbums[i]);
+      }
+    }
+
     validAlbums.sort((a, b) {
       if (a.isAll) return -1;
       if (b.isAll) return 1;
       return a.name.compareTo(b.name);
     });
 
-    setState(() {
-      _albums = validAlbums;
-      _selectedAlbumIndex = 0;
-    });
+    _cachedAlbums = validAlbums;
 
-    if (validAlbums.isNotEmpty) {
-      await _loadPhotosForAlbum(0);
-    } else {
-      setState(() => _isInitialLoading = false);
+    if (mounted) {
+      setState(() {
+        _albums = validAlbums;
+        _isInitialLoading = false;
+      });
     }
   }
 
@@ -208,12 +342,18 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
   }
 
   Future<void> _onPhotoSelected(AssetEntity asset) async {
-    final file = await asset.file;
-    if (file != null && mounted) {
-      Navigator.pop(
-        context,
-        GalleryResult(file: file, creationTime: asset.createDateTime),
-      );
+    if (_isSelectingPhoto) return;
+    _isSelectingPhoto = true;
+    try {
+      final file = await asset.file;
+      if (file != null && mounted) {
+        Navigator.pop(
+          context,
+          GalleryResult(file: file, creationTime: asset.createDateTime),
+        );
+      }
+    } finally {
+      _isSelectingPhoto = false;
     }
   }
 
@@ -238,13 +378,18 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
             children: [
               // Top bar
               _buildTopBar(topPadding),
-              if (_permissionStatus == PermissionStatusView.authorized) ...[
+              // 권한이 전체 허용이 아닌 경우(일부 허용 또는 허용 안함) 상단에 전체 허용 유도 배너 표시
+              if (_permissionStatus == PermissionStatusView.limited ||
+                  _permissionStatus == PermissionStatusView.denied)
+                _buildLimitedBanner(),
+
+              if (_permissionStatus == PermissionStatusView.authorized ||
+                  _permissionStatus == PermissionStatusView.limited) ...[
                 // Album tabs
                 _buildAlbumTabs(),
                 // Photo grid
                 Expanded(child: _buildPhotoGrid()),
-              ] else if (_permissionStatus == PermissionStatusView.limited ||
-                  _permissionStatus == PermissionStatusView.denied) ...[
+              ] else if (_permissionStatus == PermissionStatusView.denied) ...[
                 Expanded(child: _buildPermissionDeniedView()),
               ] else ...[
                 Expanded(
@@ -256,6 +401,13 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
                   ),
                 ),
               ],
+              // 하단 배너 광고
+              SafeArea(
+                top: false,
+                child: const AdBannerWidget(
+                  margin: EdgeInsets.fromLTRB(16, 6, 16, 6),
+                ),
+              ),
             ],
           ),
         );
@@ -380,6 +532,48 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
           ),
           const SizedBox(width: 48), // Balance the back button
         ],
+      ),
+    );
+  }
+
+  Widget _buildLimitedBanner() {
+    final settings = AppSettingsService();
+    final isDenied = _permissionStatus == PermissionStatusView.denied;
+    final text = isDenied
+        ? '사진 접근 권한이 필요합니다 · 모든 사진 허용하기'
+        : '일부 사진만 허용됨 · 모든 사진 허용하기';
+
+    return GestureDetector(
+      onTap: () => PhotoManager.openSetting(),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: settings.accentColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: settings.accentColor.withValues(alpha: 0.35),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: settings.accentColor, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: settings.accentColor,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Pretendard',
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: settings.accentColor, size: 18),
+          ],
+        ),
       ),
     );
   }
@@ -518,23 +712,46 @@ class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
   @override
   void initState() {
     super.initState();
-    _loadThumbnail();
+    final cached = _GalleryPickerScreenState._thumbCache[widget.asset.id];
+    if (cached != null) {
+      _thumbData = cached;
+      _isLoading = false;
+    } else {
+      _loadThumbnail();
+    }
   }
 
   @override
   void didUpdateWidget(_PhotoThumbnailTile oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.asset.id != widget.asset.id) {
-      _loadThumbnail();
+      final cached = _GalleryPickerScreenState._thumbCache[widget.asset.id];
+      if (cached != null) {
+        _thumbData = cached;
+        _isLoading = false;
+      } else {
+        _thumbData = null;
+        _isLoading = true;
+        _loadThumbnail();
+      }
     }
   }
 
   Future<void> _loadThumbnail() async {
+    final assetId = widget.asset.id;
     final data = await widget.asset.thumbnailDataWithSize(
-      const ThumbnailSize(300, 300),
-      quality: 80,
+      const ThumbnailSize.square(240),
+      quality: 75,
     );
-    if (mounted) {
+    if (data != null) {
+      if (_GalleryPickerScreenState._thumbCache.length > 600) {
+        _GalleryPickerScreenState._thumbCache.remove(
+          _GalleryPickerScreenState._thumbCache.keys.first,
+        );
+      }
+      _GalleryPickerScreenState._thumbCache[assetId] = data;
+    }
+    if (mounted && widget.asset.id == assetId) {
       setState(() {
         _thumbData = data;
         _isLoading = false;
@@ -549,20 +766,13 @@ class _PhotoThumbnailTileState extends State<_PhotoThumbnailTile> {
       child: Container(
         color: const Color(0xFF1A1A1A),
         child: _isLoading || _thumbData == null
-            ? const Center(
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    color: Colors.white24,
-                    strokeWidth: 1.5,
-                  ),
-                ),
-              )
+            ? const SizedBox.shrink()
             : Image.memory(
                 _thumbData!,
                 fit: BoxFit.cover,
+                cacheWidth: 240,
                 gaplessPlayback: true,
+                filterQuality: FilterQuality.low,
               ),
       ),
     );

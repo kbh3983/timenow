@@ -30,6 +30,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs camera access to take photos with timestamps.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>사진 및 스탬프에 현재 촬영 위치를 표시하기 위해 위치 권한이 필요합니다.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>사진 및 스탬프에 현재 촬영 위치를 표시하기 위해 위치 권한이 필요합니다.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs microphone access for video recording.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

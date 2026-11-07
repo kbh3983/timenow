@@ -48,6 +48,17 @@ class AlbumService {
     return path.endsWith('.mp4') || path.endsWith('.mov') || path.endsWith('.avi');
   }
 
+  static bool isMediaFile(File file) {
+    final path = file.path.toLowerCase();
+    if (path.endsWith('_thumb.jpg')) return false;
+    return path.endsWith('.jpg') ||
+        path.endsWith('.jpeg') ||
+        path.endsWith('.png') ||
+        path.endsWith('.mp4') ||
+        path.endsWith('.mov') ||
+        path.endsWith('.avi');
+  }
+
   static Future<List<String>> getAlbums() async {
     final root = await _photosRoot;
     final entities = await root.list().toList();
@@ -238,7 +249,7 @@ class AlbumService {
       final currentAlbumName = dir.path.split(Platform.pathSeparator).last;
       final files = await dir.list().toList();
       for (var file in files) {
-        if (file is File) {
+        if (file is File && isMediaFile(file)) {
           final photoDate = getPhotoDate(file);
           final date = DateTime(
             photoDate.year,
@@ -274,7 +285,7 @@ class AlbumService {
       if (!await dir.exists()) continue;
       final files = await dir.list().toList();
       for (var file in files) {
-        if (file is File) {
+        if (file is File && isMediaFile(file)) {
           final photoDate = getPhotoDate(file);
           final date = DateTime(
             photoDate.year,
@@ -335,7 +346,7 @@ class AlbumService {
       if (!await dir.exists()) continue;
       final files = await dir.list().toList();
       for (var file in files) {
-        if (file is File) {
+        if (file is File && isMediaFile(file)) {
           final photoDate = getPhotoDate(file);
           final date = DateTime(
             photoDate.year,
@@ -370,7 +381,7 @@ class AlbumService {
       if (!await dir.exists()) continue;
       final files = await dir.list().toList();
       for (var file in files) {
-        if (file is File) {
+        if (file is File && isMediaFile(file)) {
           final photoDate = getPhotoDate(file);
           final fileDate = DateTime(
             photoDate.year,
@@ -405,7 +416,7 @@ class AlbumService {
       if (!await dir.exists()) continue;
       final files = await dir.list().toList();
       for (var file in files) {
-        if (file is File) {
+        if (file is File && isMediaFile(file)) {
           result.add(file);
         }
       }

@@ -257,6 +257,18 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
               ),
             ),
             Positioned(
+              left: 12,
+              top: topMenuH + screenW - 56,
+              child: _hoverButton(
+                icon: Icons.arrow_back_ios_new_rounded,
+                enabled: true,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            Positioned(
               right: 12,
               top: topMenuH + screenW - 110,
               child: Builder(
@@ -294,7 +306,19 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
     VoidCallback? onTap,
     bool enabled = true,
   }) {
-    final fgColor = Colors.white.withValues(alpha: enabled ? 1.0 : 0.4);
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
+
+    final bgColor = isLight
+        ? Colors.white.withValues(alpha: enabled ? 0.9 : 0.6)
+        : Colors.black.withValues(alpha: enabled ? 0.4 : 0.3);
+    final borderColor = isLight
+        ? Colors.black.withValues(alpha: enabled ? 0.15 : 0.08)
+        : Colors.white.withValues(alpha: enabled ? 0.24 : 0.12);
+    final fgColor = isLight
+        ? const Color(0xFF1E2026).withValues(alpha: enabled ? 1.0 : 0.38)
+        : Colors.white.withValues(alpha: enabled ? 1.0 : 0.4);
+
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 180),
       opacity: enabled ? 1.0 : 0.38,
@@ -305,9 +329,18 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
           height: 44,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.black.withValues(alpha: enabled ? 0.4 : 0.3),
+            color: bgColor,
+            boxShadow: isLight
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : null,
             border: Border.all(
-              color: Colors.white.withValues(alpha: enabled ? 0.24 : 0.12),
+              color: borderColor,
               width: 1,
             ),
           ),
@@ -418,10 +451,14 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
       photoThumbnail: _latestPhoto,
       isLoading: _isSaving,
       centerIcon: Icons.check,
+      isReviewScreen: true,
     );
   }
 
   Widget _buildAlbumSelector({required bool isOverlay}) {
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
+
     return SizedBox(
       height: ReviewUX.albumSelectorHeight,
 
@@ -434,6 +471,17 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
           itemBuilder: (context, index) {
             final album = _availableAlbums[index];
             final isSelected = _selectedAlbum == album;
+
+            final unselectedBg = isLight
+                ? Colors.black.withValues(alpha: 0.06)
+                : ReviewUX.albumButtonBg;
+            final unselectedTextColor = isLight
+                ? const Color(0xFF4B5563)
+                : ReviewUX.albumButtonText;
+            final selectedBorder = isLight
+                ? Colors.black.withValues(alpha: 0.12)
+                : Colors.white24;
+
             return GestureDetector(
               onTap: () => setState(() => _selectedAlbum = album),
               child: Container(
@@ -445,10 +493,10 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? ReviewUX.albumButtonSelectedBg
-                      : ReviewUX.albumButtonBg,
+                      : unselectedBg,
                   borderRadius: BorderRadius.circular(ReviewUX.albumButtonBorderRadius),
                   border: Border.all(
-                    color: isSelected ? Colors.white24 : Colors.transparent,
+                    color: isSelected ? selectedBorder : Colors.transparent,
                   ),
                 ),
                 child: Center(
@@ -457,7 +505,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                     style: TextStyle(
                       color: isSelected
                           ? ReviewUX.albumButtonSelectedText
-                          : ReviewUX.albumButtonText,
+                          : unselectedTextColor,
                       fontSize: ReviewUX.albumButtonFontSize,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     ),
@@ -523,6 +571,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
               }
 
               // 맨 오른쪽 끝: 스탬프 관리 화면 진입 버튼
+              final isLight = AppSettingsService().isLight;
               return Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: AspectRatio(
@@ -540,10 +589,12 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                       borderRadius: BorderRadius.circular(6),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1B1D24),
+                          color: isLight ? Colors.white : const Color(0xFF1B1D24),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: AppSettingsService().accentColor.withValues(alpha: 0.35),
+                            color: isLight
+                                ? Colors.black.withValues(alpha: 0.12)
+                                : AppSettingsService().accentColor.withValues(alpha: 0.35),
                             width: 1.2,
                           ),
                         ),
@@ -553,21 +604,23 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                             Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(
-                                color: AppSettingsService().accentColor.withValues(alpha: 0.15),
+                                color: AppSettingsService().accentColor.withValues(alpha: isLight ? 0.2 : 0.15),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(
-                                Icons.approval_rounded,
-                                color: AppSettingsService().accentColor,
-                                size: 18,
+                              child: Image.asset(
+                                'assets/icons/stamp_manage.png',
+                                color: isLight ? const Color(0xFF1E2026) : AppSettingsService().accentColor,
+                                width: 18,
+                                height: 18,
+                                fit: BoxFit.contain,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               '스탬프\n관리',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: Colors.white,
+                                color: isLight ? const Color(0xFF1E2026) : Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 height: 1.15,

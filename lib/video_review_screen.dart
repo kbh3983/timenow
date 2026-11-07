@@ -124,14 +124,11 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
     try {
       File fileToSave = widget.videoFile;
 
-      final bool needsRatioCrop = widget.aspectRatio != null &&
-          (widget.aspectRatio! - (9.0 / 16.0)).abs() > 0.05;
-
-      // 전면 카메라 좌우 반전(거울 모드) 또는 1:1, 4:5 비율 크롭 처리
-      if (widget.mirrorHorizontally || needsRatioCrop) {
+      // 전면 카메라 좌우 반전(거울 모드)이 아직 처리되지 않은 경우에만 처리
+      // (비율 크롭 및 오디오 팝 제거는 VideoReviewScreen 진입 전에 이미 완료됨)
+      if (widget.mirrorHorizontally) {
         fileToSave = await VideoProcessingService().processRecordedVideo(
           rawVideoFile: widget.videoFile,
-          aspectRatioValue: widget.aspectRatio,
           mirrorHorizontally: widget.mirrorHorizontally,
         );
       }
@@ -329,9 +326,67 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
                 ),
               ),
             ),
+            Positioned(
+              left: 12,
+              top: topMenuH + screenW - 56,
+              child: _buildBackHoverButton(),
+            ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildBackHoverButton() {
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
+
+    final bgColor = isLight
+        ? Colors.white.withValues(alpha: 0.9)
+        : Colors.black.withValues(alpha: 0.4);
+    final borderColor = isLight
+        ? Colors.black.withValues(alpha: 0.15)
+        : Colors.white.withValues(alpha: 0.24);
+    final fgColor = isLight ? const Color(0xFF1E2026) : Colors.white;
+
+    return GestureDetector(
+      onTap: () async {
+        HapticFeedback.lightImpact();
+        if (_isInitialized && _videoController.value.isPlaying) {
+          await _videoController.pause();
+        }
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: bgColor,
+          boxShadow: isLight
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+          border: Border.all(
+            color: borderColor,
+            width: 1,
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: fgColor,
+            size: 20,
+          ),
+        ),
+      ),
     );
   }
 
@@ -352,6 +407,9 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
   }
 
   Widget _buildAlbumSelector({required bool isOverlay}) {
+    final settings = AppSettingsService();
+    final isLight = settings.isLight;
+
     return SizedBox(
       height: ReviewUX.albumSelectorHeight,
       child: Center(
@@ -363,6 +421,17 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
           itemBuilder: (context, index) {
             final album = _albumList[index];
             final isSelected = _selectedAlbum == album;
+
+            final unselectedBg = isLight
+                ? Colors.black.withValues(alpha: 0.06)
+                : ReviewUX.albumButtonBg;
+            final unselectedTextColor = isLight
+                ? const Color(0xFF4B5563)
+                : ReviewUX.albumButtonText;
+            final selectedBorder = isLight
+                ? Colors.black.withValues(alpha: 0.12)
+                : Colors.white24;
+
             return GestureDetector(
               onTap: () => setState(() => _selectedAlbum = album),
               child: Container(
@@ -376,11 +445,11 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
                 decoration: BoxDecoration(
                   color: isSelected
                       ? ReviewUX.albumButtonSelectedBg
-                      : ReviewUX.albumButtonBg,
+                      : unselectedBg,
                   borderRadius:
                       BorderRadius.circular(ReviewUX.albumButtonBorderRadius),
                   border: Border.all(
-                    color: isSelected ? Colors.white24 : Colors.transparent,
+                    color: isSelected ? selectedBorder : Colors.transparent,
                   ),
                 ),
                 child: Center(
@@ -389,7 +458,7 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
                     style: TextStyle(
                       color: isSelected
                           ? ReviewUX.albumButtonSelectedText
-                          : ReviewUX.albumButtonText,
+                          : unselectedTextColor,
                       fontSize: ReviewUX.albumButtonFontSize,
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.w500,
@@ -483,6 +552,7 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
       photoThumbnail: _latestPhoto,
       isLoading: _isSaving,
       centerIcon: Icons.check,
+      isReviewScreen: true,
     );
   }
 }

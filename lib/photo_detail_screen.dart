@@ -86,7 +86,25 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           ? '$note\n\nJust Log it'
           : 'Just Log it - 나의 기록을 공유합니다.';
 
-      await Share.shareXFiles([XFile(photo.path)], text: text);
+      final box = context.findRenderObject() as RenderBox?;
+      final screenSize = MediaQuery.of(context).size;
+      final Rect origin = (box != null &&
+              box.hasSize &&
+              box.size.width > 0 &&
+              box.size.height > 0)
+          ? (box.localToGlobal(Offset.zero) & box.size)
+          : Rect.fromLTWH(
+              0,
+              0,
+              screenSize.width > 0 ? screenSize.width : 100,
+              screenSize.height > 0 ? screenSize.height : 100,
+            );
+
+      await Share.shareXFiles(
+        [XFile(photo.path)],
+        text: text,
+        sharePositionOrigin: origin,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -103,6 +121,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
     final res = await showModalBottomSheet<bool>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -260,6 +279,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
     final savedNote = await showModalBottomSheet<String>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -316,9 +336,11 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   Future<bool> _confirmDeletePhoto() async {
     final settings = AppSettingsService();
     final isLight = settings.isLight;
+    final isVideo = AlbumService.isVideo(_currentPhoto);
 
     final res = await showModalBottomSheet<bool>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -369,7 +391,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '사진을 삭제할까요?',
+                        isVideo ? '영상을 삭제할까요?' : '사진을 삭제할까요?',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -399,7 +421,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     ),
                   ),
                   child: Text(
-                    '삭제된 사진은 보관함에서 완전히 삭제되며 복구할 수 없어요',
+                    isVideo
+                        ? '삭제된 영상은 보관함에서 완전히 삭제되며 복구할 수 없어요'
+                        : '삭제된 사진은 보관함에서 완전히 삭제되며 복구할 수 없어요',
                     style: TextStyle(
                       color: isLight ? const Color(0xFFDC2626) : const Color(0xFF9AA1AC),
                       fontSize: 13.5,
@@ -477,21 +501,40 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       try {
         final photoToDelete = _currentPhoto;
         await AlbumService.deleteNote(photoToDelete.path);
-        await photoToDelete.delete();
+        final thumbFile = File('${photoToDelete.path}_thumb.jpg');
+        if (await thumbFile.exists()) {
+          try {
+            await thumbFile.delete();
+          } catch (_) {}
+        }
+        if (await photoToDelete.exists()) {
+          await photoToDelete.delete();
+        }
         _hasDeleted = true;
 
         if (!mounted) return;
 
+        // 1개만 남아있던 사진/영상이 삭제된 경우 즉시 상세 화면 종료
+        if (_photos.length <= 1) {
+          setState(() {
+            _photos.clear();
+          });
+          Navigator.pop(context, true);
+          return;
+        }
+
+        // 2개 이상일 때: 리스트에서 제거하고 인덱스 보정
         setState(() {
           _photos.removeAt(_currentIndex);
-          if (_photos.isEmpty) {
-            Navigator.pop(context, true);
-          } else {
-            if (_currentIndex >= _photos.length) {
-              _currentIndex = _photos.length - 1;
-            }
+          if (_currentIndex >= _photos.length) {
+            _currentIndex = _photos.length - 1;
           }
         });
+
+        // PageView 위치를 안전하게 동기화
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(_currentIndex);
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -511,44 +554,54 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     final weekday = weekdays[date.weekday - 1];
     final dateStr = '${DateFormat('yyyy년 M월 d일').format(date)} ($weekday)';
     final timeStr = '${date.hour < 12 ? '오전' : '오후'} ${DateFormat('h:mm').format(date)}';
-    return Scaffold(
-      backgroundColor: AppSettingsService().scaffoldBackgroundColor,
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // ───── 1. Photo PageView (Swipe Left / Right) ─────
-          PageView.builder(
-            controller: _pageController,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _photos.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              final photo = _photos[index];
-              final photoKey = _getPhotoKey(photo);
-              final note = _notes[photoKey];
-              final hasNote = note != null && note.isNotEmpty;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        Navigator.pop(context, _hasDeleted);
+      },
+      child: Scaffold(
+        backgroundColor: AppSettingsService().scaffoldBackgroundColor,
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // ───── 1. Photo PageView (Swipe Left / Right) ─────
+            PageView.builder(
+              controller: _pageController,
+              physics: const BouncingScrollPhysics(),
+              itemCount: _photos.length,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                final photo = _photos[index];
+                final photoKey = _getPhotoKey(photo);
+                final note = _notes[photoKey];
+                final hasNote = note != null && note.isNotEmpty;
 
-              return SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.only(
-                  top: MediaQuery.paddingOf(context).top + 60,
-                  bottom: MediaQuery.paddingOf(context).bottom + 84,
-                  left: 16,
-                  right: 16,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Photo or Video
-                    if (AlbumService.isVideo(photo))
-                      _VideoDetailPlayerItem(file: photo)
-                    else
-                      GestureDetector(
+                return SingleChildScrollView(
+                  key: ValueKey('page_${photo.path}'),
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.paddingOf(context).top + 60,
+                    bottom: MediaQuery.paddingOf(context).bottom + 84,
+                    left: 16,
+                    right: 16,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Photo or Video
+                      if (AlbumService.isVideo(photo))
+                        _VideoDetailPlayerItem(
+                          key: ValueKey('video_${photo.path}'),
+                          file: photo,
+                        )
+                      else
+                        GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
@@ -797,8 +850,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildAppleIconButton({
     required IconData icon,
@@ -905,6 +959,13 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
       decoration: BoxDecoration(
         color: isLight ? Colors.white : const Color(0xFF17191E),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isLight ? 0.15 : 0.5),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
         border: Border.all(
           color: isLight
               ? const Color(0xFFE2E4E8)
@@ -1177,16 +1238,17 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
 
 class _VideoDetailPlayerItem extends StatefulWidget {
   final File file;
-  const _VideoDetailPlayerItem({required this.file});
+  const _VideoDetailPlayerItem({super.key, required this.file});
 
   @override
   State<_VideoDetailPlayerItem> createState() => _VideoDetailPlayerItemState();
 }
 
 class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
   bool _isInitialized = false;
   bool _isCompleted = false;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -1194,29 +1256,77 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
     _initController();
   }
 
+  @override
+  void didUpdateWidget(_VideoDetailPlayerItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.file.path != widget.file.path) {
+      _cleanup();
+      _initController();
+    }
+  }
+
+  void _cleanup() {
+    final c = _controller;
+    _controller = null;
+    _isInitialized = false;
+    _isCompleted = false;
+    if (c != null) {
+      c.removeListener(_videoListener);
+      c.pause();
+      c.dispose();
+    }
+  }
+
   Future<void> _initController() async {
-    _controller = VideoPlayerController.file(
+    if (!widget.file.existsSync()) {
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _isInitialized = false;
+        });
+      }
+      return;
+    }
+
+    final controller = VideoPlayerController.file(
       widget.file,
       videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
     );
+    _controller = controller;
+
     try {
-      await _controller.initialize();
-      _controller.addListener(_videoListener);
+      await controller.initialize();
+      if (!mounted || _controller != controller) {
+        controller.dispose();
+        return;
+      }
+      controller.addListener(_videoListener);
       // 처음 한 번만 재생하고 끝나면 다시 반복 재생하지 않음
-      await _controller.setLooping(false);
-      await _controller.play();
+      await controller.setLooping(false);
+      await controller.setVolume(1.0);
+      await controller.play();
       if (mounted) {
-        setState(() => _isInitialized = true);
+        setState(() {
+          _isInitialized = true;
+          _hasError = false;
+        });
       }
     } catch (e) {
       debugPrint('VideoDetailPlayer error: $e');
+      if (mounted && _controller == controller) {
+        setState(() {
+          _hasError = true;
+          _isInitialized = false;
+        });
+      }
     }
   }
 
   void _videoListener() {
-    if (!mounted || !_controller.value.isInitialized) return;
-    final pos = _controller.value.position;
-    final dur = _controller.value.duration;
+    final c = _controller;
+    if (!mounted || c == null || !c.value.isInitialized) return;
+    final pos = c.value.position;
+    final dur = c.value.duration;
     final isDone = dur > Duration.zero && pos >= dur;
 
     if (isDone && !_isCompleted) {
@@ -1231,24 +1341,30 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
   }
 
   void _togglePlay() {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+
     if (_isCompleted) {
-      _controller.seekTo(Duration.zero);
-      _controller.play();
+      c.seekTo(Duration.zero);
+      c.play();
       setState(() {
         _isCompleted = false;
       });
-    } else if (_controller.value.isPlaying) {
-      _controller.pause();
+    } else if (c.value.isPlaying) {
+      c.pause();
       setState(() {});
     } else {
-      _controller.play();
+      c.play();
       setState(() {});
     }
   }
 
   Future<void> _openFullScreen() async {
-    _controller.pause();
-    final currentPos = _controller.value.position;
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+
+    c.pause();
+    final currentPos = c.value.position;
 
     final returnedPos = await Navigator.push<Duration>(
       context,
@@ -1260,22 +1376,44 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
       ),
     );
 
-    if (returnedPos != null && mounted) {
-      await _controller.seekTo(returnedPos);
+    if (returnedPos != null && mounted && _controller == c) {
+      await c.seekTo(returnedPos);
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_videoListener);
-    _controller.dispose();
+    _cleanup();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInitialized) {
+    if (_hasError) {
+      return Container(
+        height: 250,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E2026),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 36),
+            SizedBox(height: 8),
+            Text(
+              '영상을 찾을 수 없거나 재생할 수 없습니다',
+              style: TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final c = _controller;
+    if (!_isInitialized || c == null) {
       return Container(
         height: 250,
         alignment: Alignment.center,
@@ -1286,7 +1424,7 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: AspectRatio(
-        aspectRatio: _controller.value.aspectRatio,
+        aspectRatio: c.value.aspectRatio > 0 ? c.value.aspectRatio : (9.0 / 16.0),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -1296,8 +1434,8 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
                 alignment: Alignment.center,
                 fit: StackFit.expand,
                 children: [
-                  VideoPlayer(_controller),
-                  if (!_controller.value.isPlaying || _isCompleted)
+                  VideoPlayer(c),
+                  if (!c.value.isPlaying || _isCompleted)
                     Center(
                       child: Container(
                         padding: const EdgeInsets.all(14),
@@ -1365,7 +1503,7 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
               left: 0,
               right: 0,
               child: VideoProgressIndicator(
-                _controller,
+                c,
                 allowScrubbing: true,
                 colors: VideoProgressColors(
                   playedColor: AppSettingsService().accentColor,
@@ -1481,6 +1619,7 @@ class _FullScreenVideoViewerState extends State<FullScreenVideoViewer> {
       if (widget.initialPosition > Duration.zero) {
         await _controller.seekTo(widget.initialPosition);
       }
+      await _controller.setVolume(1.0);
       await _controller.play();
 
       if (mounted) {

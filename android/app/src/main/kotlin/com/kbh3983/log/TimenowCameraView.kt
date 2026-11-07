@@ -1,6 +1,7 @@
-package com.example.timenow
+package com.kbh3983.log
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -20,6 +21,7 @@ import androidx.camera.effects.OverlayEffect
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
 import androidx.camera.view.PreviewView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import io.flutter.plugin.common.BinaryMessenger
@@ -35,6 +37,7 @@ class TimenowCameraView(
     messenger: BinaryMessenger,
     id: Int,
     private val lifecycleOwner: LifecycleOwner,
+    private val activity: Activity? = null,
     initialFrontCamera: Boolean = false
 ) : PlatformView, MethodChannel.MethodCallHandler {
 
@@ -110,6 +113,13 @@ class TimenowCameraView(
     }
 
     private fun initCamera() {
+        val act = activity ?: (context as? Activity) ?: (lifecycleOwner as? Activity)
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            act?.let {
+                ActivityCompat.requestPermissions(it, arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
+            }
+        }
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
             try {
@@ -170,10 +180,12 @@ class TimenowCameraView(
         }
 
         // 4. OverlayEffect (Real-time GPU overlay running on background cameraExecutor, NOT main UI thread)
+        // 프리뷰에는 Flutter 레이어의 TimestampOverlayWidget이 단독으로 표시되도록 하고,
+        // 네이티브 효과는 녹화 비디오(VIDEO_CAPTURE)에만 단독 적용하여 타임스탬프가 2겹으로 겹치는 현상 및 불필요한 GPU 렌더링을 원천 차단합니다.
         overlayEffect?.clearOnDrawListener()
         overlayEffect?.close()
         overlayEffect = OverlayEffect(
-            CameraEffect.PREVIEW or CameraEffect.VIDEO_CAPTURE,
+            CameraEffect.VIDEO_CAPTURE,
             0,
             overlayHandler
         ) { throwable ->
@@ -290,8 +302,32 @@ class TimenowCameraView(
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+            "checkAudioPermission" -> {
+                val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                result.success(granted)
+            }
+            "requestAudioPermission" -> {
+                val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                if (granted) {
+                    result.success(true)
+                } else {
+                    val act = activity ?: (context as? Activity) ?: (lifecycleOwner as? Activity)
+                    if (act != null) {
+                        ActivityCompat.requestPermissions(act, arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
+                    }
+                    result.success(false)
+                }
+            }
             "isCameraReady" -> {
                 result.success(camera != null)
+            }
+            "resumeCamera" -> {
+                if (camera == null) {
+                    mainHandler.post {
+                        bindCameraUseCases()
+                    }
+                }
+                result.success(true)
             }
             "setAspectRatio" -> {
                 val ratio = call.argument<String>("ratio") ?: "1:1"
@@ -367,6 +403,20 @@ class TimenowCameraView(
                 camera?.cameraControl?.setZoomRatio(ratio)
                 result.success(true)
             }
+            "setFocusPoint" -> {
+                val nx = call.argument<Double>("x")?.toFloat() ?: 0.5f
+                val ny = call.argument<Double>("y")?.toFloat() ?: 0.5f
+                val w = previewView.width.toFloat()
+                val h = previewView.height.toFloat()
+                if (w > 0 && h > 0) {
+                    val factory = previewView.meteringPointFactory
+                    val point = factory.createPoint(nx * w, ny * h)
+                    val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+                        .build()
+                    camera?.cameraControl?.startFocusAndMetering(action)
+                }
+                result.success(true)
+            }
             else -> result.notImplemented()
         }
     }
@@ -395,7 +445,14 @@ class TimenowCameraView(
             var pendingRecording = vc.output.prepareRecording(context, outputOptions)
 
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                android.util.Log.i("TimenowCamera", "Starting recording with audio enabled")
                 pendingRecording = pendingRecording.withAudioEnabled()
+            } else {
+                android.util.Log.w("TimenowCamera", "RECORD_AUDIO permission not granted, requesting now")
+                val act = activity ?: (context as? Activity) ?: (lifecycleOwner as? Activity)
+                act?.let {
+                    ActivityCompat.requestPermissions(it, arrayOf(Manifest.permission.RECORD_AUDIO), 1002)
+                }
             }
 
             activeRecording = pendingRecording.start(ContextCompat.getMainExecutor(context)) { event: VideoRecordEvent ->

@@ -15,6 +15,7 @@ class CustomBottomNavBar extends StatelessWidget {
   final IconData? centerIcon;
   final bool isVideoMode;
   final bool isRecording;
+  final bool isReviewScreen;
 
   // Backward compatibility
   final VoidCallback? onLeftActionPressed;
@@ -34,6 +35,7 @@ class CustomBottomNavBar extends StatelessWidget {
     this.centerIcon,
     this.isVideoMode = false,
     this.isRecording = false,
+    this.isReviewScreen = false,
     this.onLeftActionPressed,
     this.onRightActionPressed,
     this.rightThumbnail,
@@ -47,13 +49,26 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const shadow = [
-      Shadow(
-        blurRadius: 8,
-        color: Colors.black45,
-        offset: Offset(0, 2),
-      )
-    ];
+    final settings = AppSettingsService();
+    // 촬영 후 리뷰 화면(PhotoReview, VideoReview)에서만 화이트 테마 적용 시 어두운 텍스트/아이콘을 사용합니다.
+    // 첫 번째 카메라 화면은 항상 어두운 뷰파인더 배경이므로 언제나 흰색 아이콘/라벨을 유지합니다.
+    final bool useDarkTheme = isReviewScreen && settings.isLight;
+
+    final Color iconColor = useDarkTheme ? const Color(0xFF1E2026) : Colors.white;
+    final Color labelColor = useDarkTheme ? const Color(0xFF4B5563) : Colors.white70;
+    final Color lineColor = useDarkTheme
+        ? Colors.black.withValues(alpha: 0.15)
+        : Colors.white.withValues(alpha: 0.35);
+
+    final List<Shadow>? shadow = useDarkTheme
+        ? null
+        : const [
+            Shadow(
+              blurRadius: 8,
+              color: Colors.black45,
+              offset: Offset(0, 2),
+            )
+          ];
 
     final VoidCallback? photoPickerAction =
         onPhotoPickerPressed ?? onLeftActionPressed;
@@ -76,7 +91,7 @@ class CustomBottomNavBar extends StatelessWidget {
               size: const Size(double.infinity, 40),
               painter: _ConcaveLinePainter(
                 shutterSize: kShutterSize,
-                color: Colors.white.withValues(alpha: 0.35),
+                color: lineColor,
               ),
             ),
           ),
@@ -102,6 +117,8 @@ class CustomBottomNavBar extends StatelessWidget {
                                   thumbnail: thumbnail,
                                   onPressed: photoPickerAction,
                                   shadow: shadow,
+                                  iconColor: iconColor,
+                                  labelColor: labelColor,
                                 ),
                               if (albumAction != null)
                                 _labeledIconButton(
@@ -109,6 +126,8 @@ class CustomBottomNavBar extends StatelessWidget {
                                   label: '앨범',
                                   onPressed: albumAction,
                                   shadow: shadow,
+                                  iconColor: iconColor,
+                                  labelColor: labelColor,
                                 ),
                             ],
                           )
@@ -119,6 +138,8 @@ class CustomBottomNavBar extends StatelessWidget {
                                     thumbnail: thumbnail,
                                     onPressed: photoPickerAction,
                                     shadow: shadow,
+                                    iconColor: iconColor,
+                                    labelColor: labelColor,
                                   )
                                 : const SizedBox.shrink(),
                           ),
@@ -135,16 +156,20 @@ class CustomBottomNavBar extends StatelessWidget {
                             children: [
                               if (onStampManagementPressed != null)
                                 _labeledIconButton(
-                                  icon: Icons.approval_rounded,
+                                  imageAsset: 'assets/icons/stamp_manage.png',
                                   label: '스탬프 관리',
                                   onPressed: onStampManagementPressed!,
                                   shadow: shadow,
+                                  iconColor: iconColor,
+                                  labelColor: labelColor,
                                 ),
                               _labeledIconButton(
                                 icon: Icons.settings_outlined,
                                 label: '설정',
                                 onPressed: onSettingsPressed!,
                                 shadow: shadow,
+                                iconColor: iconColor,
+                                labelColor: labelColor,
                               ),
                             ],
                           )
@@ -155,6 +180,8 @@ class CustomBottomNavBar extends StatelessWidget {
                                     label: '앨범',
                                     onPressed: albumAction,
                                     shadow: shadow,
+                                    iconColor: iconColor,
+                                    labelColor: labelColor,
                                   )
                                 : const SizedBox.shrink(),
                           ),
@@ -178,10 +205,13 @@ class CustomBottomNavBar extends StatelessWidget {
   }
 
   Widget _labeledIconButton({
-    required IconData icon,
+    IconData? icon,
+    String? imageAsset,
     required String label,
     required VoidCallback onPressed,
-    required List<Shadow> shadow,
+    required List<Shadow>? shadow,
+    Color iconColor = Colors.white,
+    Color labelColor = Colors.white70,
   }) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -191,19 +221,28 @@ class CustomBottomNavBar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: SharedUX.navIconSize,
-              shadows: shadow,
-            ),
+            if (imageAsset != null)
+              Image.asset(
+                imageAsset,
+                width: SharedUX.navIconSize,
+                height: SharedUX.navIconSize,
+                color: iconColor,
+                fit: BoxFit.contain,
+              )
+            else if (icon != null)
+              Icon(
+                icon,
+                color: iconColor,
+                size: SharedUX.navIconSize,
+                shadows: shadow,
+              ),
             const SizedBox(height: 5),
             Text(
               label,
               maxLines: 1,
               softWrap: false,
               style: TextStyle(
-                color: Colors.white70,
+                color: labelColor,
                 fontSize: SharedUX.navLabelSize,
                 fontWeight: FontWeight.w500,
                 shadows: shadow,
@@ -221,7 +260,9 @@ class CustomBottomNavBar extends StatelessWidget {
     required String label,
     required File? thumbnail,
     required VoidCallback onPressed,
-    required List<Shadow> shadow,
+    required List<Shadow>? shadow,
+    Color iconColor = Colors.white,
+    Color labelColor = Colors.white70,
   }) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -281,7 +322,7 @@ class CustomBottomNavBar extends StatelessWidget {
             else
               Icon(
                 Icons.photo_library_outlined,
-                color: Colors.white,
+                color: iconColor,
                 size: SharedUX.navIconSize,
                 shadows: shadow,
               ),
@@ -291,7 +332,7 @@ class CustomBottomNavBar extends StatelessWidget {
               maxLines: 1,
               softWrap: false,
               style: TextStyle(
-                color: Colors.white70,
+                color: labelColor,
                 fontSize: SharedUX.navLabelSize,
                 fontWeight: FontWeight.w500,
                 shadows: shadow,

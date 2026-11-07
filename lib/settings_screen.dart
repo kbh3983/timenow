@@ -911,62 +911,152 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final controller = TextEditingController(text: _settings.locationText);
     final isLight = _settings.isLight;
     final isPureBlack = _settings.isPureBlack;
-    final dialogBg = isLight
+    final bottomSheetBg = isLight
         ? Colors.white
         : (isPureBlack ? const Color(0xFF141416) : const Color(0xFF1E2026));
     final textColor = _settings.textColor;
     final subTextColor = _settings.subTextColor;
+    final accent = _settings.accentColor;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: dialogBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('원하는 문구 입력', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '타임스탬프에 표시할 원하는 위치 문구를 자유롭게 입력하세요.',
-              style: TextStyle(color: subTextColor, fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              style: TextStyle(color: textColor),
-              decoration: InputDecoration(
-                hintText: '예: 우리집 / 서울 한강공원 / 제주 협재',
-                hintStyle: TextStyle(color: subTextColor.withValues(alpha: 0.6)),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: subTextColor.withValues(alpha: 0.3))),
-                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: _settings.accentColor)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          decoration: BoxDecoration(
+            color: bottomSheetBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: subTextColor.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('취소', style: TextStyle(color: subTextColor)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '원하는 문구 입력',
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, color: subTextColor, size: 22),
+                    onPressed: () => Navigator.pop(ctx),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '타임스탬프에 표시할 원하는 위치 문구를 자유롭게 입력하세요.',
+                style: TextStyle(color: subTextColor, fontSize: 13),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                decoration: BoxDecoration(
+                  color: isLight ? const Color(0xFFF3F4F6) : Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isLight ? const Color(0xFFE5E7EB) : Colors.white12,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                child: TextField(
+                  controller: controller,
+                  autofocus: true,
+                  style: TextStyle(color: textColor, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: '예: 우리집 / 서울 한강공원 / 제주 협재',
+                    hintStyle: TextStyle(
+                      color: subTextColor.withValues(alpha: 0.6),
+                      fontSize: 14,
+                    ),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(
+                          color: isLight ? const Color(0xFFCBD5E1) : Colors.white24,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(
+                        '취소',
+                        style: TextStyle(
+                          color: subTextColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accent,
+                        foregroundColor: isLight ? Colors.white : Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        final text = controller.text.trim();
+                        if (text.isNotEmpty) {
+                          _settings.setLocationText(text);
+                        }
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text(
+                        '저장',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _settings.accentColor,
-              foregroundColor: isLight ? Colors.white : Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () {
-              final text = controller.text.trim();
-              if (text.isNotEmpty) {
-                _settings.setLocationText(text);
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('저장', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
