@@ -1,4 +1,4 @@
-package com.kbh3983.log
+package com.bebong.log
 
 import android.app.Activity
 import android.content.Context

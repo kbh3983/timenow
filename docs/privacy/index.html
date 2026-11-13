@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>개인정보 처리방침 | LOG (로그 - 타임스탬프 카메라)</title>
+  <meta name="description" content="LOG (타임스탬프 카메라) 서비스의 개인정보 처리방침입니다.">
+  
+  <link rel="icon" type="image/png" href="../assets/icons/app_logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-color: #0b0c0e;
+      --card-bg: rgba(26, 29, 36, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-color: #C3FB28;
+      --accent-glow: rgba(195, 251, 40, 0.35);
+      --text-main: #FFFFFF;
+      --text-sub: #9EADB8;
+      --text-dim: #64748B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    /* Header */
+    header {
+      padding: 24px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 40px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .logo-img {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .back-link {
+      color: var(--accent-color);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: rgba(195, 251, 40, 0.1);
+      border: 1px solid rgba(195, 251, 40, 0.2);
+      transition: all 0.2s ease;
+    }
+
+    .back-link:hover {
+      background: rgba(195, 251, 40, 0.2);
+    }
+
+    /* Policy Card */
+    .policy-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 40px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .policy-header {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .policy-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(195, 251, 40, 0.1);
+      border: 1px solid rgba(195, 251, 40, 0.2);
+      color: var(--accent-color);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+    }
+
+    .policy-meta {
+      color: var(--text-sub);
+      font-size: 14px;
+    }
+
+    /* Policy Content */
+    .policy-content h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-top: 32px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .policy-content h2::before {
+      content: "";
+      display: inline-block;
+      width: 4px;
+      height: 18px;
+      background: var(--accent-color);
+      border-radius: 2px;
+    }
+
+    .policy-content p {
+      color: #CBD5E1;
+      font-size: 15px;
+      margin-bottom: 14px;
+      word-break: keep-all;
+    }
+
+    .policy-content ul {
+      margin: 12px 0 20px 24px;
+      color: #CBD5E1;
+    }
+
+    .policy-content li {
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    .policy-content a {
+      color: var(--accent-color);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .policy-content a:hover {
+      opacity: 0.8;
+    }
+
+    .contact-box {
+      margin-top: 36px;
+      padding: 20px;
+      background: rgba(195, 251, 40, 0.05);
+      border: 1px solid rgba(195, 251, 40, 0.2);
+      border-radius: 12px;
+    }
+
+    .contact-box h3 {
+      font-size: 16px;
+      color: var(--accent-color);
+      margin-bottom: 8px;
+    }
+
+    .contact-box p {
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 50px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    footer a {
+      color: var(--text-sub);
+      text-decoration: none;
+      margin: 0 8px;
+    }
+
+    footer a:hover {
+      color: var(--accent-color);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <a href="./" class="brand">
+        <img src="assets/icons/app_logo.png" alt="LOG Logo" class="logo-img" onerror="this.style.display='none'">
+        <span class="brand-title">LOG</span>
+      </a>
+      <a href="./" class="back-link">
+        <span>← 메인으로 돌아가기</span>
+      </a>
+    </header>
+
+    <main class="policy-card">
+      <div class="policy-header">
+        <span class="policy-tag">Privacy Policy</span>
+        <h1>개인정보 처리방침 (Privacy Policy)</h1>
+        <p class="policy-meta">시행일자: 2026년 11월 7일 | 최종 수정일자: 2026년 11월 14일</p>
+      </div>
+
+      <div class="policy-content">
+        <p>This privacy policy applies to the <strong>LOG</strong> app for mobile devices, together with any related services operated by <strong>bebong (kbh3983)</strong> (collectively, the &quot;Application&quot;). bebong is hereby referred to as the &quot;Service Provider&quot;.</p>
+
+        <h2>1. Information Collection and Use</h2>
+        <p>The Application collects information when you download and use it. This information may include information such as:</p>
+        <ul>
+          <li>Your device's Internet Protocol (IP) address</li>
+          <li>The pages of the Application that you visit, the time and date of your visit, and the time spent on those pages</li>
+          <li>The total time spent on the Application</li>
+          <li>The mobile operating system you use</li>
+        </ul>
+        <p>The Service Provider may use the information you provide to send important information, required notices, and, where permitted by law, marketing communications.</p>
+        <p>For a better experience while using the Application, the Service Provider may require you to provide certain personally identifiable information, including but not limited to <code>kmh96503981@gmail.com</code> / <code>kbh3983@gmail.com</code>. The information the Service Provider requests will be retained and used as described in this privacy policy.</p>
+
+        <h2>2. Cookies and Tracking Technologies</h2>
+        <p>The Application or its third-party SDKs may use cookies, SDKs, pixels, and similar technologies to support functionality, analytics, or service delivery. Where required by applicable law, the Service Provider will obtain consent before using non-essential tracking technologies.</p>
+
+        <h2>3. Third Party Services</h2>
+        <p>Please note that the Application utilizes third-party services that have their own Privacy Policy about handling data. Below are the links to the Privacy Policy of the third-party service providers used by the Application:</p>
+        <ul>
+          <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener noreferrer">Google Play Services</a></li>
+          <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google AdMob</a></li>
+          <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Google Analytics for Firebase</a></li>
+        </ul>
+
+        <h2>4. Third Party Access & Disclosure</h2>
+        <p>Only aggregated, anonymized data is periodically transmitted to external services to aid the Service Provider in improving the Application and their service. The Service Provider may disclose User Provided and Automatically Collected Information:</p>
+        <ul>
+          <li>As required by law, such as to comply with a subpoena or similar legal process;</li>
+          <li>When they believe in good faith that disclosure is necessary to protect their rights, protect your safety or the safety of others, investigate fraud, or respond to a government request;</li>
+          <li>With their trusted service providers who work on their behalf, do not have an independent use of the information the Service Provider discloses to them, and have agreed to adhere to the rules set forth in this privacy statement.</li>
+        </ul>
+
+        <h2>5. Your Rights & California Privacy Rights (CCPA/CPRA)</h2>
+        <p>You may request access to, correction of, or deletion of your personal data held by the Service Provider. To exercise these rights, or to withdraw consent where processing is based on consent, contact the Service Provider at <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a>.</p>
+        <p><strong>California Residents:</strong> If you are a California resident, you have the right to know what personal information is collected, the right to delete personal information, the right to opt out of the sale or sharing of personal information, and the right to non-discrimination for exercising these rights.</p>
+
+        <h2>6. Opt-Out Rights</h2>
+        <p>You can stop further collection of information from your mobile device by uninstalling the Application. Uninstalling will stop the Application from collecting data from your device, but it does not automatically delete information that has already been transmitted to the Service Provider or to third parties.</p>
+
+        <h2>7. International Data Transfers</h2>
+        <p>The Service Provider or its third-party service providers may transfer personal data to countries outside your country of residence, including outside the European Economic Area (EEA). Where applicable law requires safeguards for international transfers, the Service Provider will use appropriate mechanisms:</p>
+        <ul>
+          <li>Standard Contractual Clauses (SCCs) approved by the European Commission</li>
+          <li>Adequacy decisions or other legally recognized transfer mechanisms</li>
+          <li>Your consent, where required and legally permitted</li>
+        </ul>
+
+        <h2>8. Data Retention Policy</h2>
+        <p>The Service Provider retains personal data based on its necessity for the stated purposes:</p>
+        <ul>
+          <li><strong>User Provided Data:</strong> Retained for the duration of your use of the Application plus 12 months thereafter, unless longer retention is required by law.</li>
+          <li><strong>Automatically Collected Data:</strong> Retained for up to 24 months from collection, unless longer retention is required for legal compliance.</li>
+          <li><strong>Aggregated and Anonymized Data:</strong> Retained indefinitely as it no longer identifies you.</li>
+          <li><strong>Data required for legal compliance:</strong> Retained as long as required by applicable law.</li>
+        </ul>
+
+        <h2>9. Children’s Privacy</h2>
+        <p>The Application is not intended for children under 14 years of age, or such higher age as required by applicable law. The Service Provider does not knowingly solicit data from children or market the Application to them. In the event the Service Provider discovers that a child has provided personal information, the Service Provider will immediately delete this from their servers.</p>
+
+        <h2>10. Security & Data Breach Notification</h2>
+        <p>The Service Provider is concerned about safeguarding the confidentiality of your information. Physical, electronic, and procedural safeguards are provided to protect information processed and maintained. If a data breach occurs that affects your personal data, the Service Provider will notify you in accordance with applicable legal requirements.</p>
+
+        <h2>11. Changes to This Privacy Policy</h2>
+        <p>The Service Provider may update this Privacy Policy from time to time. You will be notified of material changes by posting the updated Privacy Policy with an effective date. Where required by law, the Service Provider will seek your consent to material changes before they take effect.</p>
+
+        <h2>12. Your Consent</h2>
+        <p>Where processing is based on consent, you provide that consent by affirmatively opting in to the relevant feature or action. You may withdraw consent at any time without affecting processing carried out before withdrawal.</p>
+
+        <div class="contact-box">
+          <h3>Contact Us (문의처)</h3>
+          <p>If you have any questions regarding privacy while using the Application, please contact the Service Provider:</p>
+          <p>• <strong>Developer / Operator:</strong> bebong</p>
+          <p>• <strong>Email:</strong> <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a> (or <a href="mailto:kbh3983@gmail.com">kbh3983@gmail.com</a>)</p>
+          <p>• <strong>Official Website:</strong> <a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></p>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>&copy; 2026 LOG. All rights reserved.</p>
+      <div style="margin-top: 10px;">
+        <a href="./">홈</a>
+        <span>·</span>
+        <a href="privacy.html">개인정보처리방침</a>
+        <span>·</span>
+        <a href="mailto:kmh96503981@gmail.com">문의하기</a>
+      </div>
+    </footer>
+  </div>
+</body>
+
+</html>

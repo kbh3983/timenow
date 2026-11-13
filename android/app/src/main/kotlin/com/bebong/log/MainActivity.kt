@@ -1,4 +1,4 @@
-package com.kbh3983.log
+package com.bebong.log
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
