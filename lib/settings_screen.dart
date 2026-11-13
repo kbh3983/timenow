@@ -468,9 +468,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Divider(color: dividerColor, height: 1),
                   _infoTile(
                     title: '문의 및 피드백',
-                    subtitle: 'kbh3983@gmail.com',
+                    subtitle: 'kmh96503981@gmail.com',
                     onTap: () {
-                      Clipboard.setData(const ClipboardData(text: 'kbh3983@gmail.com'));
+                      Clipboard.setData(const ClipboardData(text: 'kmh96503981@gmail.com'));
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('이메일 주소가 클립보드에 복사되었습니다.'),
@@ -1174,7 +1174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 앱은 개발 및 서비스 유지를 위해 Google AdMob 광고 SDK를 포함하고 있습니다. AdMob은 맞춤형 광고 제공을 위해 비식별 광고 ID 및 기기 정보를 처리할 수 있으며, 이에 대한 자세한 내용은 Google 개인정보처리방침을 따릅니다.
 
 4. 문의처
-개인정보 보호와 관련된 문의사항은 kbh3983@gmail.com 으로 연락주시기 바랍니다.
+개인정보 보호와 관련된 문의사항은 kmh96503981@gmail.com 으로 연락주시기 바랍니다.
 
 공고일자: 2026년 11월 1일''',
     );
