@@ -23,7 +23,7 @@ class AdService {
 
     // 실제 프로덕션 광고 ID 설정 (미설정 시 테스트 ID 폴백)
     if (Platform.isAndroid) {
-      return 'ca-app-pub-3940256099942544/5224354917';
+      return 'ca-app-pub-6846113246046890/6763209613';
     } else if (Platform.isIOS) {
       return 'ca-app-pub-3940256099942544/1712485313';
     }
@@ -41,7 +41,7 @@ class AdService {
     }
 
     if (Platform.isAndroid) {
-      return 'ca-app-pub-3940256099942544/6300978111';
+      return 'ca-app-pub-6846113246046890/2212931375';
     } else if (Platform.isIOS) {
       return 'ca-app-pub-3940256099942544/2934735716';
     }
