@@ -180,7 +180,7 @@ class SampleStampLibrary {
     final isSynthetic3Step = syntheticThreeStepGroups.contains(groupId);
     final scale = isSynthetic3Step ? 0 : scales[clampedIndex];
     final canvasMode = isCanvasMode(groupId);
-    final extra = canvasMode ? math.max(0.0, canvasHeight - kSampleBaseWidth) : 0.0;
+    final extra = canvasMode ? (canvasHeight - kSampleBaseWidth) : 0.0;
     const syntheticStepScales = <double>[0.85, 1.0, 1.15];
     final sizeScale = isSynthetic3Step
         ? syntheticStepScales[clampedIndex]
@@ -261,13 +261,12 @@ class SampleStampLibrary {
       if (groupId == 'style8') {
         // style8 은 가로 전체를 쓰는 밴드(y: 10..120) 구조로,
         // 위(topCenter, y=-1) / 가운데(center, y=0) / 아래(bottomCenter, y=1) 세로 위치를 지원합니다.
-        final effectiveH = math.max(canvasHeight, kSampleBaseWidth);
-        return math.max(0.0, effectiveH - 130.0) * (alignment.y + 1.0) / 2.0;
+        return math.max(0.0, canvasHeight - 130.0) * (alignment.y + 1.0) / 2.0;
       }
-      if (extra <= 0) return 0;
+      if (extra == 0) return 0;
       if (groupId == 'style5') return extra / 2;
       if (groupId == 'style4') {
-        // style4 는 비율(4:5, 9:16)을 늘려도 상단 문구(Good Morning.)와 시간(hh:mm a)의 간격을 1:1과 동일하게 유지
+        // style4 는 비율(4:5, 9:16 등)을 바꿔도 상단 문구(Good Morning.)와 시간(hh:mm a)의 간격을 1:1과 동일하게 유지
         return top > kSampleBaseWidth * 2 / 3 ? extra : 0;
       }
       final cy = top + height / 2;
@@ -303,7 +302,7 @@ class SampleStampLibrary {
     for (final i in SampleStampRepository.timestampImageBox.values) {
       if (i.groupId != groupId || i.groupScale != scale) continue;
       final dy = dyFor(i.y, i.height);
-      final stretch = canvasMode && extra > 0 && i.height >= 300;
+      final stretch = canvasMode && extra != 0 && i.height >= 300;
       add(i.z, _ImageElement(
         id: StampTextStore.canonicalKey(i.id),
         path: i.path,
@@ -311,7 +310,7 @@ class SampleStampLibrary {
           i.x,
           i.y + (stretch ? 0 : dy),
           i.width,
-          i.height + (stretch ? extra : 0),
+          math.max(20.0, i.height + (stretch ? extra : 0)),
         ),
         originalHeight: i.height * sizeScale,
         flip: i.flip,
@@ -421,7 +420,7 @@ class SampleStampLibrary {
       elements: elements,
       contentBounds: bounds ?? Rect.zero,
       canvasMode: canvasMode,
-      canvasHeight: canvasMode ? math.max(canvasHeight, kSampleBaseWidth) : canvasHeight,
+      canvasHeight: canvasHeight,
       lockHorizontalCenter: horizontalCenterLockedGroups.contains(groupId),
     );
   }
@@ -1120,7 +1119,7 @@ class _ImageElement extends _SampleElement {
     if (stretch) {
       final fitted = _scaleDownRect(path, Rect.fromLTWH(box.left, box.top, box.width, originalHeight));
       final extra = box.height - originalHeight;
-      dst = Rect.fromLTWH(fitted.left, fitted.top, fitted.width, fitted.height + extra);
+      dst = Rect.fromLTWH(fitted.left, fitted.top, fitted.width, math.max(10.0, fitted.height + extra));
     } else {
       dst = _scaleDownRect(path, box);
     }
@@ -1192,8 +1191,8 @@ class _ImageElement extends _SampleElement {
     final ih = image.height.toDouble();
     final f = dst.width / iw;
     final band = ih / 3;
-    final topH = band * f;
-    final bottomH = band * f;
+    final topH = math.min(band * f, dst.height / 2);
+    final bottomH = math.min(band * f, dst.height / 2);
     final midH = math.max(0.0, dst.height - topH - bottomH);
     final p = _imagePaint;
     canvas.drawImageRect(image, Rect.fromLTWH(0, 0, iw, band),

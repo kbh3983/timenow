@@ -502,7 +502,6 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     return Container(
       margin: EdgeInsets.all(mini ? 1.5 : 2.0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(mini ? 8 : 10),
         border: isSelected
             ? Border.all(color: pointColor, width: 2.0)
             : (isToday
@@ -520,10 +519,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
       ),
       child: !hasPhoto
           ? Center(child: numberWidget)
-          : ClipRRect(
-              borderRadius: BorderRadius.circular(
-                isSelected ? (mini ? 6.0 : 8.0) : (mini ? 6.5 : 8.5),
-              ),
+          : ClipRect(
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -775,6 +771,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
   }
 
   Widget _buildSinglePhoto(File file, {bool tapEnabled = true, int index = 0}) {
+    final isLight = AppSettingsService().isLight;
     return GestureDetector(
       onTap: tapEnabled
           ? () async {
@@ -800,11 +797,22 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
           child: Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF1E2026),
+              color: isLight ? const Color(0xFFF3F4F6) : const Color(0xFF1E2026),
               border: Border.all(
-                color: const Color(0xFF2A2D35),
+                color: isLight
+                    ? Colors.black.withValues(alpha: 0.05)
+                    : const Color(0xFF2A2D35),
                 width: 0.8,
               ),
+              boxShadow: isLight
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
             child: _buildMediaThumbnail(file, fit: BoxFit.cover),
           ),
@@ -943,6 +951,10 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     final isVideo = AlbumService.isVideo(file);
     final thumbFile = isVideo ? File('${file.path}_thumb.jpg') : file;
 
+    final isLight = AppSettingsService().isLight;
+    final placeholderBg = isLight ? const Color(0xFFF3F4F6) : const Color(0xFF1E2026);
+    final placeholderIconColor = isLight ? Colors.black26 : Colors.white38;
+
     Widget imageWidget;
     if (isVideo && !thumbFile.existsSync()) {
       imageWidget = FutureBuilder<File?>(
@@ -957,9 +969,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             );
           }
           return Container(
-            color: const Color(0xFF1E2026),
-            child: const Center(
-              child: Icon(Icons.videocam_rounded, color: Colors.white38, size: 22),
+            color: placeholderBg,
+            child: Center(
+              child: Icon(Icons.videocam_rounded, color: placeholderIconColor, size: 22),
             ),
           );
         },
@@ -971,8 +983,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
         cacheWidth: cacheWidth,
         cacheHeight: cacheHeight,
         errorBuilder: (context, error, stackTrace) => Container(
-          color: const Color(0xFF1E2026),
-          child: const Icon(Icons.broken_image_rounded, color: Colors.white24),
+          color: placeholderBg,
+          child: Icon(Icons.broken_image_rounded, color: placeholderIconColor),
         ),
       );
     }

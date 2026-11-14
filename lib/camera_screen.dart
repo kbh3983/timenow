@@ -588,10 +588,11 @@ class _CameraScreenState extends State<CameraScreen>
                 imageFile: gr.file,
                 initialDesign: _currentDesign,
                 initialAlbum: _currentAlbum,
-                aspectRatio: _aspectRatio.value,
+                aspectRatio: gr.aspectRatio ?? 1.0,
                 captureTime: gr.creationTime,
                 initialAlignment: _currentAlignment,
                 initialFontSizeIndex: _fontSizeIndex,
+                preserveOriginalRatio: true,
               ),
             ),
           );
@@ -707,7 +708,7 @@ class _CameraScreenState extends State<CameraScreen>
 
           if (!mounted) return;
 
-          final result = await Navigator.push(
+          var result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => VideoReviewScreen(
@@ -719,6 +720,26 @@ class _CameraScreenState extends State<CameraScreen>
               ),
             ),
           );
+
+          while (result is GalleryResult) {
+            final gr = result;
+            if (!mounted) break;
+            result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PhotoReviewScreen(
+                  imageFile: gr.file,
+                  initialDesign: _currentDesign,
+                  initialAlbum: _currentAlbum,
+                  aspectRatio: gr.aspectRatio ?? 1.0,
+                  captureTime: gr.creationTime,
+                  initialAlignment: _currentAlignment,
+                  initialFontSizeIndex: _fontSizeIndex,
+                  preserveOriginalRatio: true,
+                ),
+              ),
+            );
+          }
 
           if (mounted) {
             if (_captureMode == CameraCaptureMode.video) {
@@ -1527,10 +1548,11 @@ class _CameraScreenState extends State<CameraScreen>
                 imageFile: galleryResult.file,
                 initialDesign: _currentDesign,
                 initialAlbum: _currentAlbum,
-                aspectRatio: _aspectRatio.value,
+                aspectRatio: galleryResult.aspectRatio ?? 1.0,
                 captureTime: galleryResult.creationTime,
                 initialAlignment: _currentAlignment,
                 initialFontSizeIndex: _fontSizeIndex,
+                preserveOriginalRatio: true,
               ),
             ),
           );
@@ -1545,10 +1567,11 @@ class _CameraScreenState extends State<CameraScreen>
                   imageFile: gr.file,
                   initialDesign: _currentDesign,
                   initialAlbum: _currentAlbum,
-                  aspectRatio: _aspectRatio.value,
+                  aspectRatio: gr.aspectRatio ?? 1.0,
                   captureTime: gr.creationTime,
                   initialAlignment: _currentAlignment,
                   initialFontSizeIndex: _fontSizeIndex,
+                  preserveOriginalRatio: true,
                 ),
               ),
             );

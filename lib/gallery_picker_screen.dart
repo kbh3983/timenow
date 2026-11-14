@@ -6,11 +6,17 @@ import 'ux_config.dart';
 import 'services/app_settings_service.dart';
 import 'widgets/ad_banner_widget.dart';
 
-/// Result from gallery picker containing the selected file and its creation time.
+/// Result from gallery picker containing the selected file, its creation time,
+/// and its original aspect ratio (width / height).
 class GalleryResult {
   final File file;
   final DateTime creationTime;
-  const GalleryResult({required this.file, required this.creationTime});
+  final double? aspectRatio;
+  const GalleryResult({
+    required this.file,
+    required this.creationTime,
+    this.aspectRatio,
+  });
 }
 
 class GalleryPickerScreen extends StatefulWidget {
@@ -147,11 +153,14 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
         await PhotoManager.requestPermissionExtend();
     if (!mounted) return;
 
-    final newStatus = permission.isAuth
-        ? PermissionStatusView.authorized
-        : (permission.isLimited
-            ? PermissionStatusView.limited
-            : PermissionStatusView.denied);
+    final PermissionStatusView newStatus;
+    if (permission.isLimited || permission == PermissionState.limited) {
+      newStatus = PermissionStatusView.limited;
+    } else if (permission.isAuth || permission == PermissionState.authorized) {
+      newStatus = PermissionStatusView.authorized;
+    } else {
+      newStatus = PermissionStatusView.denied;
+    }
 
     _cachedPermissionStatus = newStatus;
 
@@ -178,11 +187,14 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
         await PhotoManager.requestPermissionExtend();
     if (!mounted) return;
 
-    final newStatus = permission.isAuth
-        ? PermissionStatusView.authorized
-        : (permission.isLimited
-            ? PermissionStatusView.limited
-            : PermissionStatusView.denied);
+    final PermissionStatusView newStatus;
+    if (permission.isLimited || permission == PermissionState.limited) {
+      newStatus = PermissionStatusView.limited;
+    } else if (permission.isAuth || permission == PermissionState.authorized) {
+      newStatus = PermissionStatusView.authorized;
+    } else {
+      newStatus = PermissionStatusView.denied;
+    }
 
     _cachedPermissionStatus = newStatus;
 
@@ -347,9 +359,16 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
     try {
       final file = await asset.file;
       if (file != null && mounted) {
+        final w = asset.orientatedWidth;
+        final h = asset.orientatedHeight;
+        final double? ratio = (w > 0 && h > 0) ? (w / h) : null;
         Navigator.pop(
           context,
-          GalleryResult(file: file, creationTime: asset.createDateTime.toLocal()),
+          GalleryResult(
+            file: file,
+            creationTime: asset.createDateTime.toLocal(),
+            aspectRatio: ratio,
+          ),
         );
       }
     } finally {
@@ -540,8 +559,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
     final settings = AppSettingsService();
     final isDenied = _permissionStatus == PermissionStatusView.denied;
     final text = isDenied
-        ? '사진 접근 권한이 필요합니다 · 모든 사진 허용하기'
-        : '일부 사진만 허용됨 · 모든 사진 허용하기';
+        ? '사진 접근 권한이 필요합니다 · 설정에서 모든 사진 허용하기'
+        : '일부 사진만 허용됨 · 설정에서 \'항상 모두 허용\'으로 변경하기';
 
     return GestureDetector(
       onTap: () => PhotoManager.openSetting(),

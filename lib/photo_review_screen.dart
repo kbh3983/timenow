@@ -32,6 +32,10 @@ class PhotoReviewScreen extends StatefulWidget {
   /// result matches what the user saw in the preview ("save as previewed").
   final bool mirrorHorizontally;
 
+  /// When true (e.g. photo selected from gallery), keep the photo's original
+  /// aspect ratio without cropping to 1:1, 4:5, or 9:16.
+  final bool preserveOriginalRatio;
+
   const PhotoReviewScreen({
     super.key,
     required this.imageFile,
@@ -42,6 +46,7 @@ class PhotoReviewScreen extends StatefulWidget {
     this.initialAlignment = CameraUX.defaultAlignment,
     this.initialFontSizeIndex = 0,
     this.mirrorHorizontally = false,
+    this.preserveOriginalRatio = false,
   });
 
   @override
@@ -59,8 +64,17 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
   bool _isSaving = false;
 
   File? _latestPhoto;
+  double? _resolvedImageRatio;
 
   final GlobalKey _repaintKey = GlobalKey();
+
+  double get _effectiveAspectRatio {
+    if (widget.preserveOriginalRatio) {
+      final r = _resolvedImageRatio ?? widget.aspectRatio;
+      return (r.isFinite && r > 0) ? r : 1.0;
+    }
+    return widget.aspectRatio;
+  }
 
   @override
   void initState() {
@@ -73,7 +87,44 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
     _selectedFontSize = steps[_fontSizeIndex.clamp(0, steps.length - 1)];
 
     _selectedAlbum = widget.initialAlbum;
+    _resolveImageAspectRatio();
     _loadAlbums();
+  }
+
+  @override
+  void didUpdateWidget(covariant PhotoReviewScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.imageFile.path != widget.imageFile.path ||
+        oldWidget.preserveOriginalRatio != widget.preserveOriginalRatio) {
+      _resolvedImageRatio = null;
+      _resolveImageAspectRatio();
+    }
+  }
+
+  void _resolveImageAspectRatio() {
+    if (!widget.preserveOriginalRatio) return;
+    final provider = FileImage(widget.imageFile);
+    final stream = provider.resolve(ImageConfiguration.empty);
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (ImageInfo info, bool synchronousCall) {
+        final w = info.image.width.toDouble();
+        final h = info.image.height.toDouble();
+        if (w > 0 && h > 0) {
+          final ratio = w / h;
+          if (mounted &&
+              (_resolvedImageRatio == null ||
+                  (_resolvedImageRatio! - ratio).abs() > 0.001)) {
+            setState(() => _resolvedImageRatio = ratio);
+          }
+        }
+        stream.removeListener(listener);
+      },
+      onError: (Object exception, StackTrace? stackTrace) {
+        stream.removeListener(listener);
+      },
+    );
+    stream.addListener(listener);
   }
 
   Future<void> _loadAlbums() async {
@@ -148,6 +199,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
       listenable: AppSettingsService(),
       builder: (context, _) {
         final settings = AppSettingsService();
+        final ratio = _effectiveAspectRatio;
         return Scaffold(
           backgroundColor: settings.scaffoldBackgroundColor,
           body: Stack(
@@ -155,7 +207,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
             children: [
               _buildImageWithOverlay(),
               _buildTopBar(),
-              _buildBottomControls(isFullAuto: widget.aspectRatio == 9.0 / 16.0),
+              _buildBottomControls(isFullAuto: ratio < 0.72),
             ],
           ),
         );
@@ -188,35 +240,56 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
 
         final topPadding = MediaQuery.of(context).padding.top;
         final topMenuH = topPadding + 60;
-
-        final bool isFullAuto = (widget.aspectRatio - (9.0 / 16.0)).abs() < 0.01;
-        final bool is4x5 = (widget.aspectRatio - (4.0 / 5.0)).abs() < 0.01 ||
-            (widget.aspectRatio - 0.8).abs() < 0.01;
+        final ratio = _effectiveAspectRatio;
 
         double clearW = screenW;
         double clearH;
         double clearTop;
         double clearLeft = 0;
 
-        if (isFullAuto) {
-          clearTop = topMenuH;
+        if (widget.preserveOriginalRatio) {
+          // 사진선택으로 가져온 사진: 크롭이나 비율 변경 없이 원본 비율 그대로 표시
+          final safeRatio = (ratio.isFinite && ratio > 0) ? ratio : 1.0;
           clearW = screenW;
-          clearH = screenW * (16.0 / 9.0);
+          clearH = screenW / safeRatio;
+
           final maxH = screenH - topMenuH;
-          if (clearH > maxH) {
+          if (clearH > maxH && maxH > 0) {
             clearH = maxH;
-            clearW = maxH * (9.0 / 16.0);
+            clearW = maxH * safeRatio;
             clearLeft = (screenW - clearW) / 2;
           }
-        } else if (is4x5) {
-          clearW = screenW;
-          clearH = screenW * 1.25;
-          clearTop = topMenuH;
+
+          if (clearH < screenW) {
+            clearTop = topMenuH + (screenW - clearH) / 2;
+          } else {
+            clearTop = topMenuH;
+          }
         } else {
-          // 1:1
-          clearW = screenW;
-          clearH = screenW;
-          clearTop = topMenuH;
+          final bool isFullAuto = (ratio - (9.0 / 16.0)).abs() < 0.01;
+          final bool is4x5 = (ratio - (4.0 / 5.0)).abs() < 0.01 ||
+              (ratio - 0.8).abs() < 0.01;
+
+          if (isFullAuto) {
+            clearTop = topMenuH;
+            clearW = screenW;
+            clearH = screenW * (16.0 / 9.0);
+            final maxH = screenH - topMenuH;
+            if (clearH > maxH) {
+              clearH = maxH;
+              clearW = maxH * (9.0 / 16.0);
+              clearLeft = (screenW - clearW) / 2;
+            }
+          } else if (is4x5) {
+            clearW = screenW;
+            clearH = screenW * 1.25;
+            clearTop = topMenuH;
+          } else {
+            // 1:1
+            clearW = screenW;
+            clearH = screenW;
+            clearTop = topMenuH;
+          }
         }
 
         return Stack(
@@ -237,7 +310,9 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                           flipX: widget.mirrorHorizontally,
                           child: Image.file(
                             widget.imageFile,
-                            fit: BoxFit.cover,
+                            fit: widget.preserveOriginalRatio
+                                ? BoxFit.contain
+                                : BoxFit.cover,
                             cacheWidth: 2400,
                           ),
                         ),
