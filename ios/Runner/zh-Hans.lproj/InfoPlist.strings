@@ -1,0 +1,7 @@
+"NSCameraUsageDescription" = "需要相机权限以拍摄带有时间戳的照片和视频。";
+"NSMicrophoneUsageDescription" = "录制视频时需要麦克风权限以录制声音。";
+"NSPhotoLibraryAddUsageDescription" = "需要相册权限以将带有时间戳的照片和视频保存到相册。";
+"NSPhotoLibraryUsageDescription" = "需要相册权限以导入照片并保存带有时间戳的媒体文件。";
+"NSLocationWhenInUseUsageDescription" = "需要位置权限以在照片和印章上显示当前拍摄位置。";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "需要位置权限以在照片和印章上显示当前拍摄位置。";
+

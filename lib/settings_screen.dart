@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'services/ad_service.dart';
 import 'services/app_settings_service.dart';
+import 'services/app_localizations.dart';
 import 'widgets/ad_banner_widget.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -37,7 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () => Navigator.of(context).pop(),
             ),
             title: Text(
-              '설정',
+              AppStrings.settingsTitle,
               style: TextStyle(
                 color: textColor,
                 fontSize: 18,
@@ -51,7 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             children: [
               // 1. 타임스탬프 & 위치 설정
-              _sectionHeader('타임스탬프 설정'),
+              _sectionHeader(AppStrings.sectionTimestamp),
               _cardContainer(
                 cardColor: cardColor,
                 children: [
@@ -59,7 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     activeThumbColor: accent,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                     title: Text(
-                      '위치 정보 표시',
+                      AppStrings.showLocationTitle,
                       style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                     value: _settings.showLocation,
@@ -84,13 +85,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Icon(Icons.location_on_rounded, color: accent, size: 20),
                       ),
                       title: Text(
-                        '표시할 위치',
+                        AppStrings.locationToDisplayTitle,
                         style: TextStyle(color: textColor, fontSize: 14.5, fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
                         _settings.isFetchingLocation
-                            ? 'GPS 위치를 가져오는 중...'
-                            : (_settings.locationText.isEmpty ? '위치 미설정 (탭하여 선택)' : _settings.locationText),
+                            ? AppStrings.fetchingGpsLocation
+                            : (_settings.locationText.isEmpty ? AppStrings.locationNotSetTapToSelect : _settings.locationText),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -111,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           else
                             IconButton(
                               icon: Icon(Icons.refresh_rounded, color: subTextColor, size: 20),
-                              tooltip: 'GPS 현재 위치 새로고침',
+                              tooltip: AppStrings.refreshGpsTooltip,
                               onPressed: _refreshGpsLocation,
                             ),
                           Icon(Icons.chevron_right_rounded, color: subTextColor, size: 20),
@@ -128,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const AdBannerWidget(margin: EdgeInsets.only(bottom: 16)),
 
               // 2. 테마 & 스타일 커스텀
-              _sectionHeader('테마 및 스타일'),
+              _sectionHeader(AppStrings.sectionTheme),
               _cardContainer(
                 cardColor: cardColor,
                 children: [
@@ -138,35 +139,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '앱 테마 모드',
+                          AppStrings.appThemeModeTitle,
                           style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           _settings.isLight
-                              ? '클린 화이트 (라이트 모드)'
-                              : (_settings.isPureBlack ? '트루 블랙 (OLED 완전 검정)' : '딥 차콜 다크 (기본)'),
+                              ? AppStrings.themeLightDesc
+                              : (_settings.isPureBlack ? AppStrings.themePureBlackDesc : AppStrings.themeDarkDesc),
                           style: TextStyle(color: subTextColor, fontSize: 12.5),
                         ),
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           child: SegmentedButton<String>(
-                            segments: const [
+                            segments: [
                               ButtonSegment(
                                 value: 'dark',
-                                label: Text('다크', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                                icon: Icon(Icons.dark_mode_outlined, size: 16),
+                                label: Text(AppStrings.themeSegmentDark, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                icon: const Icon(Icons.dark_mode_outlined, size: 16),
                               ),
                               ButtonSegment(
                                 value: 'pureBlack',
-                                label: Text('블랙', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                                icon: Icon(Icons.brightness_2_outlined, size: 16),
+                                label: Text(AppStrings.themeSegmentBlack, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                icon: const Icon(Icons.brightness_2_outlined, size: 16),
                               ),
                               ButtonSegment(
                                 value: 'light',
-                                label: Text('화이트', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                                icon: Icon(Icons.light_mode_outlined, size: 16),
+                                label: Text(AppStrings.themeSegmentLight, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                icon: const Icon(Icons.light_mode_outlined, size: 16),
                               ),
                             ],
                             selected: {_settings.themeMode},
@@ -210,7 +211,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '포인트 컬러',
+                              AppStrings.accentColorTitle,
                               style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.w600),
                             ),
                             GestureDetector(
@@ -229,7 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   Icon(Icons.colorize, size: 14, color: subTextColor),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '직접 선택',
+                                    AppStrings.folderCustomColor,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: subTextColor,
@@ -243,7 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '버튼 및 주요 하이라이트에 적용될 포인트 색상입니다.',
+                          AppStrings.accentColorSub,
                           style: TextStyle(color: subTextColor, fontSize: 12.5),
                         ),
                         const SizedBox(height: 14),
@@ -350,7 +351,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // 3. 개발자 응원하기 (애드몹 광고)
-              _sectionHeader('개발자 응원하기'),
+              _sectionHeader(AppStrings.sectionSupport),
               Container(
                 decoration: BoxDecoration(
                   color: cardColor,
@@ -384,7 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '개발자에게 커피 한 잔 선물하기 ☕',
+                                AppStrings.supportTitle,
                                 style: TextStyle(
                                   color: textColor,
                                   fontSize: 15,
@@ -393,7 +394,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                '짧은 영상 광고 1편으로 앱 개발을 응원해주세요!',
+                                AppStrings.supportSub,
                                 style: TextStyle(color: subTextColor, fontSize: 12),
                               ),
                             ],
@@ -412,7 +413,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           size: 20,
                         ),
                         label: Text(
-                          '광고 보고 응원하기',
+                          AppStrings.supportButton,
                           style: TextStyle(
                             color: _settings.isLight ? Colors.white : Colors.black,
                             fontSize: 14,
@@ -433,31 +434,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 24),
 
               // 4. 앱 정보 & 출시 필수 약관
-              _sectionHeader('앱 정보 및 약관'),
+              _sectionHeader(AppStrings.sectionAppInfo),
               _cardContainer(
                 cardColor: cardColor,
                 children: [
                   _infoTile(
-                    title: '앱 버전',
-                    subtitle: '1.0.0 (최신 버전)',
+                    title: AppStrings.appVersionTitle,
+                    subtitle: AppStrings.appVersionSub,
                     trailing: Icon(Icons.verified_rounded, color: subTextColor, size: 18),
                   ),
                   Divider(color: dividerColor, height: 1),
                   _infoTile(
-                    title: '서비스 이용약관',
-                    subtitle: 'Log 서비스 이용 관련 기본 약관',
+                    title: AppStrings.termsOfServiceTitle,
+                    subtitle: AppStrings.termsOfServiceSub,
                     onTap: _showTermsOfService,
                   ),
                   Divider(color: dividerColor, height: 1),
                   _infoTile(
-                    title: '개인정보 처리방침',
-                    subtitle: '카메라, 저장공간 및 위치정보 보호 방침',
+                    title: AppStrings.privacyPolicyTitle,
+                    subtitle: AppStrings.privacyPolicySub,
                     onTap: _showPrivacyPolicy,
                   ),
                   Divider(color: dividerColor, height: 1),
                   _infoTile(
-                    title: '오픈소스 라이선스',
-                    subtitle: '사용된 오픈소스 소프트웨어 라이선스 목록',
+                    title: AppStrings.openSourceLicenseTitle,
+                    subtitle: AppStrings.openSourceLicenseSub,
                     onTap: () => showLicensePage(
                       context: context,
                       applicationName: 'Log',
@@ -467,14 +468,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   Divider(color: dividerColor, height: 1),
                   _infoTile(
-                    title: '문의 및 피드백',
+                    title: AppStrings.contactFeedbackTitle,
                     subtitle: 'kmh96503981@gmail.com',
                     onTap: () {
                       Clipboard.setData(const ClipboardData(text: 'kmh96503981@gmail.com'));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('이메일 주소가 클립보드에 복사되었습니다.'),
-                          duration: Duration(seconds: 2),
+                        SnackBar(
+                          content: Text(AppStrings.emailCopiedSnackbar),
+                          duration: const Duration(seconds: 2),
                         ),
                       );
                     },
@@ -536,19 +537,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     HapticFeedback.lightImpact();
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Row(
           children: [
-            SizedBox(
+            const SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
             ),
-            SizedBox(width: 12),
-            Text('현재 GPS 위치를 측정하고 있습니다...'),
+            const SizedBox(width: 12),
+            Text(AppStrings.measuringGpsSnackbar),
           ],
         ),
-        duration: Duration(seconds: 2),
+        duration: const Duration(seconds: 2),
       ),
     );
 
@@ -560,7 +561,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       HapticFeedback.mediumImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('📍 현재 위치가 갱신되었습니다: ${result.primaryAddress}'),
+          content: Text(AppStrings.locationUpdatedSnackbar(result.primaryAddress)),
           backgroundColor: Colors.black87,
           duration: const Duration(seconds: 2),
         ),
@@ -568,7 +569,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.errorMessage ?? '위치 정보를 가져올 수 없습니다.'),
+          content: Text(result.errorMessage ?? AppStrings.locationFetchErrorDefault),
           backgroundColor: Colors.redAccent.shade700,
           duration: const Duration(seconds: 3),
         ),
@@ -582,13 +583,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final subTextColor = settings.subTextColor;
     final current = settings.locationPosition;
 
-    final positions = const [
-      {'id': 'topLeft', 'label': '좌상단', 'align': Alignment.topLeft},
-      {'id': 'topCenter', 'label': '상단 중앙', 'align': Alignment.topCenter},
-      {'id': 'topRight', 'label': '우상단', 'align': Alignment.topRight},
-      {'id': 'bottomLeft', 'label': '좌하단', 'align': Alignment.bottomLeft},
-      {'id': 'bottomCenter', 'label': '하단 중앙', 'align': Alignment.bottomCenter},
-      {'id': 'bottomRight', 'label': '우하단', 'align': Alignment.bottomRight},
+    final positions = [
+      {'id': 'topLeft', 'label': AppStrings.posTopLeft, 'align': Alignment.topLeft},
+      {'id': 'topCenter', 'label': AppStrings.posTopCenter, 'align': Alignment.topCenter},
+      {'id': 'topRight', 'label': AppStrings.posTopRight, 'align': Alignment.topRight},
+      {'id': 'bottomLeft', 'label': AppStrings.posBottomLeft, 'align': Alignment.bottomLeft},
+      {'id': 'bottomCenter', 'label': AppStrings.posBottomCenter, 'align': Alignment.bottomCenter},
+      {'id': 'bottomRight', 'label': AppStrings.posBottomRight, 'align': Alignment.bottomRight},
     ];
 
     return Column(
@@ -601,7 +602,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Icon(Icons.crop_free_rounded, size: 18, color: accent),
               const SizedBox(width: 8),
               Text(
-                '위치 태그 표시 위치',
+                AppStrings.locationTagPosTitle,
                 style: TextStyle(color: textColor, fontSize: 14.5, fontWeight: FontWeight.w600),
               ),
             ],
@@ -610,7 +611,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            '화면/타임스탬프 내에서 위치 태그가 나타날 위치를 선택합니다.',
+            AppStrings.locationTagPosSub,
             style: TextStyle(color: subTextColor, fontSize: 12),
           ),
         ),
@@ -748,7 +749,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '표시할 위치 선택',
+                          AppStrings.selectLocationSheetTitle,
                           style: TextStyle(color: textColor, fontSize: 17, fontWeight: FontWeight.bold),
                         ),
                         TextButton.icon(
@@ -765,7 +766,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 )
                               : Icon(Icons.my_location_rounded, color: accent, size: 16),
                           label: Text(
-                            'GPS 갱신',
+                            AppStrings.gpsRefreshButton,
                             style: TextStyle(color: accent, fontSize: 13, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -773,7 +774,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'GPS 기반 4가지 주소 형식 또는 원하는 문구 직접 입력 중 선택하세요.',
+                      AppStrings.selectLocationSheetSub,
                       style: TextStyle(color: subTextColor, fontSize: 12.5),
                     ),
                     const SizedBox(height: 14),
@@ -806,7 +807,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                             subtitle: Text(
-                              opt.label,
+                              AppStrings.localizeLocationOptionLabel(opt.label),
                               style: TextStyle(
                                 color: isSelected ? accent.withValues(alpha: 0.8) : subTextColor,
                                 fontSize: 11.5,
@@ -836,7 +837,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                '측정된 GPS 옵션이 없습니다. 상단의 GPS 갱신을 누르시거나 직접 입력해주세요.',
+                                AppStrings.noGpsOptionsMeasured,
                                 style: TextStyle(color: subTextColor, fontSize: 12.5),
                               ),
                             ),
@@ -868,7 +869,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           size: 22,
                         ),
                         title: Text(
-                          isCustomSelected ? current : '원하는 문구 입력',
+                          isCustomSelected ? current : AppStrings.customLocationTextTitle,
                           style: TextStyle(
                             color: isCustomSelected ? accent : textColor,
                             fontSize: 14,
@@ -876,7 +877,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         subtitle: Text(
-                          isCustomSelected ? '직접 입력한 문구 (탭하여 변경)' : '자유로운 문구 직접 입력',
+                          isCustomSelected ? AppStrings.customLocationTextSubSelected : AppStrings.customLocationTextSubEmpty,
                           style: TextStyle(
                             color: isCustomSelected ? accent.withValues(alpha: 0.8) : subTextColor,
                             fontSize: 11.5,
@@ -953,7 +954,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '원하는 문구 입력',
+                    AppStrings.customLocationDialogTitle,
                     style: TextStyle(
                       color: textColor,
                       fontSize: 17,
@@ -971,7 +972,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                '타임스탬프에 표시할 원하는 위치 문구를 자유롭게 입력하세요.',
+                AppStrings.customLocationDialogSub,
                 style: TextStyle(color: subTextColor, fontSize: 13),
               ),
               const SizedBox(height: 18),
@@ -989,7 +990,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   autofocus: true,
                   style: TextStyle(color: textColor, fontSize: 15),
                   decoration: InputDecoration(
-                    hintText: '예: 우리집 / 서울 한강공원 / 제주 협재',
+                    hintText: AppStrings.customLocationDialogHint,
                     hintStyle: TextStyle(
                       color: subTextColor.withValues(alpha: 0.6),
                       fontSize: 14,
@@ -1014,7 +1015,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(
-                        '취소',
+                        AppStrings.cancel,
                         style: TextStyle(
                           color: subTextColor,
                           fontSize: 15,
@@ -1042,9 +1043,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         }
                         Navigator.pop(ctx);
                       },
-                      child: const Text(
-                        '저장',
-                        style: TextStyle(
+                      child: Text(
+                        AppStrings.save,
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1062,9 +1063,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showSupportAd() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('광고를 준비하고 있습니다... 잠시만 기다려주세요.'),
-        duration: Duration(seconds: 1),
+      SnackBar(
+        content: Text(AppStrings.preparingAdSnackbar),
+        duration: const Duration(seconds: 1),
       ),
     );
 
@@ -1094,13 +1095,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    '따뜻한 응원 감사합니다! ❤️',
+                    AppStrings.supportThankYouTitle,
                     style: TextStyle(color: _settings.textColor, fontSize: 18, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '보내주신 소중한 응원, 더 좋은 앱으로 보답할게요.',
+                    AppStrings.supportThankYouSub,
                     style: TextStyle(color: _settings.subTextColor, fontSize: 13.5, height: 1.4),
                     textAlign: TextAlign.center,
                   ),
@@ -1115,7 +1116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text('확인', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(AppStrings.confirm, style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -1135,48 +1136,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showTermsOfService() {
     _showLegalSheet(
-      title: '서비스 이용약관',
-      content: '''제 1 조 (목적)
-본 약관은 Log(이하 "앱")가 제공하는 타임스탬프 카메라 및 앨범 관리 서비스의 이용조건 및 절차, 이용자와 앱의 권리, 의무, 책임사항을 규정함을 목적으로 합니다.
-
-제 2 조 (서비스의 제공)
-1. 앱은 사진 및 동영상 촬영 시 현재 시간, 스탬프 디자인 오버레이, 앨범 분류 기능을 무료로 제공합니다.
-2. 앱은 단말기 내 로컬 환경에서 구동되며, 사용자가 촬영한 사진과 동영상은 외부 서버로 전송되지 않고 사용자의 기기에 안전하게 저장됩니다.
-
-제 3 조 (이용자의 의무)
-1. 이용자는 관계 법령, 본 약관의 규정 및 공서양속을 준수하여야 합니다.
-2. 타인의 권리나 명예를 침해하는 촬영 행위의 책임은 이용자 본인에게 있습니다.
-
-제 4 조 (면책조항)
-1. 앱은 천재지변, 단말기 고장 또는 OS 업데이트로 인한 데이터 손실에 대해 책임을 지지 않으며, 중요한 미디어는 이용자가 사전에 백업해야 합니다.
-2. 광고 시청 및 보상형 기능은 네트워크 상태에 따라 제공이 원활하지 않을 수 있습니다.
-
-부칙: 본 약관은 2026년 11월 1일부터 효력을 발생합니다.''',
+      title: AppStrings.termsOfServiceTitle,
+      content: AppStrings.termsOfServiceBody,
     );
   }
 
   void _showPrivacyPolicy() {
     _showLegalSheet(
-      title: '개인정보 처리방침',
-      content: '''Log(이하 "앱")는 사용자의 개인정보를 매우 소중하게 생각하며, 관련 법령을 준수합니다.
-
-1. 수집하는 개인정보 항목 및 목적
-앱은 회원의 개인정보를 별도로 수집하거나 서버에 저장하지 않습니다.
-- 카메라 권한: 사진 및 동영상 촬영 목적으로만 사용됩니다.
-- 오디오/마이크 권한: 동영상 녹화 시 소리 녹음 목적으로만 사용됩니다.
-- 저장공간/사진 라이브러리 권한: 촬영한 사진 및 동영상을 기기에 저장하고 불러오기 위한 목적으로만 사용됩니다.
-- 위치 권한(선택): 사용자가 스탬프에 위치 표시 기능을 활성화한 경우에 한해 현재 위치명을 표기하는 데 로컬에서만 사용됩니다.
-
-2. 제3자 제공 및 외부 전송
-앱에서 생성된 모든 사진, 동영상, 캘린더 기록 데이터는 사용자 단말기 내부에만 저장되며, 외부 서버로 전송되거나 제3자에게 제공되지 않습니다.
-
-3. 구글 애드몹(Google AdMob) 광고
-앱은 개발 및 서비스 유지를 위해 Google AdMob 광고 SDK를 포함하고 있습니다. AdMob은 맞춤형 광고 제공을 위해 비식별 광고 ID 및 기기 정보를 처리할 수 있으며, 이에 대한 자세한 내용은 Google 개인정보처리방침을 따릅니다.
-
-4. 문의처
-개인정보 보호와 관련된 문의사항은 kmh96503981@gmail.com 으로 연락주시기 바랍니다.
-
-공고일자: 2026년 11월 1일''',
+      title: AppStrings.privacyPolicyTitle,
+      content: AppStrings.privacyPolicyBody,
     );
   }
 
@@ -1340,7 +1308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             const SizedBox(width: 10),
                             Text(
-                              '포인트 색상 선택',
+                              AppStrings.accentColorPickerTitle,
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w900,
@@ -1417,7 +1385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 onPressed: () => Navigator.pop(ctx),
                                 child: Text(
-                                  '취소',
+                                  AppStrings.cancel,
                                   style: TextStyle(
                                     color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                                     fontWeight: FontWeight.w700,
@@ -1444,9 +1412,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   onColorSelected(tempColor);
                                   Navigator.pop(ctx);
                                 },
-                                child: const Text(
-                                  '적용하기',
-                                  style: TextStyle(
+                                child: Text(
+                                  AppStrings.apply,
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),

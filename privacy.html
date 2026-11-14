@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>개인정보 처리방침 | LOG (로그 - 타임스탬프 카메라)</title>
   <meta name="description" content="LOG (타임스탬프 카메라) 서비스의 개인정보 처리방침입니다.">
-  
-  <link rel="icon" type="image/png" href="../assets/icons/app_logo.png">
+
+  <link rel="icon" type="image/png" href="assets/icons/app_logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -52,6 +52,8 @@
       align-items: center;
       border-bottom: 1px solid var(--card-border);
       margin-bottom: 40px;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
     .brand {
@@ -72,6 +74,52 @@
       font-size: 20px;
       font-weight: 800;
       letter-spacing: -0.5px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-switcher {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .lang-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: rgba(26, 29, 36, 0.9);
+      color: var(--text-main);
+      border: 1px solid rgba(195, 251, 40, 0.35);
+      border-radius: 8px;
+      padding: 8px 30px 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .lang-select:hover,
+    .lang-select:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 12px rgba(195, 251, 40, 0.2);
+    }
+
+    .lang-select option {
+      background: #14171d;
+      color: #ffffff;
+    }
+
+    .lang-arrow {
+      position: absolute;
+      right: 10px;
+      pointer-events: none;
+      color: var(--accent-color);
+      font-size: 11px;
     }
 
     .back-link {
@@ -218,118 +266,649 @@
     footer a:hover {
       color: var(--accent-color);
     }
+
+    @media (max-width: 768px) {
+      .policy-card {
+        padding: 24px 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
     <header>
-      <a href="./" class="brand">
+      <a href="./" id="brandLink" class="brand">
         <img src="assets/icons/app_logo.png" alt="LOG Logo" class="logo-img" onerror="this.style.display='none'">
         <span class="brand-title">LOG</span>
       </a>
-      <a href="./" class="back-link">
-        <span>← 메인으로 돌아가기</span>
-      </a>
+      <div class="header-actions">
+        <div class="lang-switcher">
+          <select id="langSelect" class="lang-select" aria-label="Language selector">
+            <option value="ko">🌐 한국어</option>
+            <option value="en">🌐 English</option>
+            <option value="zh">🌐 简体中文</option>
+            <option value="ja">🌐 日本語</option>
+            <option value="es">🌐 Español</option>
+            <option value="de">🌐 Deutsch</option>
+            <option value="fr">🌐 Français</option>
+          </select>
+          <span class="lang-arrow">▼</span>
+        </div>
+        <a href="./" id="backLink" class="back-link">
+          <span id="backLinkText">← 메인으로 돌아가기</span>
+        </a>
+      </div>
     </header>
 
     <main class="policy-card">
       <div class="policy-header">
-        <span class="policy-tag">Privacy Policy</span>
-        <h1>개인정보 처리방침 (Privacy Policy)</h1>
-        <p class="policy-meta">시행일자: 2026년 11월 7일 | 최종 수정일자: 2026년 11월 14일</p>
+        <span class="policy-tag" id="policyTag">Privacy Policy</span>
+        <h1 id="policyTitle">개인정보 처리방침 (Privacy Policy)</h1>
+        <p class="policy-meta" id="policyMeta">시행일자: 2026년 11월 7일 | 최종 수정일자: 2026년 11월 14일</p>
       </div>
 
-      <div class="policy-content">
-        <p>This privacy policy applies to the <strong>LOG</strong> app for mobile devices, together with any related services operated by <strong>bebong </strong> (collectively, the &quot;Application&quot;). bebong is hereby referred to as the &quot;Service Provider&quot;.</p>
-
-        <h2>1. Information Collection and Use</h2>
-        <p>The Application collects information when you download and use it. This information may include information such as:</p>
-        <ul>
-          <li>Your device's Internet Protocol (IP) address</li>
-          <li>The pages of the Application that you visit, the time and date of your visit, and the time spent on those pages</li>
-          <li>The total time spent on the Application</li>
-          <li>The mobile operating system you use</li>
-        </ul>
-        <p>The Service Provider may use the information you provide to send important information, required notices, and, where permitted by law, marketing communications.</p>
-        <p>For a better experience while using the Application, the Service Provider may require you to provide certain personally identifiable information, including but not limited to <code>kmh96503981@gmail.com</code>. The information the Service Provider requests will be retained and used as described in this privacy policy.</p>
-
-        <h2>2. Cookies and Tracking Technologies</h2>
-        <p>The Application or its third-party SDKs may use cookies, SDKs, pixels, and similar technologies to support functionality, analytics, or service delivery. Where required by applicable law, the Service Provider will obtain consent before using non-essential tracking technologies.</p>
-
-        <h2>3. Third Party Services</h2>
-        <p>Please note that the Application utilizes third-party services that have their own Privacy Policy about handling data. Below are the links to the Privacy Policy of the third-party service providers used by the Application:</p>
-        <ul>
-          <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener noreferrer">Google Play Services</a></li>
-          <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google AdMob</a></li>
-          <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Google Analytics for Firebase</a></li>
-        </ul>
-
-        <h2>4. Third Party Access & Disclosure</h2>
-        <p>Only aggregated, anonymized data is periodically transmitted to external services to aid the Service Provider in improving the Application and their service. The Service Provider may disclose User Provided and Automatically Collected Information:</p>
-        <ul>
-          <li>As required by law, such as to comply with a subpoena or similar legal process;</li>
-          <li>When they believe in good faith that disclosure is necessary to protect their rights, protect your safety or the safety of others, investigate fraud, or respond to a government request;</li>
-          <li>With their trusted service providers who work on their behalf, do not have an independent use of the information the Service Provider discloses to them, and have agreed to adhere to the rules set forth in this privacy statement.</li>
-        </ul>
-
-        <h2>5. Your Rights & California Privacy Rights (CCPA/CPRA)</h2>
-        <p>You may request access to, correction of, or deletion of your personal data held by the Service Provider. To exercise these rights, or to withdraw consent where processing is based on consent, contact the Service Provider at <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a>.</p>
-        <p><strong>California Residents:</strong> If you are a California resident, you have the right to know what personal information is collected, the right to delete personal information, the right to opt out of the sale or sharing of personal information, and the right to non-discrimination for exercising these rights.</p>
-
-        <h2>6. Opt-Out Rights</h2>
-        <p>You can stop further collection of information from your mobile device by uninstalling the Application. Uninstalling will stop the Application from collecting data from your device, but it does not automatically delete information that has already been transmitted to the Service Provider or to third parties.</p>
-
-        <h2>7. International Data Transfers</h2>
-        <p>The Service Provider or its third-party service providers may transfer personal data to countries outside your country of residence, including outside the European Economic Area (EEA). Where applicable law requires safeguards for international transfers, the Service Provider will use appropriate mechanisms:</p>
-        <ul>
-          <li>Standard Contractual Clauses (SCCs) approved by the European Commission</li>
-          <li>Adequacy decisions or other legally recognized transfer mechanisms</li>
-          <li>Your consent, where required and legally permitted</li>
-        </ul>
-
-        <h2>8. Data Retention Policy</h2>
-        <p>The Service Provider retains personal data based on its necessity for the stated purposes:</p>
-        <ul>
-          <li><strong>User Provided Data:</strong> Retained for the duration of your use of the Application plus 12 months thereafter, unless longer retention is required by law.</li>
-          <li><strong>Automatically Collected Data:</strong> Retained for up to 24 months from collection, unless longer retention is required for legal compliance.</li>
-          <li><strong>Aggregated and Anonymized Data:</strong> Retained indefinitely as it no longer identifies you.</li>
-          <li><strong>Data required for legal compliance:</strong> Retained as long as required by applicable law.</li>
-        </ul>
-
-        <h2>9. Children’s Privacy</h2>
-        <p>The Application is not intended for children under 14 years of age, or such higher age as required by applicable law. The Service Provider does not knowingly solicit data from children or market the Application to them. In the event the Service Provider discovers that a child has provided personal information, the Service Provider will immediately delete this from their servers.</p>
-
-        <h2>10. Security & Data Breach Notification</h2>
-        <p>The Service Provider is concerned about safeguarding the confidentiality of your information. Physical, electronic, and procedural safeguards are provided to protect information processed and maintained. If a data breach occurs that affects your personal data, the Service Provider will notify you in accordance with applicable legal requirements.</p>
-
-        <h2>11. Changes to This Privacy Policy</h2>
-        <p>The Service Provider may update this Privacy Policy from time to time. You will be notified of material changes by posting the updated Privacy Policy with an effective date. Where required by law, the Service Provider will seek your consent to material changes before they take effect.</p>
-
-        <h2>12. Your Consent</h2>
-        <p>Where processing is based on consent, you provide that consent by affirmatively opting in to the relevant feature or action. You may withdraw consent at any time without affecting processing carried out before withdrawal.</p>
-
-        <div class="contact-box">
-          <h3>Contact Us (문의처)</h3>
-          <p>If you have any questions regarding privacy while using the Application, please contact the Service Provider:</p>
-          <p>• <strong>Developer / Operator:</strong> bebong</p>
-          <p>• <strong>Email:</strong> <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a></p>
-          <p>• <strong>Official Website:</strong> <a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></p>
-        </div>
+      <div class="policy-content" id="policyBody">
+        <!-- Populated dynamically by language script (with full fallback below) -->
+        <p>This privacy policy applies to the <strong>LOG</strong> app for mobile devices, together with any related services operated by <strong>bebong</strong> (collectively, the "Application"). bebong is hereby referred to as the "Service Provider".</p>
       </div>
     </main>
 
     <footer>
       <p>&copy; 2026 LOG. All rights reserved.</p>
       <div style="margin-top: 10px;">
-        <a href="./">홈</a>
+        <a href="./" id="footerHome">홈</a>
         <span>·</span>
-        <a href="privacy.html">개인정보처리방침</a>
+        <a href="privacy.html" id="footerPrivacy">개인정보처리방침</a>
         <span>·</span>
-        <a href="mailto:kmh96503981@gmail.com">문의하기</a>
+        <a href="mailto:kmh96503981@gmail.com" id="footerContact">문의하기</a>
       </div>
     </footer>
   </div>
+
+  <script>
+    const PRIVACY_I18N = {
+      ko: {
+        pageTitle: "개인정보 처리방침 | LOG (로그 - 타임스탬프 카메라)",
+        backLinkText: "← 메인으로 돌아가기",
+        policyTag: "개인정보 처리방침",
+        policyTitle: "개인정보 처리방침 (Privacy Policy)",
+        policyMeta: "시행일자: 2026년 11월 7일 | 최종 수정일자: 2026년 11월 14일",
+        footerHome: "홈",
+        footerPrivacy: "개인정보처리방침",
+        footerContact: "문의하기",
+        body: `
+          <p>본 개인정보 처리방침은 <strong>bebong</strong>(이하 "서비스 제공자")이 운영하는 모바일 기기용 <strong>LOG</strong> 앱 및 관련 서비스(이하 통칭하여 "애플리케이션")에 적용됩니다.</p>
+
+          <h2>1. 개인정보의 수집 및 이용</h2>
+          <p>애플리케이션은 다운로드 및 이용 과정에서 다음과 같은 정보를 처리할 수 있습니다:</p>
+          <ul>
+            <li>기기의 인터넷 프로토콜(IP) 주소</li>
+            <li>애플리케이션 내 방문 화면, 방문 일시(연·월·일·시·분·초) 및 체류 시간</li>
+            <li>애플리케이션 총 이용 시간 및 모바일 운영체제(OS) 정보</li>
+            <li>카메라·마이크·저장소·위치 권한(선택): 사용자가 촬영한 사진과 동영상에 타임스탬프 및 위치 배지를 합성하고 기기 로컬 앨범에 저장하기 위한 목적으로만 기기 내에서 처리됩니다.</li>
+          </ul>
+          <p>더 나은 서비스 경험을 위해 문의 시 <code>kmh96503981@gmail.com</code> 등을 통해 사용자가 직접 제공한 정보는 본 개인정보 처리방침에 설명된 바에 따라 보관 및 사용됩니다.</p>
+
+          <h2>2. 쿠키 및 추적 기술</h2>
+          <p>애플리케이션 또는 제3자 SDK는 기능 지원, 분석 또는 광고 서비스 제공을 위해 쿠키, SDK, 픽셀 및 유사 기술을 사용할 수 있습니다. 관련 법률에서 요구하는 경우 비필수 추적 기술 사용 전에 동의를 구합니다.</p>
+
+          <h2>3. 제3자 서비스 (Third Party Services)</h2>
+          <p>애플리케이션은 자체 개인정보 처리방침을 가진 제3자 서비스를 활용합니다. 사용 중인 제3자 서비스 제공업체의 개인정보 처리방침 링크는 다음과 같습니다:</p>
+          <ul>
+            <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener noreferrer">Google Play Services</a></li>
+            <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google AdMob</a></li>
+            <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Google Analytics for Firebase</a></li>
+          </ul>
+
+          <h2>4. 제3자 접근 및 공개</h2>
+          <p>서비스 개선을 위해 집계되고 익명화된 데이터만 주기적으로 외부 서비스에 전송될 수 있습니다. 서비스 제공자는 법적 의무 준수, 권리 및 안전 보호, 또는 본 방침을 준수하는 신뢰할 수 있는 위탁 서비스 제공업체와의 협력을 위해서만 정보를 공개할 수 있습니다.</p>
+
+          <h2>5. 이용자의 권리 (CCPA/CPRA 및 글로벌 개인정보 권리)</h2>
+          <p>귀하는 서비스 제공자가 보유한 개인정보에 대해 열람, 정정, 삭제를 요청하거나 동의를 철회할 권리가 있습니다. 권리 행사는 <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a>으로 문의하시기 바랍니다.</p>
+
+          <h2>6. 수집 중단 권리 (Opt-Out)</h2>
+          <p>애플리케이션을 삭제(언인스톨)함으로써 모바일 기기로부터의 모든 추가 정보 수집을 즉시 중단할 수 있습니다.</p>
+
+          <h2>7. 국외 데이터 이전</h2>
+          <p>서비스 제공자 또는 제3자 서비스 제공업체는 거주 국가 외부로 데이터를 이전할 수 있으며, 관련 법령이 요구하는 경우 표준계약조항(SCC) 등 적절한 보호조치를 적용합니다.</p>
+
+          <h2>8. 데이터 보유 및 파기 정책</h2>
+          <ul>
+            <li><strong>이용자 제공 데이터:</strong> 앱 이용 기간 및 이후 최대 12개월간 보관(법령상 의무가 있는 경우 제외)</li>
+            <li><strong>자동 수집 데이터:</strong> 수집일로부터 최대 24개월간 보관</li>
+            <li><strong>집계 및 익명화 데이터:</strong> 개인을 식별할 수 없으므로 기간 제한 없이 보관 가능</li>
+          </ul>
+
+          <h2>9. 아동의 개인정보 보호</h2>
+          <p>애플리케이션은 만 14세 미만(또는 관할 법률에서 정한 연령 미만) 아동을 대상으로 하지 않으며, 아동으로부터 고의로 개인정보를 수집하지 않습니다.</p>
+
+          <h2>10. 보안 및 침해 통지</h2>
+          <p>서비스 제공자는 정보의 기밀성을 보호하기 위해 물리적·전자적·절차적 안전장치를 제공하며, 데이터 유출 발생 시 관련 법률에 따라 통지합니다.</p>
+
+          <h2>11. 개인정보 처리방침의 변경</h2>
+          <p>본 방침은 수시로 업데이트될 수 있으며, 중요한 변경 사항은 시행일과 함께 본 페이지에 게시하여 공지합니다.</p>
+
+          <h2>12. 동의</h2>
+          <p>동의를 기반으로 처리가 이루어지는 경우, 귀하는 관련 기능을 활성화함으로써 동의하게 되며 언제든지 동의를 철회할 수 있습니다.</p>
+
+          <div class="contact-box">
+            <h3>문의처 (Contact Us)</h3>
+            <p>애플리케이션 이용 중 개인정보 보호와 관련하여 궁금한 점이 있으시면 아래로 연락해 주세요:</p>
+            <p>• <strong>개발자 / 운영자:</strong> bebong</p>
+            <p>• <strong>이메일:</strong> <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a></p>
+            <p>• <strong>공식 웹사이트:</strong> <a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></p>
+          </div>
+        `
+      },
+      en: {
+        pageTitle: "Privacy Policy | LOG - Timestamp Camera",
+        backLinkText: "← Back to Home",
+        policyTag: "Privacy Policy",
+        policyTitle: "Privacy Policy",
+        policyMeta: "Effective Date: Nov 7, 2026 | Last Updated: Nov 14, 2026",
+        footerHome: "Home",
+        footerPrivacy: "Privacy Policy",
+        footerContact: "Contact Us",
+        body: `
+          <p>This privacy policy applies to the <strong>LOG</strong> app for mobile devices, together with any related services operated by <strong>bebong</strong> (collectively, the "Application"). bebong is hereby referred to as the "Service Provider".</p>
+
+          <h2>1. Information Collection and Use</h2>
+          <p>The Application collects information when you download and use it. This information may include information such as:</p>
+          <ul>
+            <li>Your device's Internet Protocol (IP) address</li>
+            <li>The pages of the Application that you visit, the time and date of your visit, and the time spent on those pages</li>
+            <li>The total time spent on the Application</li>
+            <li>The mobile operating system you use</li>
+          </ul>
+          <p>The Service Provider may use the information you provide to send important information, required notices, and, where permitted by law, marketing communications.</p>
+          <p>For a better experience while using the Application, the Service Provider may require you to provide certain personally identifiable information, including but not limited to <code>kmh96503981@gmail.com</code>. The information the Service Provider requests will be retained and used as described in this privacy policy.</p>
+
+          <h2>2. Cookies and Tracking Technologies</h2>
+          <p>The Application or its third-party SDKs may use cookies, SDKs, pixels, and similar technologies to support functionality, analytics, or service delivery. Where required by applicable law, the Service Provider will obtain consent before using non-essential tracking technologies.</p>
+
+          <h2>3. Third Party Services</h2>
+          <p>Please note that the Application utilizes third-party services that have their own Privacy Policy about handling data. Below are the links to the Privacy Policy of the third-party service providers used by the Application:</p>
+          <ul>
+            <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener noreferrer">Google Play Services</a></li>
+            <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google AdMob</a></li>
+            <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Google Analytics for Firebase</a></li>
+          </ul>
+
+          <h2>4. Third Party Access & Disclosure</h2>
+          <p>Only aggregated, anonymized data is periodically transmitted to external services to aid the Service Provider in improving the Application and their service. The Service Provider may disclose User Provided and Automatically Collected Information:</p>
+          <ul>
+            <li>As required by law, such as to comply with a subpoena or similar legal process;</li>
+            <li>When they believe in good faith that disclosure is necessary to protect their rights, protect your safety or the safety of others, investigate fraud, or respond to a government request;</li>
+            <li>With their trusted service providers who work on their behalf, do not have an independent use of the information the Service Provider discloses to them, and have agreed to adhere to the rules set forth in this privacy statement.</li>
+          </ul>
+
+          <h2>5. Your Rights & California Privacy Rights (CCPA/CPRA)</h2>
+          <p>You may request access to, correction of, or deletion of your personal data held by the Service Provider. To exercise these rights, or to withdraw consent where processing is based on consent, contact the Service Provider at <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a>.</p>
+          <p><strong>California Residents:</strong> If you are a California resident, you have the right to know what personal information is collected, the right to delete personal information, the right to opt out of the sale or sharing of personal information, and the right to non-discrimination for exercising these rights.</p>
+
+          <h2>6. Opt-Out Rights</h2>
+          <p>You can stop further collection of information from your mobile device by uninstalling the Application. Uninstalling will stop the Application from collecting data from your device, but it does not automatically delete information that has already been transmitted to the Service Provider or to third parties.</p>
+
+          <h2>7. International Data Transfers</h2>
+          <p>The Service Provider or its third-party service providers may transfer personal data to countries outside your country of residence, including outside the European Economic Area (EEA). Where applicable law requires safeguards for international transfers, the Service Provider will use appropriate mechanisms:</p>
+          <ul>
+            <li>Standard Contractual Clauses (SCCs) approved by the European Commission</li>
+            <li>Adequacy decisions or other legally recognized transfer mechanisms</li>
+            <li>Your consent, where required and legally permitted</li>
+          </ul>
+
+          <h2>8. Data Retention Policy</h2>
+          <p>The Service Provider retains personal data based on its necessity for the stated purposes:</p>
+          <ul>
+            <li><strong>User Provided Data:</strong> Retained for the duration of your use of the Application plus 12 months thereafter, unless longer retention is required by law.</li>
+            <li><strong>Automatically Collected Data:</strong> Retained for up to 24 months from collection, unless longer retention is required for legal compliance.</li>
+            <li><strong>Aggregated and Anonymized Data:</strong> Retained indefinitely as it no longer identifies you.</li>
+            <li><strong>Data required for legal compliance:</strong> Retained as long as required by applicable law.</li>
+          </ul>
+
+          <h2>9. Children’s Privacy</h2>
+          <p>The Application is not intended for children under 14 years of age, or such higher age as required by applicable law. The Service Provider does not knowingly solicit data from children or market the Application to them. In the event the Service Provider discovers that a child has provided personal information, the Service Provider will immediately delete this from their servers.</p>
+
+          <h2>10. Security & Data Breach Notification</h2>
+          <p>The Service Provider is concerned about safeguarding the confidentiality of your information. Physical, electronic, and procedural safeguards are provided to protect information processed and maintained. If a data breach occurs that affects your personal data, the Service Provider will notify you in accordance with applicable legal requirements.</p>
+
+          <h2>11. Changes to This Privacy Policy</h2>
+          <p>The Service Provider may update this Privacy Policy from time to time. You will be notified of material changes by posting the updated Privacy Policy with an effective date. Where required by law, the Service Provider will seek your consent to material changes before they take effect.</p>
+
+          <h2>12. Your Consent</h2>
+          <p>Where processing is based on consent, you provide that consent by affirmatively opting in to the relevant feature or action. You may withdraw consent at any time without affecting processing carried out before withdrawal.</p>
+
+          <div class="contact-box">
+            <h3>Contact Us</h3>
+            <p>If you have any questions regarding privacy while using the Application, please contact the Service Provider:</p>
+            <p>• <strong>Developer / Operator:</strong> bebong</p>
+            <p>• <strong>Email:</strong> <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a></p>
+            <p>• <strong>Official Website:</strong> <a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></p>
+          </div>
+        `
+      },
+      zh: {
+        pageTitle: "隐私政策 | LOG - 时间戳相机",
+        backLinkText: "← 返回首页",
+        policyTag: "隐私政策",
+        policyTitle: "隐私政策 (Privacy Policy)",
+        policyMeta: "生效日期：2026年11月7日 | 最后更新：2026年11月14日",
+        footerHome: "首页",
+        footerPrivacy: "隐私政策",
+        footerContact: "联系我们",
+        body: `
+          <p>本隐私政策适用于由 <strong>bebong</strong>（以下简称"服务提供方"）运营的移动设备应用 <strong>LOG</strong> 及相关服务（统称"本应用"）。</p>
+
+          <h2>1. 信息收集与使用</h2>
+          <p>当您下载并使用本应用时，本应用可能会收集以下信息：</p>
+          <ul>
+            <li>您设备的互联网协议（IP）地址</li>
+            <li>您访问的应用页面、访问日期与时间（年/月/日/时/分/秒）以及停留时长</li>
+            <li>使用本应用的总时长及移动操作系统信息</li>
+            <li>相机、麦克风、相册与位置权限（可选）：仅用于在设备本地拍摄照片/视频、合成时间戳与位置标签并保存至本地相册。</li>
+          </ul>
+          <p>如果您通过 <code>kmh96503981@gmail.com</code> 与我们联系，您提供的信息将按本隐私政策所述予以保留和使用。</p>
+
+          <h2>2. Cookie 与追踪技术</h2>
+          <p>本应用或其第三方 SDK 可能会使用 Cookie、SDK 及类似技术以支持功能、统计分析或广告展示。在适用法律要求的情况下，服务提供方将在使用非必要追踪技术前征得您的同意。</p>
+
+          <h2>3. 第三方服务</h2>
+          <p>本应用使用了具有独立隐私政策的第三方服务：</p>
+          <ul>
+            <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener noreferrer">Google Play Services</a></li>
+            <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google AdMob</a></li>
+            <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Google Analytics for Firebase</a></li>
+          </ul>
+
+          <h2>4. 第三方访问与信息披露</h2>
+          <p>仅有汇总且匿名化的数据会定期传输至外部服务以改进应用体验。除法律要求、保护合法权益或与遵守本政策的受托服务商合作外，不会向第三方披露您的信息。</p>
+
+          <h2>5. 您的权利（包括数据访问、更正与删除）</h2>
+          <p>您有权请求访问、更正或删除服务提供方持有的个人数据，或撤回同意。请发送邮件至 <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a> 行使上述权利。</p>
+
+          <h2>6. 退出收集权利 (Opt-Out)</h2>
+          <p>您可以通过卸载本应用随时停止移动设备上的所有信息收集。</p>
+
+          <h2>7. 跨境数据传输</h2>
+          <p>服务提供方或其第三方服务商可能会将数据传输至您居住国以外的地区，并在法律要求时采取标准合同条款（SCC）等适当保护措施。</p>
+
+          <h2>8. 数据保留政策</h2>
+          <ul>
+            <li><strong>用户提供的数据：</strong> 在您使用本应用期间及其后最多保留 12 个月（法律要求更长期限的除外）。</li>
+            <li><strong>自动收集的数据：</strong> 自收集之日起最多保留 24 个月。</li>
+            <li><strong>汇总与匿名化数据：</strong> 因无法识别个人身份，可长期保留。</li>
+          </ul>
+
+          <h2>9. 儿童隐私保护</h2>
+          <p>本应用不面向 14 周岁以下（或适用法律规定的更高年龄以下）儿童，不会故意收集儿童的个人信息。</p>
+
+          <h2>10. 安全保障与数据泄露通知</h2>
+          <p>服务提供方采取物理、电子及管理措施保护您的信息安全；若发生影响您个人数据的数据泄露，将依法及时通知。</p>
+
+          <h2>11. 隐私政策的变更</h2>
+          <p>服务提供方可能会不时更新本隐私政策，重大变更将在本页面公布并注明生效日期。</p>
+
+          <h2>12. 您的同意</h2>
+          <p>当处理基于您的同意时，您通过主动启用相关功能即表示同意，且可随时撤回同意。</p>
+
+          <div class="contact-box">
+            <h3>联系我们 (Contact Us)</h3>
+            <p>如在使用本应用过程中对隐私保护有任何疑问，请联系：</p>
+            <p>• <strong>开发者 / 运营方：</strong> bebong</p>
+            <p>• <strong>邮箱：</strong> <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a></p>
+            <p>• <strong>官方网站：</strong> <a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></p>
+          </div>
+        `
+      },
+      ja: {
+        pageTitle: "プライバシーポリシー | LOG - タイムスタンプカメラ",
+        backLinkText: "← ホームへ戻る",
+        policyTag: "プライバシーポリシー",
+        policyTitle: "プライバシーポリシー (Privacy Policy)",
+        policyMeta: "施行日: 2026年11月7日 | 最終改定日: 2026年11月14日",
+        footerHome: "ホーム",
+        footerPrivacy: "プライバシーポリシー",
+        footerContact: "お問い合わせ",
+        body: `
+          <p>本プライバシーポリシーは、<strong>bebong</strong>（以下「サービス提供者」）が運営するモバイル端末向けアプリ <strong>LOG</strong> および関連サービス（以下総称して「本アプリ」）に適用されます。</p>
+
+          <h2>1. 情報の収集と利用</h2>
+          <p>本アプリはダウンロードおよび利用時に以下の情報を処理する場合があります：</p>
+          <ul>
+            <li>端末のインターネットプロトコル（IP）アドレス</li>
+            <li>本アプリ内で閲覧した画面、アクセス日時（年・月・日・時・分・秒）、および滞在時間</li>
+            <li>本アプリの総利用時間およびご利用のモバイルOS</li>
+            <li>カメラ・マイク・写真ライブラリ・位置情報権限（任意）：写真や動画の撮影およびタイムスタンプ・位置バッジの合成、端末内アルバムへの保存の目的でのみローカル環境で使用されます。</li>
+          </ul>
+          <p>お問い合わせ等で <code>kmh96503981@gmail.com</code> 宛にご提供いただいた情報は、本ポリシーに従って保持・利用されます。</p>
+
+          <h2>2. Cookieおよびトラッキング技術</h2>
+          <p>本アプリまたは第三者SDKは、機能提供、分析、広告配信のためにCookie、SDK、ピクセル等の技術を使用する場合があります。法令で求められる場合、必須でないトラッキング技術の使用前に同意を取得します。</p>
+
+          <h2>3. 第三者サービス</h2>
+          <p>本アプリは独自のプライバシーポリシーを持つ第三者サービスを利用しています：</p>
+          <ul>
+            <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener noreferrer">Google Play Services</a></li>
+            <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google AdMob</a></li>
+            <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Google Analytics for Firebase</a></li>
+          </ul>
+
+          <h2>4. 第三者への開示</h2>
+          <p>サービス改善のため、集計・匿名化されたデータのみが外部サービスに送信される場合があります。法令に基づく場合や権利・安全の保護に必要な場合等を除き、個人情報を第三者に開示することはありません。</p>
+
+          <h2>5. 利用者の権利</h2>
+          <p>ご自身の個人データの開示・訂正・削除の請求や同意の撤回については、<a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a> までご連絡ください。</p>
+
+          <h2>6. 収集停止の権利 (Opt-Out)</h2>
+          <p>本アプリをアンインストールすることで、端末からのさらなる情報収集をいつでも停止できます。</p>
+
+          <h2>7. 国際データ移転</h2>
+          <p>サービス提供者または第三者サービス提供者は、居住国外にデータを移転する場合があり、適用法令に従い標準契約条項（SCC）等の適切な保護措置を講じます。</p>
+
+          <h2>8. データ保持ポリシー</h2>
+          <ul>
+            <li><strong>ユーザー提供データ：</strong> 本アプリの利用期間およびその後最大12か月間保持（法令で長期保存が義務付けられている場合を除く）。</li>
+            <li><strong>自動収集データ：</strong> 収集から最大24か月間保持。</li>
+            <li><strong>集計・匿名化データ：</strong> 個人を特定できないため無期限に保持可能。</li>
+          </ul>
+
+          <h2>9. 子どものプライバシー</h2>
+          <p>本アプリは14歳未満（または適用法令で定められた年齢未満）の子どもを対象としておらず、意図的に個人情報を収集することはありません。</p>
+
+          <h2>10. セキュリティとデータ漏洩通知</h2>
+          <p>情報の機密性を守るため物理的・電子的・手続的な安全管理措置を講じており、万一個人データに影響する漏洩が発生した場合は法令に従って通知します。</p>
+
+          <h2>11. プライバシーポリシーの変更</h2>
+          <p>本ポリシーは随時更新される場合があり、重要な変更がある場合は発効日とともに本ページに掲載してお知らせします。</p>
+
+          <h2>12. 同意</h2>
+          <p>同意に基づく処理については、該当機能をオンにすることで同意したものとみなされ、いつでも撤回することができます。</p>
+
+          <div class="contact-box">
+            <h3>お問い合わせ (Contact Us)</h3>
+            <p>本アプリのプライバシーに関するご質問は以下までご連絡ください：</p>
+            <p>• <strong>開発者 / 運営者:</strong> bebong</p>
+            <p>• <strong>メール:</strong> <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a></p>
+            <p>• <strong>公式ウェブサイト:</strong> <a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></p>
+          </div>
+        `
+      },
+      es: {
+        pageTitle: "Política de Privacidad | LOG - Cámara con Marca de Tiempo",
+        backLinkText: "← Volver al Inicio",
+        policyTag: "Política de Privacidad",
+        policyTitle: "Política de Privacidad (Privacy Policy)",
+        policyMeta: "Fecha de entrada en vigor: 07/11/2026 | Última actualización: 14/11/2026",
+        footerHome: "Inicio",
+        footerPrivacy: "Política de Privacidad",
+        footerContact: "Contacto",
+        body: `
+          <p>Esta política de privacidad se aplica a la aplicación <strong>LOG</strong> para dispositivos móviles y a los servicios relacionados operados por <strong>bebong</strong> (en adelante, el "Proveedor de Servicios").</p>
+
+          <h2>1. Recopilación y Uso de Información</h2>
+          <p>La Aplicación puede recopilar información cuando la descarga y utiliza, incluyendo:</p>
+          <ul>
+            <li>La dirección de Protocolo de Internet (IP) de su dispositivo</li>
+            <li>Las pantallas de la Aplicación que visita, la fecha y hora de su visita (día/mes/año y hora) y el tiempo de permanencia</li>
+            <li>El tiempo total de uso de la Aplicación y el sistema operativo móvil</li>
+            <li>Permisos de cámara, micrófono, almacenamiento y ubicación (opcional): utilizados localmente en su dispositivo únicamente para capturar fotos y videos con marcas de tiempo y guardarlos en su álbum.</li>
+          </ul>
+          <p>Para brindarle soporte a través de <code>kmh96503981@gmail.com</code>, la información proporcionada se conservará y utilizará conforme a esta política.</p>
+
+          <h2>2. Cookies y Tecnologías de Seguimiento</h2>
+          <p>La Aplicación o sus SDK de terceros pueden utilizar cookies, SDK, píxeles y tecnologías similares para funciones, análisis o publicidad. Cuando la ley lo exija, se solicitará su consentimiento previo.</p>
+
+          <h2>3. Servicios de Terceros</h2>
+          <p>La Aplicación utiliza servicios de terceros que cuentan con sus propias Políticas de Privacidad:</p>
+          <ul>
+            <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener noreferrer">Google Play Services</a></li>
+            <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google AdMob</a></li>
+            <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Google Analytics for Firebase</a></li>
+          </ul>
+
+          <h2>4. Acceso y Divulgación a Terceros</h2>
+          <p>Solo se transmiten periódicamente datos agregados y anonimizados para mejorar la Aplicación. El Proveedor de Servicios solo divulgará información cuando sea requerido por ley, para proteger derechos y seguridad, o a proveedores de confianza sujetos a esta política.</p>
+
+          <h2>5. Sus Derechos de Privacidad (GDPR / CCPA / CPRA)</h2>
+          <p>Puede solicitar el acceso, rectificación o eliminación de sus datos personales, o retirar su consentimiento escribiendo a <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a>.</p>
+
+          <h2>6. Derecho de Exclusión (Opt-Out)</h2>
+          <p>Puede detener toda recopilación de información desinstalando la Aplicación de su dispositivo móvil en cualquier momento.</p>
+
+          <h2>7. Transferencias Internacionales de Datos</h2>
+          <p>Los datos pueden transferirse fuera de su país de residencia utilizando cláusulas contractuales tipo (SCC) u otros mecanismos legalmente reconocidos cuando sea aplicable.</p>
+
+          <h2>8. Política de Retención de Datos</h2>
+          <ul>
+            <li><strong>Datos proporcionados por el usuario:</strong> Conservados durante el uso de la Aplicación y hasta 12 meses después, salvo obligación legal.</li>
+            <li><strong>Datos recopilados automáticamente:</strong> Conservados hasta 24 meses desde su recopilación.</li>
+            <li><strong>Datos agregados y anonimizados:</strong> Conservados indefinidamente al no identificarle.</li>
+          </ul>
+
+          <h2>9. Privacidad de los Menores</h2>
+          <p>La Aplicación no está dirigida a menores de 14 años (o la edad mínima aplicable según la ley local) y no recopila conscientemente datos personales de menores.</p>
+
+          <h2>10. Seguridad y Notificación de Brechas</h2>
+          <p>Se aplican medidas físicas, electrónicas y administrativas para proteger su información, notificando cualquier brecha de seguridad conforme a la legislación aplicable.</p>
+
+          <h2>11. Cambios en Esta Política de Privacidad</h2>
+          <p>Esta Política puede actualizarse periódicamente publicando la nueva versión con su fecha de entrada en vigor en esta página.</p>
+
+          <h2>12. Su Consentimiento</h2>
+          <p>Cuando el tratamiento se base en el consentimiento, usted lo otorga al activar la función correspondiente y puede retirarlo en cualquier momento.</p>
+
+          <div class="contact-box">
+            <h3>Contacto (Contact Us)</h3>
+            <p>Si tiene alguna pregunta sobre privacidad al utilizar la Aplicación, contáctenos:</p>
+            <p>• <strong>Desarrollador / Operador:</strong> bebong</p>
+            <p>• <strong>Correo electrónico:</strong> <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a></p>
+            <p>• <strong>Sitio web oficial:</strong> <a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></p>
+          </div>
+        `
+      },
+      de: {
+        pageTitle: "Datenschutzerklärung | LOG - Zeitstempel-Kamera",
+        backLinkText: "← Zurück zur Startseite",
+        policyTag: "Datenschutzerklärung",
+        policyTitle: "Datenschutzerklärung (Privacy Policy)",
+        policyMeta: "Inkrafttreten: 07.11.2026 | Letzte Aktualisierung: 14.11.2026",
+        footerHome: "Startseite",
+        footerPrivacy: "Datenschutzerklärung",
+        footerContact: "Kontakt",
+        body: `
+          <p>Diese Datenschutzerklärung gilt für die mobile App <strong>LOG</strong> sowie alle zugehörigen Dienste, die von <strong>bebong</strong> (im Folgenden „Dienstanbieter“) betrieben werden.</p>
+
+          <h2>1. Erhebung und Verwendung von Informationen</h2>
+          <p>Beim Herunterladen und Nutzen der App können folgende Informationen verarbeitet werden:</p>
+          <ul>
+            <li>Die IP-Adresse Ihres Mobilgeräts</li>
+            <li>Besuchte Seiten innerhalb der App, Datum und Uhrzeit des Zugriffs (TT.MM.JJJJ, Uhrzeit) sowie Verweildauer</li>
+            <li>Gesamtnutzungsdauer der App und das verwendete mobile Betriebssystem</li>
+            <li>Kamera-, Mikrofon-, Speicher- und Standortberechtigungen (optional): Werden ausschließlich lokal auf Ihrem Gerät verwendet, um Fotos und Videos mit Zeitstempel und Standort-Badge aufzunehmen und lokal zu speichern.</li>
+          </ul>
+          <p>Wenn Sie uns über <code>kmh96503981@gmail.com</code> kontaktieren, werden Ihre Angaben gemäß dieser Erklärung gespeichert und verwendet.</p>
+
+          <h2>2. Cookies und Tracking-Technologien</h2>
+          <p>Die App oder Drittanbieter-SDKs können Cookies, SDKs und ähnliche Technologien für Funktionen, Analysen oder Werbung einsetzen. Soweit gesetzlich vorgeschrieben, wird vorab Ihre Einwilligung eingeholt.</p>
+
+          <h2>3. Dienste von Drittanbietern</h2>
+          <p>Die App nutzt Drittanbieterdienste mit eigenen Datenschutzbestimmungen:</p>
+          <ul>
+            <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener noreferrer">Google Play Services</a></li>
+            <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google AdMob</a></li>
+            <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Google Analytics for Firebase</a></li>
+          </ul>
+
+          <h2>4. Weitergabe an Dritte</h2>
+          <p>Lediglich aggregierte, anonymisierte Daten werden regelmäßig zur Verbesserung der App übermittelt. Eine Offenlegung erfolgt nur bei gesetzlicher Verpflichtung, zum Schutz von Rechten und Sicherheit oder gegenüber Auftragsverarbeitern, die diese Richtlinie einhalten.</p>
+
+          <h2>5. Ihre Rechte (DSGVO / CCPA / CPRA)</h2>
+          <p>Sie haben das Recht auf Auskunft, Berichtigung, Löschung Ihrer personenbezogenen Daten sowie auf Widerruf Ihrer Einwilligung. Kontaktieren Sie uns hierzu unter <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a>.</p>
+
+          <h2>6. Widerspruchs- und Deinstallationsrecht (Opt-Out)</h2>
+          <p>Sie können jede weitere Datenerhebung jederzeit beenden, indem Sie die App von Ihrem Mobilgerät deinstallieren.</p>
+
+          <h2>7. Internationale Datenübermittlungen</h2>
+          <p>Daten können in Länder außerhalb Ihres Wohnsitzlandes (auch außerhalb des EWR) übermittelt werden, wobei gesetzlich vorgeschriebene Schutzmaßnahmen wie EU-Standardvertragsklauseln (SCC) angewendet werden.</p>
+
+          <h2>8. Datenspeicherung</h2>
+          <ul>
+            <li><strong>Vom Nutzer bereitgestellte Daten:</strong> Speicherung für die Dauer der Nutzung plus bis zu 12 Monate danach, sofern gesetzlich keine längere Frist gilt.</li>
+            <li><strong>Automatisch erhobene Daten:</strong> Speicherung für bis zu 24 Monate ab Erhebung.</li>
+            <li><strong>Aggregierte und anonymisierte Daten:</strong> Unbegrenzte Speicherung, da kein Personenbezug besteht.</li>
+          </ul>
+
+          <h2>9. Datenschutz für Kinder</h2>
+          <p>Die App richtet sich nicht an Kinder unter 14 Jahren (bzw. dem gesetzlich vorgeschriebenen Mindestalter) und erhebt wissentlich keine Daten von Kindern.</p>
+
+          <h2>10. Sicherheit & Meldung von Datenschutzverletzungen</h2>
+          <p>Der Dienstanbieter schützt Ihre Daten durch physische, elektronische und organisatorische Maßnahmen und informiert Sie im Falle einer Datenschutzverletzung gemäß den gesetzlichen Vorgaben.</p>
+
+          <h2>11. Änderungen dieser Datenschutzerklärung</h2>
+          <p>Diese Datenschutzerklärung kann gelegentlich aktualisiert werden. Wesentliche Änderungen werden mit dem Datum des Inkrafttretens auf dieser Seite veröffentlicht.</p>
+
+          <h2>12. Ihre Einwilligung</h2>
+          <p>Soweit die Verarbeitung auf einer Einwilligung beruht, erteilen Sie diese durch die aktive Nutzung der jeweiligen Funktion und können sie jederzeit widerrufen.</p>
+
+          <div class="contact-box">
+            <h3>Kontakt (Contact Us)</h3>
+            <p>Bei Fragen zum Datenschutz im Zusammenhang mit der App wenden Sie sich bitte an:</p>
+            <p>• <strong>Entwickler / Betreiber:</strong> bebong</p>
+            <p>• <strong>E-Mail:</strong> <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a></p>
+            <p>• <strong>Offizielle Website:</strong> <a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></p>
+          </div>
+        `
+      },
+      fr: {
+        pageTitle: "Politique de Confidentialité | LOG - Caméra Horodateur",
+        backLinkText: "← Retour à l'accueil",
+        policyTag: "Politique de Confidentialité",
+        policyTitle: "Politique de Confidentialité (Privacy Policy)",
+        policyMeta: "Date d'entrée en vigueur : 07/11/2026 | Dernière mise à jour : 14/11/2026",
+        footerHome: "Accueil",
+        footerPrivacy: "Politique de Confidentialité",
+        footerContact: "Contact",
+        body: `
+          <p>La présente politique de confidentialité s'applique à l'application mobile <strong>LOG</strong> ainsi qu'aux services associés exploités par <strong>bebong</strong> (ci-après le « Prestataire »).</p>
+
+          <h2>1. Collecte et Utilisation des Informations</h2>
+          <p>L'Application peut collecter certaines informations lors de son téléchargement et de son utilisation, notamment :</p>
+          <ul>
+            <li>L'adresse de protocole Internet (IP) de votre appareil</li>
+            <li>Les pages consultées dans l'Application, la date et l'heure de la visite (JJ/MM/AAAA et heure) ainsi que le temps passé</li>
+            <li>La durée totale d'utilisation de l'Application et le système d'exploitation mobile utilisé</li>
+            <li>Autorisations caméra, microphone, stockage et localisation (optionnelle) : utilisées uniquement en local sur votre appareil pour capturer des photos/vidéos horodatées et les enregistrer dans votre album.</li>
+          </ul>
+          <p>Les informations communiquées volontairement via <code>kmh96503981@gmail.com</code> sont conservées et utilisées conformément à la présente politique.</p>
+
+          <h2>2. Cookies et Technologies de Suivi</h2>
+          <p>L'Application ou ses SDK tiers peuvent utiliser des cookies, SDK et technologies similaires pour le fonctionnement, l'analyse ou la diffusion d'annonces. Lorsque la loi l'exige, votre consentement préalable est recueilli.</p>
+
+          <h2>3. Services Tiers</h2>
+          <p>L'Application fait appel à des services tiers disposant de leurs propres politiques de confidentialité :</p>
+          <ul>
+            <li><a href="https://www.google.com/policies/privacy/" target="_blank" rel="noopener noreferrer">Google Play Services</a></li>
+            <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google AdMob</a></li>
+            <li><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener noreferrer">Google Analytics for Firebase</a></li>
+          </ul>
+
+          <h2>4. Accès des Tiers et Divulgation</h2>
+          <p>Seules des données agrégées et anonymisées sont transmises périodiquement afin d'améliorer l'Application. Les informations ne sont divulguées que si la loi l'exige, pour protéger les droits et la sécurité, ou à des prestataires de confiance soumis à cette politique.</p>
+
+          <h2>5. Vos Droits (RGPD / CCPA / CPRA)</h2>
+          <p>Vous pouvez demander l'accès, la rectification ou la suppression de vos données personnelles, ou retirer votre consentement à tout moment en écrivant à <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a>.</p>
+
+          <h2>6. Droit de Retrait (Opt-Out)</h2>
+          <p>Vous pouvez mettre fin à toute collecte d'informations en désinstallant l'Application de votre appareil mobile.</p>
+
+          <h2>7. Transferts Internationaux de Données</h2>
+          <p>Les données peuvent être transférées hors de votre pays de résidence (y compris hors de l'EEE) avec des garanties appropriées telles que les Clauses Contractuelles Types (CCT) approuvées par la Commission européenne.</p>
+
+          <h2>8. Politique de Conservation des Données</h2>
+          <ul>
+            <li><strong>Données fournies par l'utilisateur :</strong> Conservées pendant la durée d'utilisation de l'Application puis jusqu'à 12 mois, sauf obligation légale contraire.</li>
+            <li><strong>Données collectées automatiquement :</strong> Conservées jusqu'à 24 mois à compter de leur collecte.</li>
+            <li><strong>Données agrégées et anonymisées :</strong> Conservées sans limite de durée car elles ne permettent plus de vous identifier.</li>
+          </ul>
+
+          <h2>9. Protection des Mineurs</h2>
+          <p>L'Application ne s'adresse pas aux enfants de moins de 14 ans (ou l'âge minimum requis par la législation applicable) et ne collecte pas sciemment de données personnelles auprès d'eux.</p>
+
+          <h2>10. Sécurité et Notification de Violation de Données</h2>
+          <p>Des mesures physiques, électroniques et procédurales protègent la confidentialité de vos informations. En cas de violation affectant vos données personnelles, vous serez informé conformément aux exigences légales.</p>
+
+          <h2>11. Modifications de la Présente Politique</h2>
+          <p>Cette Politique de Confidentialité peut être mise à jour périodiquement. Toute modification substantielle sera publiée sur cette page avec sa date d'entrée en vigueur.</p>
+
+          <h2>12. Votre Consentement</h2>
+          <p>Lorsque le traitement repose sur le consentement, vous l'accordez en activant la fonctionnalité concernée et pouvez le retirer à tout moment.</p>
+
+          <div class="contact-box">
+            <h3>Nous Contacter (Contact Us)</h3>
+            <p>Pour toute question relative à la confidentialité lors de l'utilisation de l'Application, veuillez contacter :</p>
+            <p>• <strong>Développeur / Opérateur :</strong> bebong</p>
+            <p>• <strong>E-mail :</strong> <a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a></p>
+            <p>• <strong>Site officiel :</strong> <a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></p>
+          </div>
+        `
+      }
+    };
+
+    function detectInitialLang() {
+      const params = new URLSearchParams(window.location.search);
+      const urlLang = params.get('lang');
+      if (urlLang && PRIVACY_I18N[urlLang]) return urlLang;
+      const saved = localStorage.getItem('log_site_lang');
+      if (saved && PRIVACY_I18N[saved]) return saved;
+      const nav = (navigator.language || navigator.userLanguage || 'ko').toLowerCase();
+      for (const code of Object.keys(PRIVACY_I18N)) {
+        if (nav.startsWith(code)) return code;
+      }
+      return 'en';
+    }
+
+    let currentLang = detectInitialLang();
+
+    function applyLang(lang) {
+      if (!PRIVACY_I18N[lang]) lang = 'en';
+      currentLang = lang;
+      localStorage.setItem('log_site_lang', lang);
+      document.documentElement.lang = lang;
+
+      const t = PRIVACY_I18N[lang];
+      document.title = t.pageTitle;
+      document.getElementById('backLinkText').textContent = t.backLinkText;
+      document.getElementById('policyTag').textContent = t.policyTag;
+      document.getElementById('policyTitle').textContent = t.policyTitle;
+      document.getElementById('policyMeta').textContent = t.policyMeta;
+      document.getElementById('policyBody').innerHTML = t.body;
+      document.getElementById('footerHome').textContent = t.footerHome;
+      document.getElementById('footerPrivacy').textContent = t.footerPrivacy;
+      document.getElementById('footerContact').textContent = t.footerContact;
+
+      const homeHref = './?lang=' + lang;
+      document.getElementById('brandLink').href = homeHref;
+      document.getElementById('backLink').href = homeHref;
+      document.getElementById('footerHome').href = homeHref;
+      document.getElementById('footerPrivacy').href = 'privacy.html?lang=' + lang;
+
+      const select = document.getElementById('langSelect');
+      if (select.value !== lang) {
+        select.value = lang;
+      }
+    }
+
+    document.getElementById('langSelect').addEventListener('change', (e) => {
+      applyLang(e.target.value);
+    });
+
+    applyLang(currentLang);
+  </script>
 </body>
 
 </html>

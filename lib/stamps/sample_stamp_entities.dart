@@ -577,6 +577,8 @@ class SampleBox<T> {
 
   void delete(String key) => _map.remove(key);
 
+  void clear() => _map.clear();
+
   Iterable<T> get values => _map.values;
 }
 

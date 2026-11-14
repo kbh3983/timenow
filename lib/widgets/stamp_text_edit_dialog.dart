@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/app_localizations.dart';
 import '../services/app_settings_service.dart';
 import '../stamps/stamp_text_store.dart';
 
@@ -128,7 +129,7 @@ class _StampTextEditDialogState extends State<_StampTextEditDialog> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '문구 변경',
+                              AppStrings.editStampTextTitle,
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w900,
@@ -138,7 +139,7 @@ class _StampTextEditDialogState extends State<_StampTextEditDialog> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '표시할 문구를 입력하세요',
+                              AppStrings.editStampTextSubtitle,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isLight
@@ -164,7 +165,7 @@ class _StampTextEditDialogState extends State<_StampTextEditDialog> {
                               : const Color(0xFF9AA1AC),
                         ),
                         label: Text(
-                          '기본값',
+                          AppStrings.restoreDefault,
                           style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w700,
@@ -213,7 +214,7 @@ class _StampTextEditDialogState extends State<_StampTextEditDialog> {
                       cursorColor: accent,
                       decoration: InputDecoration(
                         hintText: widget.fields[i].defaultText.isEmpty
-                            ? '자동'
+                            ? AppStrings.autoTextHint
                             : widget.fields[i].defaultText,
                         hintStyle: TextStyle(
                           fontSize: 13,
@@ -306,7 +307,7 @@ class _StampTextEditDialogState extends State<_StampTextEditDialog> {
                           ),
                           onPressed: () => Navigator.of(context).pop(),
                           child: Text(
-                            '취소',
+                            AppStrings.cancel,
                             style: TextStyle(
                               color: isLight
                                   ? const Color(0xFF475569)
@@ -332,9 +333,9 @@ class _StampTextEditDialogState extends State<_StampTextEditDialog> {
                             ),
                           ),
                           onPressed: _save,
-                          child: const Text(
-                            '저장',
-                            style: TextStyle(
+                          child: Text(
+                            AppStrings.save,
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),

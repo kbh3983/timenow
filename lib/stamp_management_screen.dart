@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/app_settings_service.dart';
+import 'services/app_localizations.dart';
 import 'services/timestamp_deck_manager.dart';
 import 'services/timestamp_access_manager.dart';
 import 'widgets/unlock_timestamp_dialog.dart';
 import 'widgets/ad_banner_widget.dart';
 import 'timestamp_overlays.dart';
 
-class StampManagementScreen extends StatelessWidget {
+class StampManagementScreen extends StatefulWidget {
   const StampManagementScreen({super.key});
+
+  @override
+  State<StampManagementScreen> createState() => _StampManagementScreenState();
+}
+
+class _StampManagementScreenState extends State<StampManagementScreen> {
+  /// 스탬프 관리 페이지 진입 시점의 시각을 한 번만 고정 캡처하여,
+  /// 90여 개 스탬프 스크롤 시 실시간 시간 업데이트로 인한 버벅임(프레임 드랍)을 방지합니다.
+  late final DateTime _entryTime = TimestampThumbnail.currentMinuteTime();
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +44,7 @@ class StampManagementScreen extends StatelessWidget {
               onPressed: () => Navigator.of(context).pop(),
             ),
             title: Text(
-              '스탬프 관리',
+              AppStrings.stampManagementTitle,
               style: TextStyle(
                 color: settings.textColor,
                 fontSize: 18,
@@ -54,7 +64,7 @@ class StampManagementScreen extends StatelessWidget {
                   messenger.showSnackBar(
                     SnackBar(
                       content: Text(
-                        '즐겨찾기가 기본 순서로 초기화되었습니다.',
+                        AppStrings.favoritesResetSnackbar,
                         style: TextStyle(
                           color: settings.textColor,
                           fontSize: 13,
@@ -75,7 +85,7 @@ class StampManagementScreen extends StatelessWidget {
                   );
                 },
                 child: Text(
-                  '초기화',
+                  AppStrings.reset,
                   style: TextStyle(
                     color: settings.subTextColor,
                     fontSize: 13,
@@ -134,7 +144,7 @@ class StampManagementScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      '즐겨찾기',
+                                      AppStrings.favoritesTitle,
                                       style: TextStyle(
                                         color: settings.textColor,
                                         fontSize: 15,
@@ -166,7 +176,7 @@ class StampManagementScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              '메인에 우선 노출될 8개의 즐겨찾기 스탬프입니다. 슬롯을 탭하면 제거됩니다.',
+                              AppStrings.favoritesDesc,
                               style: TextStyle(
                                 color: settings.subTextColor,
                                 fontSize: 11.5,
@@ -223,7 +233,7 @@ class StampManagementScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '전체 스탬프 목록',
+                            AppStrings.allStampsHeader,
                             style: TextStyle(
                               color: settings.textColor,
                               fontSize: 15,
@@ -231,7 +241,7 @@ class StampManagementScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '총 ${TimestampDeckManager.availableDesigns.length}개',
+                            AppStrings.totalStampsCount(TimestampDeckManager.availableDesigns.length),
                             style: TextStyle(
                               color: settings.subTextColor,
                               fontSize: 12,
@@ -298,7 +308,7 @@ class StampManagementScreen extends StatelessWidget {
                                               const SizedBox(width: 10),
                                               Expanded(
                                                 child: Text(
-                                                  '즐겨찾기가 가득 찼습니다 (최대 8개)\n상단에서 스탬프를 눌러 비운 후 추가해주세요.',
+                                                  AppStrings.favoritesFullSnackbar,
                                                   style: TextStyle(
                                                     color: settings.textColor,
                                                     fontSize: 13,
@@ -343,7 +353,7 @@ class StampManagementScreen extends StatelessWidget {
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Text(
-                                            '즐겨찾기가 가득 찼습니다 (최대 8개)\n상단에서 스탬프를 눌러 비운 후 추가해주세요.',
+                                            AppStrings.favoritesFullSnackbar,
                                             style: TextStyle(
                                               color: settings.textColor,
                                               fontSize: 13,
@@ -446,13 +456,14 @@ class StampManagementScreen extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 스탬프 썸네일 (여백 및 라운드 없이 슬롯 크기에 딱 맞춤)
+          // 스탬프 썸네일 (여백 및 라운드 없이 슬롯 크기에 딱 맞춤, 진입 시각 고정)
           TimestampThumbnail(
             design: design,
             isSelected: false,
             onTap: onRemove,
             margin: EdgeInsets.zero,
             borderRadius: BorderRadius.zero,
+            time: _entryTime,
           ),
 
           // 슬롯 번호 뱃지 (좌상단)
@@ -521,13 +532,14 @@ class StampManagementScreen extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 기본 썸네일 (여백 없이 딱 맞게 표시)
+            // 기본 썸네일 (여백 없이 딱 맞게 표시, 진입 시각 고정)
             TimestampThumbnail(
               design: design,
               isSelected: false,
               onTap: onTap,
               margin: EdgeInsets.zero,
               borderRadius: BorderRadius.zero,
+              time: _entryTime,
             ),
 
             // 덱에 이미 등록된 경우 음영 처리 + 체크 뱃지 오버레이
@@ -567,7 +579,7 @@ class StampManagementScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        'Deck #$slotNumber',
+                        '${AppStrings.deckSlotPrefix} #$slotNumber',
                         style: TextStyle(
                           color: accentColor,
                           fontSize: 9.5,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:camera/camera.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'services/ad_service.dart';
+import 'services/app_localizations.dart';
 import 'services/app_settings_service.dart';
 import 'services/timestamp_access_manager.dart';
 import 'services/timestamp_deck_manager.dart';
@@ -30,7 +32,8 @@ Future<void> main() async {
     ),
   );
 
-  await initializeDateFormatting('ko_KR', null);
+  // Initialize date formatting for all supported locales
+  await initializeDateFormatting();
   
   // Initialize Services
   try {
@@ -65,6 +68,15 @@ class TimenowApp extends StatelessWidget {
         return MaterialApp(
           title: 'LOG',
           debugShowCheckedModeBanner: false,
+          locale: settings.locale,
+          supportedLocales: AppLocalizations.supportedLanguages
+              .map((info) => info.locale)
+              .toList(),
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           theme: ThemeData(
             brightness: isLight ? Brightness.light : Brightness.dark,
             scaffoldBackgroundColor: settings.scaffoldBackgroundColor,
@@ -95,7 +107,8 @@ class TimenowApp extends StatelessWidget {
               },
             ),
             useMaterial3: true,
-            fontFamily: 'NanumSquareB',
+            fontFamily: AppLocalizations.uiFontFamily,
+            fontFamilyFallback: AppLocalizations.fontFallbackChain,
           ),
           home: CameraScreen(cameras: cameras),
         );

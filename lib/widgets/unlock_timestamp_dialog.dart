@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/ad_service.dart';
+import '../services/app_localizations.dart';
 import '../services/app_settings_service.dart';
 import '../services/timestamp_access_manager.dart';
 import '../timestamp_overlays.dart';
@@ -65,10 +66,10 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
               children: [
                 Icon(Icons.check_circle, color: accent),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    '3일 동안 무료로 사용하실 수 있어요.',
-                    style: TextStyle(
+                    AppStrings.stampUnlockedSnackbar,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
@@ -83,7 +84,7 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
               borderRadius: BorderRadius.circular(10),
             ),
             action: SnackBarAction(
-              label: '확인',
+              label: AppStrings.confirm,
               textColor: accent,
               onPressed: () {
                 messenger.hideCurrentSnackBar();
@@ -159,7 +160,7 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
 
               // 타이틀
               Text(
-                '타임스탬프 사용하기',
+                AppStrings.unlockDialogTitle,
                 style: TextStyle(
                   color: settings.textColor,
                   fontSize: 19,
@@ -171,7 +172,7 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
 
               // 서브타이틀
               Text(
-                '짧은 광고를 시청하시면\n3일(72시간) 동안 마음껏 사용하실 수 있습니다!',
+                AppStrings.unlockDialogDesc,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: settings.subTextColor,
@@ -194,7 +195,7 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
                     Expanded(
                       child: _featureItem(
                         Icons.play_circle_outline,
-                        '짧은 광고 1회',
+                        AppStrings.unlockFeatShortAd,
                         accent,
                         settings.textColor,
                       ),
@@ -203,7 +204,7 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
                     Expanded(
                       child: _featureItem(
                         Icons.timer_outlined,
-                        '3일간 무제한',
+                        AppStrings.unlockFeat3DaysUnlimited,
                         accent,
                         settings.textColor,
                       ),
@@ -212,7 +213,7 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
                     Expanded(
                       child: _featureItem(
                         Icons.auto_awesome,
-                        '워터마크 없음',
+                        AppStrings.unlockFeatNoWatermark,
                         accent,
                         settings.textColor,
                       ),
@@ -259,15 +260,19 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
                         )
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.play_arrow_rounded, size: 22),
-                            SizedBox(width: 6),
-                            Text(
-                              '광고 보고 3일 무료 사용',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: -0.2,
+                          children: [
+                            const Icon(Icons.play_arrow_rounded, size: 22),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                AppStrings.unlockWatchAdButton,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.2,
+                                ),
                               ),
                             ),
                           ],
@@ -284,7 +289,7 @@ class _UnlockTimestampDialogState extends State<UnlockTimestampDialog> {
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   child: Text(
-                    '다음에 하기',
+                    AppStrings.maybeLater,
                     style: TextStyle(
                       color: settings.subTextColor,
                       fontSize: 14,

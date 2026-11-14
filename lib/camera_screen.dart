@@ -24,6 +24,7 @@ import 'gallery_picker_screen.dart';
 import 'stamp_management_screen.dart';
 import 'settings_screen.dart';
 import 'services/app_settings_service.dart';
+import 'services/app_localizations.dart';
 import 'stamps/stamp_text_store.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:path_provider/path_provider.dart';
@@ -181,7 +182,7 @@ class _CameraScreenState extends State<CameraScreen>
       // 성능 최적화: 분(Minute), 디자인, 비율, 정렬, 글자크기 변경 시에만 1080p 렌더링 및 네이티브 전송 수행.
       // 매초 발생하던 무의미한 8MB 비트맵 인코딩/IPC 호출을 98% 제거하여 발열과 프레임 드랍을 원천 차단합니다.
       final pushKey =
-          '${_aspectRatio.name}_${_currentDesign.name}_${_currentAlignment.x}_${_currentAlignment.y}_${_timestampFontSize}_${AppSettingsService().showLocation}_${AppSettingsService().locationText}_${AppSettingsService().locationPosition}_${StampTextStore().version}_${now.year}${now.month}${now.day}${now.hour}${now.minute}';
+          '${AppLocalizations.languageCode}_${_aspectRatio.name}_${_currentDesign.name}_${_currentAlignment.x}_${_currentAlignment.y}_${_timestampFontSize}_${AppSettingsService().showLocation}_${AppSettingsService().locationText}_${AppSettingsService().locationPosition}_${StampTextStore().version}_${now.year}${now.month}${now.day}${now.hour}${now.minute}';
       if (!force && pushKey == _lastOverlayPushKey) {
         return;
       }
@@ -658,7 +659,7 @@ class _CameraScreenState extends State<CameraScreen>
       debugPrint('Error starting video recording: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('동영상 촬영 시작 실패: $e')),
+          SnackBar(content: Text(AppStrings.videoRecordStartError(e))),
         );
       }
     } finally {
@@ -761,7 +762,7 @@ class _CameraScreenState extends State<CameraScreen>
       if (mounted) {
         setState(() => _isRecording = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('영상 저장 실패: $e')),
+          SnackBar(content: Text(AppStrings.videoSaveError(e))),
         );
       }
     } finally {
@@ -787,7 +788,7 @@ class _CameraScreenState extends State<CameraScreen>
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                isVideo ? '동영상이 저장되었습니다!' : '사진이 저장되었습니다!',
+                isVideo ? AppStrings.videoSavedSnackbar : AppStrings.photoSavedSnackbar,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
@@ -1351,7 +1352,7 @@ class _CameraScreenState extends State<CameraScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             _topModeItem(
-              label: '사진',
+              label: AppStrings.modePhoto,
               isSelected: isPhoto,
               onTap: () {
                 if (_isRecording) return;
@@ -1362,7 +1363,7 @@ class _CameraScreenState extends State<CameraScreen>
               },
             ),
             _topModeItem(
-              label: '동영상',
+              label: AppStrings.modeVideo,
               isSelected: isVideo,
               onTap: () {
                 if (_isRecording) return;
@@ -1712,6 +1713,7 @@ class _CameraScreenState extends State<CameraScreen>
                     design: design,
                     isSelected: _currentDesign == design,
                     onTap: () => _onDesignTapped(design),
+                    time: TimestampThumbnail.currentMinuteTime(),
                   ),
                 );
               }
@@ -1769,10 +1771,10 @@ class _CameraScreenState extends State<CameraScreen>
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              '스탬프\n관리',
+                            Text(
+                              AppStrings.stampManageTwoLine,
                               textAlign: TextAlign.center,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,

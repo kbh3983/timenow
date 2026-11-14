@@ -1,0 +1,7 @@
+"NSCameraUsageDescription" = "Kamerazugriff ist erforderlich, um Fotos und Videos mit Zeitstempel aufzunehmen.";
+"NSMicrophoneUsageDescription" = "Mikrofonzugriff ist erforderlich, um bei Videoaufnahmen Ton aufzunehmen.";
+"NSPhotoLibraryAddUsageDescription" = "Zugriff auf die Fotomediathek ist erforderlich, um Fotos und Videos mit Zeitstempel zu speichern.";
+"NSPhotoLibraryUsageDescription" = "Zugriff auf die Fotomediathek ist erforderlich, um Fotos zu importieren und Medien mit Zeitstempel zu speichern.";
+"NSLocationWhenInUseUsageDescription" = "Standortzugriff ist erforderlich, um Ihren aktuellen Aufnahmeort auf Fotos und Stempeln anzuzeigen.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Standortzugriff ist erforderlich, um Ihren aktuellen Aufnahmeort auf Fotos und Stempeln anzuzeigen.";
+

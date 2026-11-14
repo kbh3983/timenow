@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 import 'album_service.dart';
 import 'widgets/ad_banner_widget.dart';
 import 'services/app_settings_service.dart';
+import 'services/app_localizations.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
   final File? photoFile;
@@ -84,7 +84,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       final note = _currentNote;
       final text = (note != null && note.isNotEmpty)
           ? '$note\n\nJust Log it'
-          : 'Just Log it - 나의 기록을 공유합니다.';
+          : AppStrings.shareDefaultText;
 
       final box = context.findRenderObject() as RenderBox?;
       final screenSize = MediaQuery.of(context).size;
@@ -108,7 +108,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('공유 중 오류가 발생했습니다: $e')),
+          SnackBar(content: Text(AppStrings.shareError(e))),
         );
       }
     }
@@ -172,7 +172,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '메모를 삭제할까요?',
+                        AppStrings.memoDeleteTitle,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -202,7 +202,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     ),
                   ),
                   child: Text(
-                    '삭제된 메모는 복구할 수 없어요',
+                    AppStrings.memoDeleteWarning,
                     style: TextStyle(
                       color: isLight ? const Color(0xFFDC2626) : const Color(0xFF9AA1AC),
                       fontSize: 13.5,
@@ -230,7 +230,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         ),
                         onPressed: () => Navigator.pop(ctx, false),
                         child: Text(
-                          '취소',
+                          AppStrings.cancel,
                           style: TextStyle(
                             color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                             fontWeight: FontWeight.w700,
@@ -253,9 +253,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           ),
                         ),
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text(
-                          '삭제',
-                          style: TextStyle(
+                        child: Text(
+                          AppStrings.delete,
+                          style: const TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 15,
                           ),
@@ -308,9 +308,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('메모가 삭제되었습니다.'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(AppStrings.memoDeletedSnackbar),
+            duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -391,7 +391,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        isVideo ? '영상을 삭제할까요?' : '사진을 삭제할까요?',
+                        isVideo ? AppStrings.videoDeleteTitle : AppStrings.photoDeleteTitle,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -422,8 +422,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                   ),
                   child: Text(
                     isVideo
-                        ? '삭제된 영상은 보관함에서 완전히 삭제되며 복구할 수 없어요'
-                        : '삭제된 사진은 보관함에서 완전히 삭제되며 복구할 수 없어요',
+                        ? AppStrings.videoDeleteWarning
+                        : AppStrings.photoDeleteWarning,
                     style: TextStyle(
                       color: isLight ? const Color(0xFFDC2626) : const Color(0xFF9AA1AC),
                       fontSize: 13.5,
@@ -451,7 +451,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         ),
                         onPressed: () => Navigator.pop(ctx, false),
                         child: Text(
-                          '취소',
+                          AppStrings.cancel,
                           style: TextStyle(
                             color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                             fontWeight: FontWeight.w700,
@@ -474,9 +474,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           ),
                         ),
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text(
-                          '삭제',
-                          style: TextStyle(
+                        child: Text(
+                          AppStrings.delete,
+                          style: const TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 15,
                           ),
@@ -538,7 +538,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('삭제 중 오류가 발생했습니다: $e')),
+            SnackBar(content: Text(AppStrings.deleteError(e))),
           );
         }
       }
@@ -550,10 +550,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     if (_photos.isEmpty) return const SizedBox.shrink();
 
     final date = _getPhotoDate(_currentPhoto);
-    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final weekday = weekdays[date.weekday - 1];
-    final dateStr = '${DateFormat('yyyy년 M월 d일').format(date)} ($weekday)';
-    final timeStr = '${date.hour < 12 ? '오전' : '오후'} ${DateFormat('h:mm').format(date)}';
+    final dateStr = TimestampLocaleFormatter.formatDetailDateHeader(date);
+    final timeStr = TimestampLocaleFormatter.formatRecordTime(date);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -674,7 +672,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           ],
                         ),
                         child: Text(
-                          hasNote ? note : '메모 추가...',
+                          hasNote ? note : AppStrings.memoAddPlaceholder,
                           style: TextStyle(
                             color: hasNote
                                 ? (AppSettingsService().isLight
@@ -925,16 +923,6 @@ class _PhotoMemoSheet extends StatefulWidget {
 class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
   late final TextEditingController _ctrl;
 
-  static const _quickTags = [
-    '☀️ 맑은 날',
-    '☕ 일상',
-    '🌿 힐링',
-    '✨ 특별한 순간',
-    '🏃 운동',
-    '🍽️ 맛있는 하루',
-    '🌅 풍경',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -1006,7 +994,7 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '사진 메모',
+                            AppStrings.photoMemoTitle,
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
@@ -1018,7 +1006,7 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '오늘의 사진에 대한 생각이나 메모를 남겨보세요',
+                            AppStrings.photoMemoSubtitle,
                             style: TextStyle(
                               fontSize: 12,
                               color: isLight
@@ -1032,7 +1020,7 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                     if (hasNote)
                       IconButton(
                         onPressed: widget.onDeleteRequested,
-                        tooltip: '메모 삭제',
+                        tooltip: AppStrings.memoDeleteTooltip,
                         icon: const Icon(
                           Icons.delete_outline_rounded,
                           color: Color(0xFFFF5252),
@@ -1049,7 +1037,7 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   child: Row(
-                    children: _quickTags.map((tag) {
+                    children: AppStrings.memoQuickTags.map((tag) {
                       return Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: InkWell(
@@ -1116,7 +1104,7 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                         : const Color(0xFFF4F6F8),
                   ),
                   decoration: InputDecoration(
-                    hintText: '이 사진에 대한 생각을 자유롭게 적어보세요.',
+                    hintText: AppStrings.photoMemoHint,
                     hintStyle: TextStyle(
                       fontSize: 13,
                       color: isLight
@@ -1182,7 +1170,7 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                         ),
                         onPressed: () => Navigator.pop(context),
                         child: Text(
-                          '취소',
+                          AppStrings.cancel,
                           style: TextStyle(
                             color: isLight
                                 ? const Color(0xFF475569)
@@ -1216,9 +1204,9 @@ class _PhotoMemoSheetState extends State<_PhotoMemoSheet> {
                         onPressed: hasText
                             ? () => Navigator.pop(context, _ctrl.text.trim())
                             : null,
-                        child: const Text(
-                          '저장하기',
-                          style: TextStyle(
+                        child: Text(
+                          AppStrings.saveAction,
+                          style: const TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 15,
                           ),
@@ -1398,14 +1386,14 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
           color: const Color(0xFF1E2026),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Column(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 36),
-            SizedBox(height: 8),
+            const Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 36),
+            const SizedBox(height: 8),
             Text(
-              '영상을 찾을 수 없거나 재생할 수 없습니다',
-              style: TextStyle(color: Colors.white54, fontSize: 13),
+              AppStrings.videoPlayError,
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
           ],
         ),
@@ -1473,22 +1461,24 @@ class _VideoDetailPlayerItemState extends State<_VideoDetailPlayerItem> {
                       width: 0.8,
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.fullscreen_rounded,
                         color: Colors.white,
                         size: 18,
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
-                        '전체화면',
+                        AppStrings.fullscreen,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          fontFamily: 'Pretendard',
+                          fontFamily: AppLocalizations.uiFontFamily,
+                          fontFamilyFallback:
+                              AppLocalizations.fontFallbackChain,
                         ),
                       ),
                     ],

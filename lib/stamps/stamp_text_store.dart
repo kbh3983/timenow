@@ -2,20 +2,42 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/app_localizations.dart';
 
 /// 스탬프 안에서 사용자가 바꿀 수 있는 문구 한 칸
 class StampTextField {
   /// 저장 키 (크기 접미사 _x0 등을 뗀 기준 키. 예: style2_txt1, f4_txt1)
   final String key;
 
-  /// 편집 창에 보여줄 이름
-  final String label;
+  final String _label;
+  final String _defaultText;
+  final String? _hint;
 
-  /// 기본 문구 (사용자가 비워두면 이 문구로 표시)
-  final String defaultText;
+  /// 편집 창에 보여줄 이름 (현재 설정된 언어로 반환)
+  String get label {
+    final l = AppStrings.stampFieldLabel(key);
+    return l.isNotEmpty ? l : _label;
+  }
 
-  /// 입력란 안내 문구
-  final String? hint;
+  /// 기본 문구 (사용자가 비워두면 이 문구로 표시, 다국어 변환 대상 키는 현재 언어로 반환)
+  String get defaultText {
+    switch (key) {
+      case 'f4_txt1':
+      case 'style3_txt2':
+      case 'style7_txt1':
+      case 'style7_txt2':
+      case 'style11_txt1':
+        return AppStrings.stampI18nDefault(key);
+      default:
+        return _defaultText;
+    }
+  }
+
+  /// 입력란 안내 문구 (현재 설정된 언어로 반환)
+  String? get hint {
+    if (key == 'style3_txt1') return AppStrings.style3Txt1AutoHint;
+    return _hint;
+  }
 
   /// 문구가 길어질 때 왼쪽 끝을 고정할지 여부 (기본은 가운데 기준으로 양쪽으로 늘어남)
   final bool anchorLeft;
@@ -31,14 +53,16 @@ class StampTextField {
 
   const StampTextField({
     required this.key,
-    required this.label,
-    required this.defaultText,
-    this.hint,
+    required String label,
+    required String defaultText,
+    String? hint,
     this.anchorLeft = false,
     this.anchorRight = false,
     this.maxWidth,
     this.clearOnEditIfDefault = false,
-  });
+  })  : _label = label,
+        _defaultText = defaultText,
+        _hint = hint;
 }
 
 /// 스탬프 문구 사용자 설정 저장소 (앱 전체 공유, 기기에 저장)

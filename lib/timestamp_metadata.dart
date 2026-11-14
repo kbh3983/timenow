@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'services/app_localizations.dart';
 import 'stamps/sample_stamp_renderer.dart';
 import 'timestamp_overlays.dart';
 import 'ux_config.dart';
@@ -245,34 +245,35 @@ class TimestampMetadata {
   }
 
   static String getFormattedDateTime(TimestampDesign design, DateTime now) {
-    final dateFormat = getDateFormat(design);
-    final timeFormat = getTimeFormat(design);
-
-    final weekdaysKr = ['월', '화', '수', '목', '금', '토', '일'];
-    final weekdayKr = weekdaysKr[now.weekday - 1];
-
-    final isEng = isEnglishDesign(design);
-    final period = isEng
-        ? (now.hour < 12 ? 'AM' : 'PM')
-        : (now.hour < 12 ? '오전' : '오후');
-
-    String resolveFormat(String fmt) {
-      String s = fmt;
-      if (!isEng) {
-        s = s.replaceAll('(E)', '($weekdayKr)');
-        s = s.replaceAll('.E', '.$weekdayKr');
-      }
-      if (s.startsWith('a ')) {
-        final rest = s.substring(2);
-        return '$period ${DateFormat(rest, isEng ? 'en_US' : 'ko_KR').format(now)}';
-      }
-      return DateFormat(s, isEng ? 'en_US' : 'ko_KR').format(now);
+    switch (design) {
+      case TimestampDesign.n1_1:
+        return '${TimestampLocaleFormatter.formatNumericDate(now, sep: '.')} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: false)}';
+      case TimestampDesign.n1_2:
+        return '${TimestampLocaleFormatter.formatNumericDate(now, sep: '/')} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: false)}';
+      case TimestampDesign.n2_1:
+        return '${TimestampLocaleFormatter.formatLegacyN2_1Date(now)} ${TimestampLocaleFormatter.format12hTime(now, padHour: false, localizePeriod: true)}';
+      case TimestampDesign.n2_2:
+        return '${TimestampLocaleFormatter.formatWordDate(now, padMonthDay: true)} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: true)}';
+      case TimestampDesign.n3_1:
+        return '${TimestampLocaleFormatter.formatWordDate(now, padMonthDay: true)} ${TimestampLocaleFormatter.fullWeekday(now)} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: false)}';
+      case TimestampDesign.n3_2:
+        return '${TimestampLocaleFormatter.formatWordDate(now, fullMonth: true, padMonthDay: true)} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: false)}';
+      case TimestampDesign.s1_1:
+      case TimestampDesign.s1_2:
+        return TimestampLocaleFormatter.formatLegacyS1_2(now);
+      case TimestampDesign.s2_1:
+        return '${TimestampLocaleFormatter.formatNumericDate(now, sep: '/')} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: true)}';
+      case TimestampDesign.s2_2:
+        return '${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: true)} ${TimestampLocaleFormatter.formatLegacyS2_2Date(now)}';
+      case TimestampDesign.s3_1:
+        return '${TimestampLocaleFormatter.formatWordDate(now, fullMonth: true, padMonthDay: true)} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: true)}';
+      case TimestampDesign.s3_2:
+        return '${TimestampLocaleFormatter.formatNumericDate(now, sep: '/', shortYear: true)} ${TimestampLocaleFormatter.fullWeekday(now)} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: true)}';
+      case TimestampDesign.style1:
+        return '${TimestampLocaleFormatter.fullWeekday(now)} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: false)}';
+      default:
+        return '${TimestampLocaleFormatter.formatNumericDate(now, sep: '.')} ${TimestampLocaleFormatter.format12hTime(now, padHour: true, localizePeriod: true)}';
     }
-
-    final dateStr = resolveFormat(dateFormat);
-    final timeStr = resolveFormat(timeFormat);
-
-    return '$dateStr $timeStr'.trim();
   }
 
   static List<double> getFontSizeSteps(TimestampDesign design) {

@@ -2,8 +2,9 @@
 //
 // 샘플 앱(timestamp_sample/now)의 Constants / RegexUtil / I18n / Colors 를
 // 스탬프 데이터 이식에 필요한 범위만큼 그대로 재현한 호환 레이어입니다.
-// sample_stamp_data.dart 가 원본 TimestampRepository 코드를 그대로 사용할 수 있도록
-// 동일한 이름과 값을 유지합니다. (한국어 로케일 고정)
+// 다국어(ko, en, zh, ja, es, de, fr) 로케일에 맞춰 동적으로 변환됩니다.
+
+import '../services/app_localizations.dart';
 
 /// 샘플의 `Colors.xxx.value` 표현을 그대로 쓰기 위한 최소 색상 값 클래스.
 class SampleColor {
@@ -36,7 +37,7 @@ class Constants {
   static const String ALIGN_RIGHT = "right";
 
   /// 샘플에서 사용자가 직접 입력하는 텍스트 자리표시자.
-  static final String INPUT_TEXT = I18n.get(I18n.locale, "input_text");
+  static String get INPUT_TEXT => I18n.get(I18n.locale, "input_text");
 }
 
 class I18n {
@@ -44,41 +45,78 @@ class I18n {
   static const String LOCALE_EN_US = "en";
   static const String LOCALE_KO_KR = "kr";
 
-  static const Map<String, String> koKrMap = <String, String>{
-    "input_text": "누르면 글을 작성할 수 있어요!",
-    "today_dish_record": "#오늘의 식단기록",
-    "style7_default_text1": "“별이 아름다운 이유는",
-    "style7_default_text2": "보이지 않는 꽃이 있기 때문이다”",
-    "am": "오전",
-    "pm": "오후",
-    "mon": "월",
-    "tue": "화",
-    "wed": "수",
-    "thu": "목",
-    "fri": "금",
-    "sat": "토",
-    "sun": "일",
-    "monday": "월요일",
-    "tuesday": "화요일",
-    "wednesday": "수요일",
-    "thursday": "목요일",
-    "friday": "금요일",
-    "saturday": "토요일",
-    "sunday": "일요일",
-    "year": "년",
-    "month": "월",
-    "day": "일",
-    "hour": "시",
-    "minute": "분",
-    "second": "초",
-    "today_brunch": "오늘의 브런치",
-    "shrimp": "새우",
-    "egg": "계란",
-    "cherry_tomato": "방울토마토",
-    "rucola": "루꼴라",
-  };
-
-  static String get(String locale, String key) => koKrMap[key] ?? '';
+  static String get(String locale, String key) {
+    switch (key) {
+      case "input_text":
+      case "today_dish_record":
+      case "style7_default_text1":
+      case "style7_default_text2":
+      case "today_brunch":
+      case "shrimp":
+      case "egg":
+      case "cherry_tomato":
+      case "rucola":
+        return AppStrings.stampI18nDefault(key);
+      case "am":
+        return TimestampLocaleFormatter.localizedAmPm(true);
+      case "pm":
+        return TimestampLocaleFormatter.localizedAmPm(false);
+      case "mon":
+        return TimestampLocaleFormatter.shortWeekdayByIndex(1);
+      case "tue":
+        return TimestampLocaleFormatter.shortWeekdayByIndex(2);
+      case "wed":
+        return TimestampLocaleFormatter.shortWeekdayByIndex(3);
+      case "thu":
+        return TimestampLocaleFormatter.shortWeekdayByIndex(4);
+      case "fri":
+        return TimestampLocaleFormatter.shortWeekdayByIndex(5);
+      case "sat":
+        return TimestampLocaleFormatter.shortWeekdayByIndex(6);
+      case "sun":
+        return TimestampLocaleFormatter.shortWeekdayByIndex(7);
+      case "monday":
+        return TimestampLocaleFormatter.fullWeekdayByIndex(1);
+      case "tuesday":
+        return TimestampLocaleFormatter.fullWeekdayByIndex(2);
+      case "wednesday":
+        return TimestampLocaleFormatter.fullWeekdayByIndex(3);
+      case "thursday":
+        return TimestampLocaleFormatter.fullWeekdayByIndex(4);
+      case "friday":
+        return TimestampLocaleFormatter.fullWeekdayByIndex(5);
+      case "saturday":
+        return TimestampLocaleFormatter.fullWeekdayByIndex(6);
+      case "sunday":
+        return TimestampLocaleFormatter.fullWeekdayByIndex(7);
+      case "year":
+        return AppLocalizations.languageCode == 'ko'
+            ? '년'
+            : (AppLocalizations.languageCode == 'zh' || AppLocalizations.languageCode == 'ja' ? '年' : '.');
+      case "month":
+        return AppLocalizations.languageCode == 'ko'
+            ? '월'
+            : (AppLocalizations.languageCode == 'zh' || AppLocalizations.languageCode == 'ja' ? '月' : '.');
+      case "day":
+        return AppLocalizations.languageCode == 'ko'
+            ? '일'
+            : (AppLocalizations.languageCode == 'zh' || AppLocalizations.languageCode == 'ja' ? '日' : '');
+      case "hour":
+        return AppLocalizations.languageCode == 'ko'
+            ? '시'
+            : (AppLocalizations.languageCode == 'zh' ? '时' : (AppLocalizations.languageCode == 'ja' ? '時' : ':'));
+      case "minute":
+        return AppLocalizations.languageCode == 'ko'
+            ? '분'
+            : (AppLocalizations.languageCode == 'zh' || AppLocalizations.languageCode == 'ja' ? '分' : '');
+      case "second":
+        return AppLocalizations.languageCode == 'ko'
+            ? '초'
+            : (AppLocalizations.languageCode == 'zh' || AppLocalizations.languageCode == 'ja' ? '秒' : '');
+      default:
+        return '';
+    }
+  }
 }
 
 /// 샘플 RegexUtil 과 동일한 치환 로직.

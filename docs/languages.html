@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LOG (로그) - 지원 국가 및 폰트 준비 현황</title>
+
+  <meta name="description" content="LOG 타임스탬프 카메라의 국가별 다국어 지원 현황 및 내장 스탬프 폰트(46종) 준비 상태 안내">
+  <meta property="og:title" content="LOG - Supported Languages & Font Readiness">
+  <meta property="og:description" content="Check supported languages, localized timestamp formats, and bundled stamp font coverage for LOG.">
+  <meta property="og:type" content="website">
+
+  <link rel="icon" type="image/png" href="assets/icons/app_logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-color: #0b0c0e;
+      --card-bg: rgba(26, 29, 36, 0.78);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-color: #C3FB28;
+      --accent-glow: rgba(195, 251, 40, 0.3);
+      --text-main: #FFFFFF;
+      --text-sub: #9EADB8;
+      --status-ready: #C3FB28;
+      --status-ready-bg: rgba(195, 251, 40, 0.12);
+      --status-partial: #FFB547;
+      --status-partial-bg: rgba(255, 181, 71, 0.12);
+      --status-pending: #FF6B6B;
+      --status-pending-bg: rgba(255, 107, 107, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      padding: 24px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .brand-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-badge {
+      background: var(--accent-color);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 12px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .nav-btn:hover {
+      border-color: var(--accent-color);
+      background: rgba(195, 251, 40, 0.08);
+    }
+
+    .lang-switcher {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .lang-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: rgba(26, 29, 36, 0.9);
+      color: var(--text-main);
+      border: 1px solid rgba(195, 251, 40, 0.35);
+      border-radius: 10px;
+      padding: 7px 32px 7px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .lang-select option {
+      background: #14171d;
+      color: #ffffff;
+    }
+
+    .lang-arrow {
+      position: absolute;
+      right: 10px;
+      pointer-events: none;
+      color: var(--accent-color);
+      font-size: 11px;
+    }
+
+    /* Hero */
+    .page-hero {
+      padding: 56px 0 36px;
+      text-align: center;
+    }
+
+    .hero-tag {
+      display: inline-block;
+      color: var(--accent-color);
+      border: 1px solid rgba(195, 251, 40, 0.3);
+      background: rgba(195, 251, 40, 0.08);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 30px;
+      margin-bottom: 18px;
+    }
+
+    .page-hero h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin-bottom: 14px;
+    }
+
+    .page-hero h1 span {
+      color: var(--accent-color);
+    }
+
+    .page-hero p {
+      color: var(--text-sub);
+      font-size: 16px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* Summary Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      margin: 32px 0 48px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+    }
+
+    .stat-card.ready {
+      border-color: rgba(195, 251, 40, 0.4);
+    }
+
+    .stat-card.partial {
+      border-color: rgba(255, 181, 71, 0.35);
+    }
+
+    .stat-card.pending {
+      border-color: rgba(255, 107, 107, 0.35);
+    }
+
+    .stat-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-sub);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .stat-card.ready .stat-value {
+      color: var(--status-ready);
+    }
+
+    .stat-card.partial .stat-value {
+      color: var(--status-partial);
+    }
+
+    .stat-card.pending .stat-value {
+      color: var(--status-pending);
+    }
+
+    .stat-desc {
+      font-size: 13.5px;
+      color: var(--text-sub);
+    }
+
+    /* Section */
+    .section-block {
+      margin-bottom: 56px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 11px;
+      border-radius: 20px;
+    }
+
+    .badge-ready {
+      background: var(--status-ready-bg);
+      color: var(--status-ready);
+      border: 1px solid rgba(195, 251, 40, 0.35);
+    }
+
+    .badge-partial {
+      background: var(--status-partial-bg);
+      color: var(--status-partial);
+      border: 1px solid rgba(255, 181, 71, 0.35);
+    }
+
+    .badge-pending {
+      background: var(--status-pending-bg);
+      color: var(--status-pending);
+      border: 1px solid rgba(255, 107, 107, 0.35);
+    }
+
+    .section-note {
+      color: var(--text-sub);
+      font-size: 14.5px;
+      margin-bottom: 20px;
+    }
+
+    /* Language Cards */
+    .lang-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .lang-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 26px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .lang-card.ready-card {
+      border-color: rgba(195, 251, 40, 0.35);
+      box-shadow: 0 6px 24px rgba(195, 251, 40, 0.05);
+    }
+
+    .lang-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .lang-name-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-flag {
+      font-size: 28px;
+    }
+
+    .lang-name {
+      font-size: 19px;
+      font-weight: 800;
+    }
+
+    .lang-code {
+      font-size: 12px;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    .meta-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13.5px;
+      border-top: 1px solid var(--card-border);
+      padding-top: 12px;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .meta-key {
+      color: var(--text-sub);
+      flex-shrink: 0;
+    }
+
+    .meta-val {
+      color: var(--text-main);
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .missing-box {
+      background: rgba(11, 12, 14, 0.65);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+
+    .missing-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--text-main);
+    }
+
+    .missing-chars {
+      color: var(--status-partial);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12.5px;
+      word-break: break-all;
+      margin-bottom: 6px;
+    }
+
+    .missing-desc {
+      color: var(--text-sub);
+      font-size: 12.5px;
+    }
+
+    /* Table */
+    .table-wrap {
+      overflow-x: auto;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      min-width: 720px;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-sub);
+      font-weight: 700;
+      font-size: 12.5px;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .font-family-name {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .font-file-sub {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .cell-ok {
+      color: var(--status-ready);
+      font-weight: 700;
+    }
+
+    .cell-warn {
+      color: var(--status-partial);
+      font-weight: 600;
+    }
+
+    .cell-no {
+      color: var(--status-pending);
+      font-weight: 600;
+    }
+
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 32px 0;
+      text-align: center;
+      color: var(--text-sub);
+      font-size: 13px;
+      margin-top: 40px;
+    }
+
+    footer a {
+      color: var(--text-sub);
+      margin: 0 10px;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: var(--text-main);
+    }
+
+    @media (max-width: 768px) {
+      .page-hero h1 {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <a href="index.html" class="brand" id="brandHomeLink">
+        <img src="assets/icons/app_logo.png" alt="LOG Logo" onerror="this.style.display='none'">
+        <span class="brand-title">LOG</span>
+        <span class="brand-badge">Camera</span>
+      </a>
+      <div class="header-right">
+        <a href="index.html" class="nav-btn" id="backHomeBtn">← 홈으로</a>
+        <div class="lang-switcher">
+          <select id="langSelect" class="lang-select" aria-label="Language selector">
+            <option value="ko">🌐 한국어</option>
+            <option value="en">🌐 English</option>
+            <option value="zh">🌐 简体中文</option>
+            <option value="ja">🌐 日本語</option>
+            <option value="es">🌐 Español</option>
+            <option value="de">🌐 Deutsch</option>
+            <option value="fr">🌐 Français</option>
+          </select>
+          <span class="lang-arrow">▼</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Hero -->
+    <section class="page-hero">
+      <div class="hero-tag" id="heroTag">🌏 Global Localization & Font Readiness</div>
+      <h1 id="heroTitle">지원 국가 및 <span>스탬프 폰트 준비 현황</span></h1>
+      <p id="heroDesc">
+        LOG는 타임스탬프 본연의 감성적인 디자인을 100% 유지하기 위해, 모든 내장 스탬프 폰트(46종)가 완벽히 지원되는 언어부터 순차적으로 정식 출시합니다.
+      </p>
+    </section>
+
+    <!-- Top Summary Cards -->
+    <section class="stats-grid">
+      <div class="stat-card ready">
+        <div class="stat-label" id="stat1Label">현재 100% 지원 · 정식 출시</div>
+        <div class="stat-value" id="stat1Value">2개 언어권 (한국어 · 영어)</div>
+        <div class="stat-desc" id="stat1Desc">UI 폰트 및 46종 스탬프 폰트 전체 100% 자체 글리프 렌더링 (누락 0자)</div>
+      </div>
+      <div class="stat-card partial">
+        <div class="stat-label" id="stat2Label">유럽권 스탬프 폰트 보강 대기</div>
+        <div class="stat-value" id="stat2Value">3개 언어권 (ES · DE · FR)</div>
+        <div class="stat-desc" id="stat2Desc">앱 번역·UI 폰트(Pretendard) 100% 완료 / 손글씨 스탬프 28종의 악센트 폰트 매핑 대기</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="stat-label" id="stat3Label">동아시아 전용 폰트 추가 대기</div>
+        <div class="stat-value" id="stat3Value">2개 언어권 (JA · ZH)</div>
+        <div class="stat-desc" id="stat3Desc">앱 번역·날짜 포맷 100% 완료 / 일본어 신자체·가나 및 중국어 간체 전용 스탬프 폰트 추가 대기</div>
+      </div>
+    </section>
+
+    <!-- Section 1: 100% Ready Languages -->
+    <section class="section-block">
+      <div class="section-header">
+        <h2 class="section-title" id="sec1Title">🟢 100% 완벽 지원 국가 (현재 출시 버전 활성)</h2>
+        <span class="badge badge-ready" id="sec1Badge">✅ 즉시 배포 가능 · 폰트 100%</span>
+      </div>
+      <p class="section-note" id="sec1Note">
+        앱 UI와 100여 개 타임스탬프(한글 손글씨 28종 + 영문/숫자 디스플레이 18종)가 OS 기본 폰트 폴백 없이 100% 원본 디자인 서체로 출력됩니다.
+      </p>
+
+      <div class="lang-grid">
+        <!-- Korean -->
+        <div class="lang-card ready-card">
+          <div class="lang-card-top">
+            <div class="lang-name-group">
+              <span class="lang-flag">🇰🇷</span>
+              <div>
+                <div class="lang-name">한국어 (Korean)</div>
+                <div class="lang-code">ko_KR · 대한민국</div>
+              </div>
+            </div>
+            <span class="badge badge-ready" id="koBadge">✅ 100% 지원 (출시됨)</span>
+          </div>
+          <div class="meta-list">
+            <div class="meta-row">
+              <span class="meta-key" id="koDateKey">날짜 · 시간 표기</span>
+              <span class="meta-val">YYYY.MM.DD (년-월-일) · 오전/오후 12:34</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key" id="koUiFontKey">앱 UI 폰트</span>
+              <span class="meta-val cell-ok">NanumSquareB / Pretendard (100%)</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key" id="koStampFontKey">스탬프 폰트 (46종)</span>
+              <span class="meta-val cell-ok">46 / 46종 완벽 지원 (누락 0자)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- English -->
+        <div class="lang-card ready-card">
+          <div class="lang-card-top">
+            <div class="lang-name-group">
+              <span class="lang-flag">🇺🇸</span>
+              <div>
+                <div class="lang-name">English (Global)</div>
+                <div class="lang-code">en_US · US, UK, CA, AU, IN, SG, PH &amp; Global Default</div>
+              </div>
+            </div>
+            <span class="badge badge-ready" id="enBadge">✅ 100% 지원 (출시됨)</span>
+          </div>
+          <div class="meta-list">
+            <div class="meta-row">
+              <span class="meta-key" id="enDateKey">날짜 · 시간 표기</span>
+              <span class="meta-val">MM.DD.YYYY / Nov 14, 2026 · 12:34 PM</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key" id="enUiFontKey">앱 UI 폰트</span>
+              <span class="meta-val cell-ok">Pretendard (100%)</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key" id="enStampFontKey">스탬프 폰트 (46종)</span>
+              <span class="meta-val cell-ok">46 / 46종 완벽 지원 (누락 0자)</span>
+            </div>
+          </div>
+          <div class="missing-box">
+            <div class="missing-title" style="color: var(--status-ready);" id="enBoxTitle">✨ 한글 손글씨 스탬프 28종도 영문 100% 자체 지원</div>
+            <div class="missing-desc" id="enBoxDesc">
+              나눔바른펜, 카페24(고운밤·빛나는별·심플해·당당해·단정해), tvN 즐거운이야기, 강원교육새음 등 모든 한글 스탬프 폰트에 영문 알파벳(A~Z, a~z)과 숫자가 동일한 손글씨 서체로 내장되어 있어, 영어권에서도 모든 스탬프가 100% 원본 감성 그대로 출력됩니다.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: European Languages (Need Accent Handwritten Fonts) -->
+    <section class="section-block">
+      <div class="section-header">
+        <h2 class="section-title" id="sec2Title">🟡 스탬프용 유럽 악센트 손글씨 폰트 추가 대기 (유럽 3개 언어)</h2>
+        <span class="badge badge-partial" id="sec2Badge">⏳ 번역 완료 · 스탬프 폰트 보강 대기</span>
+      </div>
+      <p class="section-note" id="sec2Note">
+        앱 UI 폰트(Pretendard)와 영문 스탬프 폰트 15종은 유럽 악센트 문자를 100% 지원하지만, 한글 기반 손글씨·감성 스탬프 폰트 28종에 유럽 특수 알파벳(악센트·움라우트)이 빠져 있어 대체 손글씨 폰트 추가 후 오픈할 예정입니다.
+      </p>
+
+      <div class="lang-grid">
+        <!-- Spanish -->
+        <div class="lang-card">
+          <div class="lang-card-top">
+            <div class="lang-name-group">
+              <span class="lang-flag">🇪🇸</span>
+              <div>
+                <div class="lang-name">Español (Spanish)</div>
+                <div class="lang-code">es_ES · 스페인 및 중남미 스페인어권</div>
+              </div>
+            </div>
+            <span class="badge badge-partial">⏳ 폰트 추가 대기</span>
+          </div>
+          <div class="meta-list">
+            <div class="meta-row">
+              <span class="meta-key">날짜 · 시간 표기</span>
+              <span class="meta-val">DD.MM.YYYY (일-월-년) · 12:34 PM</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">앱 번역 &amp; UI 폰트</span>
+              <span class="meta-val cell-ok">100% 완료 (Pretendard 완벽 지원)</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">스탬프 폰트 지원</span>
+              <span class="meta-val cell-warn">15종 완벽 / 31종 악센트 미지원</span>
+            </div>
+          </div>
+          <div class="missing-box">
+            <div class="missing-title">한글 손글씨 스탬프(28종) 내 미지원 글자 (14자)</div>
+            <div class="missing-chars">á é í ó ú ñ ü Á É Í Ó Ú Ñ Ü ¡ ¿</div>
+            <div class="missing-desc">
+              • 영향 단어 예시: <b>Miércoles</b>(수요일), <b>Sábado</b>(토요일), <b>¡Toca para escribir!</b><br>
+              • 필요 폰트: Latin-1 Supplement(유럽 악센트)가 포함된 손글씨·장식 폰트 3~5종
+            </div>
+          </div>
+        </div>
+
+        <!-- German -->
+        <div class="lang-card">
+          <div class="lang-card-top">
+            <div class="lang-name-group">
+              <span class="lang-flag">🇩🇪</span>
+              <div>
+                <div class="lang-name">Deutsch (German)</div>
+                <div class="lang-code">de_DE · 독일, 오스트리아, 스위스</div>
+              </div>
+            </div>
+            <span class="badge badge-partial">⏳ 폰트 추가 대기</span>
+          </div>
+          <div class="meta-list">
+            <div class="meta-row">
+              <span class="meta-key">날짜 · 시간 표기</span>
+              <span class="meta-val">DD.MM.YYYY (일-월-년) · 14:30 Uhr</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">앱 번역 &amp; UI 폰트</span>
+              <span class="meta-val cell-ok">100% 완료 (Pretendard 완벽 지원)</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">스탬프 폰트 지원</span>
+              <span class="meta-val cell-warn">15종 완벽 / 31종 움라우트 미지원</span>
+            </div>
+          </div>
+          <div class="missing-box">
+            <div class="missing-title">한글 손글씨 스탬프(28종) 내 미지원 글자 (7자)</div>
+            <div class="missing-chars">ä ö ü ß Ä Ö Ü</div>
+            <div class="missing-desc">
+              • 영향 단어 예시: <b>März</b>(3월), <b>#Ernährungstagebuch</b>(식단기록), <b>schön</b><br>
+              • 필요 폰트: 유럽 움라우트(ä, ö, ü, ß)를 지원하는 손글씨·장식 폰트 3~5종 (스페인어·프랑스어와 공용 가능)
+            </div>
+          </div>
+        </div>
+
+        <!-- French -->
+        <div class="lang-card">
+          <div class="lang-card-top">
+            <div class="lang-name-group">
+              <span class="lang-flag">🇫🇷</span>
+              <div>
+                <div class="lang-name">Français (French)</div>
+                <div class="lang-code">fr_FR · 프랑스, 캐나다(퀘벡), 벨기에, 스위스</div>
+              </div>
+            </div>
+            <span class="badge badge-partial">⏳ 폰트 추가 대기</span>
+          </div>
+          <div class="meta-list">
+            <div class="meta-row">
+              <span class="meta-key">날짜 · 시간 표기</span>
+              <span class="meta-val">DD.MM.YYYY (일-월-년) · 14h30</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">앱 번역 &amp; UI 폰트</span>
+              <span class="meta-val cell-ok">100% 완료 (Pretendard 완벽 지원)</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">스탬프 폰트 지원</span>
+              <span class="meta-val cell-warn">14종 완벽 / 32종 악센트·합자 미지원</span>
+            </div>
+          </div>
+          <div class="missing-box">
+            <div class="missing-title">한글 손글씨 스탬프(28종) 내 미지원 글자 (26자)</div>
+            <div class="missing-chars">à â ç é è ê ë î ï ô ù û ü œ À Â Ç É È Ê Ë Î Ï Ô Ù Û Ü Œ</div>
+            <div class="missing-desc">
+              • 영향 단어 예시: <b>Février</b>(2월), <b>Août</b>(8월), <b>Décembre</b>(12월), <b>Œuf</b>(계란)<br>
+              • 필요 폰트: 프랑스어 악센트 및 합자(Œ/œ)가 포함된 손글씨·장식 폰트 3~5종
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: East Asian CJK Languages -->
+    <section class="section-block">
+      <div class="section-header">
+        <h2 class="section-title" id="sec3Title">🟠 UI 및 스탬프 전용 CJK 폰트 추가 대기 (동아시아 2개 언어)</h2>
+        <span class="badge badge-pending" id="sec3Badge">⏳ 번역 완료 · 전용 CJK 폰트 패키지 필요</span>
+      </div>
+      <p class="section-note" id="sec3Note">
+        일본어와 중국어(간체)는 앱 전체 번역, 스탬프 날짜·요일·오전/오후 포맷, 위치정보 다국어 변환까지 코드에 100% 구현되어 있습니다. 단, 현재 내장된 46종 폰트에 일본어 한자(신자체)/가나 및 중국어 간체자 글리프가 없으므로 전용 감성 폰트 추가 후 정식 오픈합니다.
+      </p>
+
+      <div class="lang-grid">
+        <!-- Japanese -->
+        <div class="lang-card">
+          <div class="lang-card-top">
+            <div class="lang-name-group">
+              <span class="lang-flag">🇯🇵</span>
+              <div>
+                <div class="lang-name">日本語 (Japanese)</div>
+                <div class="lang-code">ja_JP · 일본</div>
+              </div>
+            </div>
+            <span class="badge badge-pending">⏳ 전용 폰트 추가 필요</span>
+          </div>
+          <div class="meta-list">
+            <div class="meta-row">
+              <span class="meta-key">날짜 · 시간 표기</span>
+              <span class="meta-val">2026年11月14日 (土) · 午後 12:34</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">앱 번역 &amp; 날짜 로직</span>
+              <span class="meta-val cell-ok">100% 구현 완료</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">내장 폰트 지원율</span>
+              <span class="meta-val cell-no">0 / 46종 (신자체 한자·가나 전용 폰트 필요)</span>
+            </div>
+          </div>
+          <div class="missing-box">
+            <div class="missing-title">추후 추가가 필요한 일본어 폰트 구성</div>
+            <div class="missing-chars">히라가나(ぁ~ん) · 가타카나(ァ~ヶ) · 일본 상용한자(신자체: 写真, 動画, 記録, 曜日 등)</div>
+            <div class="missing-desc">
+              1. <b>일본어 UI 고딕 폰트 1종</b> (예: Noto Sans JP / M PLUS 1p)<br>
+              2. <b>일본어 스탬프용 감성 손글씨·둥근고딕·명조 폰트 3~5종</b> (예: Klee One, Yomogi, Zen Maru Gothic, Shippori Mincho 등 상용 무료 폰트)
+            </div>
+          </div>
+        </div>
+
+        <!-- Chinese Simplified -->
+        <div class="lang-card">
+          <div class="lang-card-top">
+            <div class="lang-name-group">
+              <span class="lang-flag">🇨🇳</span>
+              <div>
+                <div class="lang-name">简体中文 (Chinese Simplified)</div>
+                <div class="lang-code">zh_CN · 중국 대륙, 싱가포르 등 간체자권</div>
+              </div>
+            </div>
+            <span class="badge badge-pending">⏳ 전용 폰트 추가 필요</span>
+          </div>
+          <div class="meta-list">
+            <div class="meta-row">
+              <span class="meta-key">날짜 · 시간 표기</span>
+              <span class="meta-val">2026年11月14日 周六 · 下午 12:34</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">앱 번역 &amp; 날짜 로직</span>
+              <span class="meta-val cell-ok">100% 구현 완료</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">내장 폰트 지원율</span>
+              <span class="meta-val cell-no">0 / 46종 (간체자 전용 폰트 필요)</span>
+            </div>
+          </div>
+          <div class="missing-box">
+            <div class="missing-title">추후 추가가 필요한 중국어 간체 폰트 구성</div>
+            <div class="missing-chars">중국어 간체자 전체 (GB2312 / 통용규범한자: 视频, 记录, 星期, 饮食, 运动 등)</div>
+            <div class="missing-desc">
+              1. <b>중국어 간체 UI 고딕 폰트 1종</b> (예: Noto Sans SC)<br>
+              2. <b>중국어 간체 스탬프용 감성 손글씨·장식·명조 폰트 3~5종</b> (예: ZCOOL XiaoWei, Ma Shan Zheng, Noto Serif SC 등 상용 무료 폰트)
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Full Font Matrix -->
+    <section class="section-block">
+      <div class="section-header">
+        <h2 class="section-title" id="sec4Title">📊 내장 폰트 46종 전체 언어별 지원 매트릭스</h2>
+      </div>
+      <p class="section-note" id="sec4Note">
+        앱에 포함된 모든 폰트 파일(assets/font/)의 실제 문자표(cmap) 및 외곽선(glyf/CFF) 전수 검사 결과입니다.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>분류 / 폰트 그룹</th>
+              <th>포함된 폰트 파일 (총 46종)</th>
+              <th>🇰🇷 한국어</th>
+              <th>🇺🇸 영어</th>
+              <th>🇪🇸 스페인어</th>
+              <th>🇩🇪 독일어</th>
+              <th>🇫🇷 프랑스어</th>
+              <th>🇯🇵 일본어</th>
+              <th>🇨🇳 중국어</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="font-family-name">1. 글로벌 UI 폰트 (1종)</div>
+                <div class="font-file-sub">앱 기본 UI &amp; 위치 배지</div>
+              </td>
+              <td><code>PretendardVariable.ttf</code></td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-no">❌ 한자 미지원</td>
+              <td class="cell-no">❌ 간체 미지원</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="font-family-name">2. 한국어 UI 폰트 (1종)</div>
+                <div class="font-file-sub">한국어 모드 기본 UI</div>
+              </td>
+              <td><code>NanumSquareB.ttf</code></td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-warn">⚠️ 악센트 없음</td>
+              <td class="cell-warn">⚠️ 움라우트 없음</td>
+              <td class="cell-warn">⚠️ 악센트 없음</td>
+              <td class="cell-no">❌ 미지원</td>
+              <td class="cell-no">❌ 미지원</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="font-family-name">3. 한글+영문 감성/손글씨 스탬프 폰트 (27종)</div>
+                <div class="font-file-sub">한글 및 영문 스탬프 문구·날짜 겸용</div>
+              </td>
+              <td>
+                <code>cafe24_one_pretty_night</code>, <code>cafe24_shiningstar</code>, <code>cafe24_simplehae</code>,
+                <code>cafe24_dangdanghae</code>, <code>cafe24_danjunghae</code>, <code>cafe24_surround_air</code>,
+                <code>nanum_barunpen</code>, <code>nanum_amsterdam</code>, <code>nanum_ddobak</code>,
+                <code>nanum_galmat</code>, <code>nanum_hana_hand_write</code>, <code>nanum_left_hand_also_good</code>,
+                <code>nanum_mago</code>, <code>nanum_middle_school</code>, <code>nanum_myeongjo</code>,
+                <code>nanum_slowslow</code>, <code>nanum_square</code>, <code>nanum_square_bold</code>,
+                <code>nanum_start_again</code>, <code>nanum_yeonji</code>, <code>nanum_yuni_ddingddang</code>,
+                <code>gmarket_sans</code>, <code>gmarket_sans_light</code>, <code>kangwon_all_study</code>,
+                <code>kangwon_study_saeum</code>, <code>kotra_hope</code>, <code>lee_seoyun</code>,
+                <code>ssantokki</code>, <code>tvn_fun_story</code>
+              </td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-warn">⚠️ 악센트 없음</td>
+              <td class="cell-warn">⚠️ 움라우트 없음</td>
+              <td class="cell-warn">⚠️ 악센트 없음</td>
+              <td class="cell-no">❌ 미지원</td>
+              <td class="cell-no">❌ 미지원</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="font-family-name">4. 영문·유럽 확장 스탬프 폰트 (14종)</div>
+                <div class="font-file-sub">영문 및 유럽 악센트 포함 디스플레이 폰트</div>
+              </td>
+              <td>
+                <code>lobster</code>, <code>nixie_one</code>, <code>rondal</code>, <code>rondal_bold</code>,
+                <code>bailleul_roman</code>, <code>bailleul_roman_italic</code>, <code>bebas_neue</code>,
+                <code>clarity_city_bold_italic</code>, <code>dita_sweet</code>, <code>nerko_one</code>,
+                <code>nyghtserif</code>, <code>oooh_baby</code>, <code>oxanium</code>, <code>pacifico_regular</code>,
+                <code>rabanera_outline_shadow</code>, <code>tektur</code>, <code>trs_million</code>,
+                <code>unna_bold</code>, <code>unna_italic</code>, <code>unna_regular</code>
+              </td>
+              <td class="cell-ok">✅ (숫자/영문 전용)</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-no">❌ 미지원</td>
+              <td class="cell-no">❌ 미지원</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="font-family-name">5. 영문·숫자 전용 특수 폰트 (3종)</div>
+                <div class="font-file-sub">7세그먼트 디지털 시계 및 타이틀 전용</div>
+              </td>
+              <td>
+                <code>rubber_nipple_factory</code>, <code>e1234</code>, <code>brewsky</code>,
+                <code>curvilingus</code>, <code>datcub</code>, <code>manils</code>, <code>emilio_20</code>
+              </td>
+              <td class="cell-ok">✅ (숫자/영문 전용)</td>
+              <td class="cell-ok">✅ 100%</td>
+              <td class="cell-warn">⚠️ 기본 영문/숫자만</td>
+              <td class="cell-warn">⚠️ 기본 영문/숫자만</td>
+              <td class="cell-warn">⚠️ 기본 영문/숫자만</td>
+              <td class="cell-no">❌ 미지원</td>
+              <td class="cell-no">❌ 미지원</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2026 LOG. All rights reserved.</p>
+      <div style="margin-top: 12px;">
+        <a href="index.html" id="footerHome">홈으로</a>
+        <span>·</span>
+        <a href="languages.html" id="footerLangStatus" style="color: var(--accent-color); font-weight: 600;">지원 국가 및 폰트 현황</a>
+        <span>·</span>
+        <a href="privacy.html" id="footerPrivacy">개인정보처리방침</a>
+        <span>·</span>
+        <a href="mailto:kmh96503981@gmail.com" id="footerContact">문의하기</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const I18N = {
+      ko: {
+        pageTitle: "LOG (로그) - 지원 국가 및 폰트 준비 현황",
+        backHomeBtn: "← 홈으로",
+        heroTag: "🌏 Global Localization & Font Readiness",
+        heroTitle: "지원 국가 및 <span>스탬프 폰트 준비 현황</span>",
+        heroDesc: "LOG는 타임스탬프 본연의 감성적인 디자인을 100% 유지하기 위해, 모든 내장 스탬프 폰트(46종)가 완벽히 지원되는 언어부터 순차적으로 정식 출시합니다.",
+        stat1Label: "현재 100% 지원 · 정식 출시",
+        stat1Value: "2개 언어권 (한국어 · 영어)",
+        stat1Desc: "UI 폰트 및 46종 스탬프 폰트 전체 100% 자체 글리프 렌더링 (누락 0자)",
+        stat2Label: "유럽권 스탬프 폰트 보강 대기",
+        stat2Value: "3개 언어권 (ES · DE · FR)",
+        stat2Desc: "앱 번역·UI 폰트(Pretendard) 100% 완료 / 손글씨 스탬프 28종의 악센트 폰트 매핑 대기",
+        stat3Label: "동아시아 전용 폰트 추가 대기",
+        stat3Value: "2개 언어권 (JA · ZH)",
+        stat3Desc: "앱 번역·날짜 포맷 100% 완료 / 일본어 신자체·가나 및 중국어 간체 전용 스탬프 폰트 추가 대기",
+        sec1Title: "🟢 100% 완벽 지원 국가 (현재 출시 버전 활성)",
+        sec1Badge: "✅ 즉시 배포 가능 · 폰트 100%",
+        sec1Note: "앱 UI와 100여 개 타임스탬프(한글 손글씨 28종 + 영문/숫자 디스플레이 18종)가 OS 기본 폰트 폴백 없이 100% 원본 디자인 서체로 출력됩니다.",
+        sec2Title: "🟡 스탬프용 유럽 악센트 손글씨 폰트 추가 대기 (유럽 3개 언어)",
+        sec2Badge: "⏳ 번역 완료 · 스탬프 폰트 보강 대기",
+        sec3Title: "🟠 UI 및 스탬프 전용 CJK 폰트 추가 대기 (동아시아 2개 언어)",
+        sec3Badge: "⏳ 번역 완료 · 전용 CJK 폰트 패키지 필요",
+        sec4Title: "📊 내장 폰트 46종 전체 언어별 지원 매트릭스",
+        footerHome: "홈으로",
+        footerLangStatus: "지원 국가 및 폰트 현황",
+        footerPrivacy: "개인정보처리방침",
+        footerContact: "문의하기"
+      },
+      en: {
+        pageTitle: "LOG - Supported Languages & Font Readiness",
+        backHomeBtn: "← Back to Home",
+        heroTag: "🌏 Global Localization & Font Readiness",
+        heroTitle: "Supported Regions & <span>Stamp Font Status</span>",
+        heroDesc: "To preserve 100% of our handcrafted timestamp typography, LOG rolls out languages as soon as all 46 bundled stamp fonts achieve complete native glyph coverage.",
+        stat1Label: "100% Supported · Live in Release",
+        stat1Value: "2 Languages (Korean · English)",
+        stat1Desc: "100% native glyph rendering across all UI and 46 stamp fonts (0 missing characters)",
+        stat2Label: "European Stamp Font Expansion",
+        stat2Value: "3 Languages (ES · DE · FR)",
+        stat2Desc: "Translations & UI font (Pretendard) 100% ready / Adding accented handwritten fonts for 28 stamps",
+        stat3Label: "East Asian CJK Font Pack Pending",
+        stat3Value: "2 Languages (JA · ZH)",
+        stat3Desc: "Translations & date formats 100% ready / Adding dedicated Japanese Kanji/Kana & Simplified Chinese fonts",
+        sec1Title: "🟢 100% Supported Languages (Active in Current Release)",
+        sec1Badge: "✅ Ready for Release · 100% Font Coverage",
+        sec1Note: "Both the app UI and all 100+ timestamps render 100% in their intended decorative typefaces without falling back to generic OS system fonts.",
+        sec2Title: "🟡 Pending Accented Handwritten Stamp Fonts (3 European Languages)",
+        sec2Badge: "⏳ Translation Complete · Stamp Fonts Pending",
+        sec3Title: "🟠 Pending Dedicated CJK UI & Stamp Fonts (2 East Asian Languages)",
+        sec3Badge: "⏳ Translation Complete · CJK Font Pack Needed",
+        sec4Title: "📊 Full 46 Bundled Fonts Coverage Matrix",
+        footerHome: "Home",
+        footerLangStatus: "Supported Languages & Fonts",
+        footerPrivacy: "Privacy Policy",
+        footerContact: "Contact Us"
+      },
+      zh: {
+        pageTitle: "LOG - 支持国家与字体准备状态",
+        backHomeBtn: "← 返回首页",
+        heroTag: "🌏 全球多语言与印章字体支持状态",
+        heroTitle: "支持国家及<span>印章字体准备现状</span>",
+        heroDesc: "为了100%保留时间戳原本的精致字体设计，LOG 优先开放内置 46 款印章字体完全支持的语言，并将在补充专用字体后依次开放其他语种。",
+        stat1Label: "当前 100% 支持 · 已正式上线",
+        stat1Value: "2 个语种 (韩语 · 英语)",
+        stat1Desc: "UI 字体与全部 46 款印章字体均 100% 原生渲染（0 缺字）",
+        stat2Label: "欧洲语种手写印章字体待补充",
+        stat2Value: "3 个语种 (ES · DE · FR)",
+        stat2Desc: "应用翻译与 UI 字体 100% 完成 / 待补充支持重音符号的手写印章字体",
+        stat3Label: "东亚 CJK 专用印章字体待添加",
+        stat3Value: "2 个语种 (JA · ZH)",
+        stat3Desc: "应用翻译与日期格式 100% 完成 / 待添加简体中文与日文专用手写及装饰字体",
+        sec1Title: "🟢 100% 完美支持语种（当前发布版本已启用）",
+        sec1Badge: "✅ 可立即发布 · 字体 100% 覆盖",
+        sec1Note: "应用界面与 100 余款时间戳均使用原生装饰字体渲染，无需回退至系统默认字体。",
+        sec2Title: "🟡 待补充欧洲重音字符手写印章字体（3 个欧洲语种）",
+        sec2Badge: "⏳ 翻译已完成 · 印章字体待补充",
+        sec3Title: "🟠 待添加 CJK 专用 UI 及印章字体（2 个东亚语种）",
+        sec3Badge: "⏳ 翻译已完成 · 需添加 CJK 字体包",
+        sec4Title: "📊 内置 46 款字体多语言支持矩阵",
+        footerHome: "首页",
+        footerLangStatus: "支持国家与字体状态",
+        footerPrivacy: "隐私政策",
+        footerContact: "联系我们"
+      },
+      ja: {
+        pageTitle: "LOG - 対応国およびフォント準備状況",
+        backHomeBtn: "← ホームへ戻る",
+        heroTag: "🌏 Global Localization & Font Readiness",
+        heroTitle: "対応言語および<span>スタンプフォント準備状況</span>",
+        heroDesc: "LOGではタイムスタンプ本来のデザイン性を100%維持するため、内蔵46種のスタンプフォントが完全対応している言語から順次リリースしています。",
+        stat1Label: "現在 100% 対応 · 正式リリース済",
+        stat1Value: "2言語 (韓国語 · 英語)",
+        stat1Desc: "UIフォントおよび全46種スタンプフォントが100%ネイティブ描画（文字抜け0）",
+        stat2Label: "欧州言語スタンプフォント補強待ち",
+        stat2Value: "3言語 (ES · DE · FR)",
+        stat2Desc: "翻訳・UIフォント(Pretendard) 100%完了 / 手書きスタンプ28種のアクセント文字対応待ち",
+        stat3Label: "日本語・中国語専用フォント追加待ち",
+        stat3Value: "2言語 (JA · ZH)",
+        stat3Desc: "翻訳・日時フォーマット100%完了 / 日本語(常用漢字・かな)および中国語簡体字フォント追加待ち",
+        sec1Title: "🟢 100% 完全対応言語（現在のリリース版で有効）",
+        sec1Badge: "✅ リリース可能 · フォント100%対応",
+        sec1Note: "アプリUIと100種以上のタイムスタンプすべてが、OS標準フォントへのフォールバックなしでオリジナルのデザイン書体で描画されます。",
+        sec2Title: "🟡 欧州アクセント手書きスタンプフォント追加待ち（欧州3言語）",
+        sec2Badge: "⏳ 翻訳完了 · スタンプフォント補強待ち",
+        sec3Title: "🟠 日本語・中国語専用フォント追加待ち（東アジア2言語）",
+        sec3Badge: "⏳ 翻訳完了 · 専用CJKフォント追加が必要",
+        sec4Title: "📊 内蔵46種フォント 言語別対応マトリックス",
+        footerHome: "ホーム",
+        footerLangStatus: "対応国・フォント状況",
+        footerPrivacy: "プライバシーポリシー",
+        footerContact: "お問い合わせ"
+      },
+      es: {
+        pageTitle: "LOG - Idiomas Compatibles y Estado de Fuentes",
+        backHomeBtn: "← Volver al inicio",
+        heroTag: "🌏 Global Localization & Font Readiness",
+        heroTitle: "Idiomas Compatibles y <span>Estado de Fuentes</span>",
+        heroDesc: "Para mantener el diseño original de cada sello al 100 %, LOG habilita primero los idiomas cuyos 46 tipos de letra integrados tienen cobertura completa.",
+        stat1Label: "100 % Compatible · Disponible",
+        stat1Value: "2 Idiomas (Coreano · Inglés)",
+        stat1Desc: "Renderizado nativo al 100 % en la interfaz y en las 46 fuentes de sellos",
+        stat2Label: "Fuentes Manuscritas Europeas en Preparación",
+        stat2Value: "3 Idiomas (ES · DE · FR)",
+        stat2Desc: "Traducción e interfaz 100 % listas / Añadiendo acentos a 28 fuentes manuscritas",
+        stat3Label: "Paquete de Fuentes CJK en Preparación",
+        stat3Value: "2 Idiomas (JA · ZH)",
+        stat3Desc: "Traducción y formatos de fecha 100 % listos / Añadiendo fuentes dedicadas para japonés y chino",
+        sec1Title: "🟢 Idiomas 100 % Compatibles (Activos en la Versión Actual)",
+        sec1Badge: "✅ Listo para Lanzamiento · Fuentes al 100 %",
+        sec1Note: "Tanto la interfaz como los más de 100 sellos se muestran con sus fuentes decorativas originales.",
+        sec2Title: "🟡 En Espera de Fuentes Manuscritas con Acentos (3 Idiomas Europeos)",
+        sec2Badge: "⏳ Traducción Completa · Fuentes en Preparación",
+        sec3Title: "🟠 En Espera de Fuentes CJK Dedicadas (2 Idiomas Asiáticos)",
+        sec3Badge: "⏳ Traducción Completa · Requiere Fuentes CJK",
+        sec4Title: "📊 Matriz Completa de las 46 Fuentes Integradas",
+        footerHome: "Inicio",
+        footerLangStatus: "Idiomas y Fuentes",
+        footerPrivacy: "Política de Privacidad",
+        footerContact: "Contacto"
+      },
+      de: {
+        pageTitle: "LOG - Unterstützte Sprachen & Schriftarten-Status",
+        backHomeBtn: "← Zur Startseite",
+        heroTag: "🌏 Global Localization & Font Readiness",
+        heroTitle: "Unterstützte Regionen & <span>Schriftarten-Status</span>",
+        heroDesc: "Damit jeder Zeitstempel zu 100 % im Originaldesign erscheint, schaltet LOG Sprachen frei, sobald alle 46 integrierten Stempel-Schriftarten vollständig unterstützt werden.",
+        stat1Label: "100 % Unterstützt · Aktiv",
+        stat1Value: "2 Sprachen (Koreanisch · Englisch)",
+        stat1Desc: "100 % native Darstellung aller UI- und 46 Stempel-Schriftarten",
+        stat2Label: "Europäische Handschrift-Fonts in Arbeit",
+        stat2Value: "3 Sprachen (ES · DE · FR)",
+        stat2Desc: "Übersetzung & UI-Font (Pretendard) 100 % fertig / Umlaute für 28 Handschrift-Stempel in Vorbereitung",
+        stat3Label: "Ostasiatische CJK-Fonts in Arbeit",
+        stat3Value: "2 Sprachen (JA · ZH)",
+        stat3Desc: "Übersetzung & Datumsformate 100 % fertig / Japanische & chinesische Stempel-Fonts in Vorbereitung",
+        sec1Title: "🟢 Zu 100 % unterstützte Sprachen (In aktueller Version aktiv)",
+        sec1Badge: "✅ Bereit für Release · 100 % Font-Abdeckung",
+        sec1Note: "Sowohl die App-Oberfläche als auch alle 100+ Zeitstempel nutzen ihre Original-Schriftarten ohne System-Fallback.",
+        sec2Title: "🟡 Handschrift-Fonts mit Umlauten/Akzenten ausstehend (3 Europäische Sprachen)",
+        sec2Badge: "⏳ Übersetzung fertig · Stempel-Fonts ausstehend",
+        sec3Title: "🟠 Dedizierte CJK-Schriftarten ausstehend (2 Ostasiatische Sprachen)",
+        sec3Badge: "⏳ Übersetzung fertig · CJK-Font-Paket erforderlich",
+        sec4Title: "📊 Vollständige Matrix aller 46 integrierten Schriftarten",
+        footerHome: "Startseite",
+        footerLangStatus: "Sprachen & Schriftarten",
+        footerPrivacy: "Datenschutzerklärung",
+        footerContact: "Kontakt"
+      },
+      fr: {
+        pageTitle: "LOG - Langues Prises en Charge et État des Polices",
+        backHomeBtn: "← Retour à l'accueil",
+        heroTag: "🌏 Global Localization & Font Readiness",
+        heroTitle: "Langues Prises en Charge et <span>État des Polices</span>",
+        heroDesc: "Pour préserver à 100 % le style calligraphique et décoratif de chaque tampon, LOG active en priorité les langues intégralement prises en charge par nos 46 polices.",
+        stat1Label: "100 % Pris en Charge · Actif",
+        stat1Value: "2 Langues (Coréen · Anglais)",
+        stat1Desc: "Rendu natif à 100 % sur l'interface et les 46 polices de tampons",
+        stat2Label: "Polices Manuscrites Européennes en Attente",
+        stat2Value: "3 Langues (ES · DE · FR)",
+        stat2Desc: "Traduction et police UI (Pretendard) 100 % prêtes / Ajout des accents sur 28 polices manuscrites",
+        stat3Label: "Pack de Polices CJK en Attente",
+        stat3Value: "2 Langues (JA · ZH)",
+        stat3Desc: "Traduction et formats de date 100 % prêts / Ajout des polices japonaises et chinoises dédiées",
+        sec1Title: "🟢 Langues Prises en Charge à 100 % (Actives dans la Version Actuelle)",
+        sec1Badge: "✅ Prêt pour Publication · Polices 100 %",
+        sec1Note: "L'interface et les 100+ tampons s'affichent intégralement dans leurs polices décoratives d'origine.",
+        sec2Title: "🟡 Polices Manuscrites Accentuées en Attente (3 Langues Européennes)",
+        sec2Badge: "⏳ Traduction Terminée · Polices Tampons en Attente",
+        sec3Title: "🟠 Polices CJK Dédiées en Attente (2 Langues Asiatiques)",
+        sec3Badge: "⏳ Traduction Terminée · Pack CJK Requis",
+        sec4Title: "📊 Matrice Complète des 46 Polices Intégrées",
+        footerHome: "Accueil",
+        footerLangStatus: "Langues et Polices",
+        footerPrivacy: "Politique de Confidentialité",
+        footerContact: "Contact"
+      }
+    };
+
+    function detectInitialLang() {
+      const params = new URLSearchParams(window.location.search);
+      const urlLang = params.get('lang');
+      if (urlLang && I18N[urlLang]) return urlLang;
+      const saved = localStorage.getItem('log_site_lang');
+      if (saved && I18N[saved]) return saved;
+      const nav = (navigator.language || navigator.userLanguage || 'ko').toLowerCase();
+      for (const code of Object.keys(I18N)) {
+        if (nav.startsWith(code)) return code;
+      }
+      return 'ko';
+    }
+
+    let currentLang = detectInitialLang();
+
+    function applyLang(lang) {
+      if (!I18N[lang]) lang = 'ko';
+      currentLang = lang;
+      localStorage.setItem('log_site_lang', lang);
+      document.documentElement.lang = lang;
+
+      const t = I18N[lang];
+      document.title = t.pageTitle;
+      document.getElementById('backHomeBtn').textContent = t.backHomeBtn;
+      document.getElementById('backHomeBtn').href = 'index.html?lang=' + lang;
+      document.getElementById('brandHomeLink').href = 'index.html?lang=' + lang;
+      document.getElementById('heroTag').textContent = t.heroTag;
+      document.getElementById('heroTitle').innerHTML = t.heroTitle;
+      document.getElementById('heroDesc').textContent = t.heroDesc;
+      document.getElementById('stat1Label').textContent = t.stat1Label;
+      document.getElementById('stat1Value').textContent = t.stat1Value;
+      document.getElementById('stat1Desc').textContent = t.stat1Desc;
+      document.getElementById('stat2Label').textContent = t.stat2Label;
+      document.getElementById('stat2Value').textContent = t.stat2Value;
+      document.getElementById('stat2Desc').textContent = t.stat2Desc;
+      document.getElementById('stat3Label').textContent = t.stat3Label;
+      document.getElementById('stat3Value').textContent = t.stat3Value;
+      document.getElementById('stat3Desc').textContent = t.stat3Desc;
+      document.getElementById('sec1Title').textContent = t.sec1Title;
+      document.getElementById('sec1Badge').textContent = t.sec1Badge;
+      document.getElementById('sec1Note').textContent = t.sec1Note;
+      document.getElementById('sec2Title').textContent = t.sec2Title;
+      document.getElementById('sec2Badge').textContent = t.sec2Badge;
+      document.getElementById('sec3Title').textContent = t.sec3Title;
+      document.getElementById('sec3Badge').textContent = t.sec3Badge;
+      document.getElementById('sec4Title').textContent = t.sec4Title;
+      document.getElementById('footerHome').textContent = t.footerHome;
+      document.getElementById('footerHome').href = 'index.html?lang=' + lang;
+      document.getElementById('footerLangStatus').textContent = t.footerLangStatus;
+      document.getElementById('footerLangStatus').href = 'languages.html?lang=' + lang;
+      document.getElementById('footerPrivacy').textContent = t.footerPrivacy;
+      document.getElementById('footerPrivacy').href = 'privacy.html?lang=' + lang;
+      document.getElementById('footerContact').textContent = t.footerContact;
+
+      const select = document.getElementById('langSelect');
+      if (select.value !== lang) {
+        select.value = lang;
+      }
+    }
+
+    document.getElementById('langSelect').addEventListener('change', (e) => {
+      applyLang(e.target.value);
+    });
+
+    applyLang(currentLang);
+  </script>
+</body>
+
+</html>

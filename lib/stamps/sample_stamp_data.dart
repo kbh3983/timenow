@@ -35,6 +35,20 @@ class SampleStampRepository {
     saveTempStyle();
   }
 
+  /// 언어가 변경되었을 때 스탬프 내 기본 다국어 텍스트를 다시 로드합니다.
+  static void reload() {
+    textBox.clear();
+    roundTextBox.clear();
+    timestampBox.clear();
+    timestampImageBox.clear();
+    timestampGroupBox.clear();
+    analogTimestampBox.clear();
+    ddayTimestampBox.clear();
+    styleTimestampBox.clear();
+    _loaded = false;
+    ensureLoaded();
+  }
+
   static void saveTempNormal() {
     // 원본: ratio = logicalWidth / 390. 이 앱에서는 렌더러가 390 기준 스케일을 적용합니다.
     const double ratio = 1.0;

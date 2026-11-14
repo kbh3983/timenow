@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'album_service.dart';
 import 'ux_config.dart';
 import 'photo_detail_screen.dart';
 import 'services/app_settings_service.dart';
+import 'services/app_localizations.dart';
 
 enum CalendarViewMode { calendar, grid }
 
@@ -178,8 +178,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               Flexible(
                 child: Text(
                   _viewMode == CalendarViewMode.grid
-                      ? "$_selectedAlbum ($_totalPhotoCount)"
-                      : _selectedAlbum,
+                      ? "${AppStrings.displayAlbumName(_selectedAlbum)} ($_totalPhotoCount)"
+                      : AppStrings.displayAlbumName(_selectedAlbum),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -207,7 +207,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             size: 20,
           ),
           onPressed: _toggleView,
-          tooltip: _viewMode == CalendarViewMode.grid ? '달력 보기' : '모아보기',
+          tooltip: _viewMode == CalendarViewMode.grid
+              ? AppStrings.calendarViewTooltip
+              : AppStrings.gridViewTooltip,
         ),
         Padding(
           padding: const EdgeInsets.only(right: 12, left: 2),
@@ -240,7 +242,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    '기록',
+                    AppStrings.recordButton,
                     style: TextStyle(
                       color: pointColor,
                       fontSize: 13.5,
@@ -311,7 +313,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             splashRadius: 20,
           ),
           Text(
-            DateFormat('yyyy년 M월', 'ko_KR').format(_focusedDay),
+            TimestampLocaleFormatter.formatCalendarMonthHeader(_focusedDay),
             style: TextStyle(
               fontSize: CalendarUX.monthHeaderFontSize,
               fontWeight: FontWeight.w700,
@@ -345,7 +347,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
 
   Widget _buildWeekdayHeader() {
     final settings = AppSettingsService();
-    final weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+    final weekdays = AppStrings.calendarWeekdayHeaders;
     return Padding(
       padding: const EdgeInsets.symmetric(
         vertical: 4,
@@ -594,7 +596,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                             return Padding(
                               padding: const EdgeInsets.only(top: 2, bottom: 14, left: 2),
                               child: Text(
-                                DateFormat('yyyy.MM.dd (E)', 'ko_KR').format(_selectedDay),
+                                TimestampLocaleFormatter.formatSelectedDayHeader(_selectedDay),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w800,
                                   color: Color(0xFF8E929B),
@@ -656,7 +658,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              DateFormat('yyyy.MM.dd (E)', 'ko_KR').format(_selectedDay),
+              TimestampLocaleFormatter.formatSelectedDayHeader(_selectedDay),
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 color: AppSettingsService().subTextColor,
@@ -690,8 +692,8 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                       final isFuture = _selectedDay.isAfter(DateTime(now.year, now.month, now.day, 23, 59, 59));
 
                       final title = isToday
-                          ? '오늘의 기록이 아직 없어요 📷'
-                          : (isFuture ? '아직 다가오지 않은 날이에요 ⏳' : '이 날은 기록이 없어요 📷');
+                          ? AppStrings.emptyRecordToday
+                          : (isFuture ? AppStrings.emptyRecordFuture : AppStrings.emptyRecordPast);
 
                       return Column(
                         children: [
@@ -707,7 +709,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                           if (isToday) ...[
                             const SizedBox(height: 6),
                             Text(
-                              '상단 "기록" 버튼을 눌러 지금 순간을 남겨보세요',
+                              AppStrings.emptyRecordTodaySub,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 13,
@@ -733,8 +735,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     if (index >= _dayPhotos.length) return const SizedBox.shrink();
     final photoFile = _dayPhotos[index];
     final photoDate = AlbumService.getPhotoDate(photoFile);
-    final period = photoDate.hour < 12 ? '오전' : '오후';
-    final timeStr = '$period ${DateFormat('h:mm').format(photoDate)}';
+    final timeStr = TimestampLocaleFormatter.formatRecordTime(photoDate);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 28),
@@ -846,7 +847,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                '아직 기록이 없어요',
+                AppStrings.emptyGridTitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -856,7 +857,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                '상단 "기록" 버튼을 눌러 첫 기록을 남겨보세요',
+                AppStrings.emptyGridSub,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
@@ -878,7 +879,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 32, 16, 12),
               child: Text(
-                monthKey,
+                TimestampLocaleFormatter.formatGridMonthKey(monthKey),
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -1066,7 +1067,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                         ),
                       ),
                       Text(
-                        '폴더 선택',
+                        AppStrings.folderSelectTitle,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -1123,7 +1124,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                               ),
                               const SizedBox(width: 10),
                               Text(
-                                '새 폴더 만들기',
+                                AppStrings.folderNewCreate,
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -1196,7 +1197,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                        name,
+                        AppStrings.displayAlbumName(name),
                         style: TextStyle(
                           fontSize: 16.5,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -1215,7 +1216,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
           ),
           if (canEdit)
             IconButton(
-              tooltip: '폴더 편집',
+              tooltip: AppStrings.folderEditTooltip,
               icon: Icon(
                 Icons.edit_outlined,
                 color: AppSettingsService().subTextColor,
@@ -1227,7 +1228,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
             ),
           if (canDelete)
             IconButton(
-              tooltip: '폴더 삭제',
+              tooltip: AppStrings.folderDeleteTooltip,
               icon: Icon(
                 Icons.delete_outline_rounded,
                 color: AppSettingsService().subTextColor,
@@ -1290,7 +1291,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                     ),
                   ),
                   Text(
-                    '폴더 삭제',
+                    AppStrings.folderDeleteTitle,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
@@ -1300,7 +1301,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '\'$albumName\' 폴더를 삭제하시겠습니까?\n사진은 기기 앨범에 안전하게 유지되며 폴더만 삭제됩니다.',
+                    AppStrings.folderDeleteConfirm(AppStrings.displayAlbumName(albumName)),
                     style: TextStyle(
                       fontSize: 14,
                       color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
@@ -1326,7 +1327,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                           ),
                           onPressed: () => Navigator.pop(ctx, false),
                           child: Text(
-                            '취소',
+                            AppStrings.cancel,
                             style: TextStyle(
                               color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                               fontWeight: FontWeight.w700,
@@ -1348,9 +1349,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                             ),
                           ),
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text(
-                            '삭제',
-                            style: TextStyle(
+                          child: Text(
+                            AppStrings.delete,
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -1386,7 +1387,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '\'$albumName\' 폴더가 삭제되었습니다.',
+              AppStrings.folderDeletedSnackbar(AppStrings.displayAlbumName(albumName)),
               style: const TextStyle(
                 color: Color(0xFFF4F6F8),
                 fontSize: 14,
@@ -1584,7 +1585,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                             ),
                             const SizedBox(width: 10),
                             Text(
-                              '색상 선택',
+                              AppStrings.colorSelectTitle,
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w900,
@@ -1661,7 +1662,7 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                                 ),
                                 onPressed: () => Navigator.pop(ctx),
                                 child: Text(
-                                  '취소',
+                                  AppStrings.cancel,
                                   style: TextStyle(
                                     color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                                     fontWeight: FontWeight.w700,
@@ -1688,9 +1689,9 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
                                   onColorSelected(tempColor);
                                   Navigator.pop(ctx);
                                 },
-                                child: const Text(
-                                  '적용하기',
-                                  style: TextStyle(
+                                child: Text(
+                                  AppStrings.apply,
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                   ),
@@ -1837,7 +1838,7 @@ class _AddFolderSheetState extends State<_AddFolderSheet> {
 
                 // Header
                 Text(
-                  '새 폴더 만들기',
+                  AppStrings.folderNewCreate,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
@@ -1847,7 +1848,7 @@ class _AddFolderSheetState extends State<_AddFolderSheet> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '사진을 분류할 새 폴더의 이름과 색상을 지정하세요',
+                  AppStrings.folderCreateSubtitle,
                   style: TextStyle(
                     fontSize: 12,
                     color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
@@ -1865,7 +1866,7 @@ class _AddFolderSheetState extends State<_AddFolderSheet> {
                     color: isLight ? const Color(0xFF111418) : const Color(0xFFF4F6F8),
                   ),
                   decoration: InputDecoration(
-                    hintText: '폴더 이름 입력 (최대 15자)',
+                    hintText: AppStrings.folderNameHint,
                     hintStyle: TextStyle(
                       fontSize: 13,
                       color: isLight
@@ -1912,7 +1913,7 @@ class _AddFolderSheetState extends State<_AddFolderSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '폴더 색상 테마',
+                      AppStrings.folderColorTheme,
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -1952,7 +1953,7 @@ class _AddFolderSheetState extends State<_AddFolderSheet> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '직접 선택',
+                            AppStrings.folderCustomColor,
                             style: TextStyle(
                               fontSize: 12,
                               color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
@@ -2068,7 +2069,7 @@ class _AddFolderSheetState extends State<_AddFolderSheet> {
                         ),
                         onPressed: () => Navigator.pop(context),
                         child: Text(
-                          '취소',
+                          AppStrings.cancel,
                           style: TextStyle(
                             color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                             fontWeight: FontWeight.w700,
@@ -2102,7 +2103,7 @@ class _AddFolderSheetState extends State<_AddFolderSheet> {
                                 if (name.isEmpty) return;
                                 if (widget.existingAlbums.contains(name)) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('이미 존재하는 폴더 이름입니다.')),
+                                    SnackBar(content: Text(AppStrings.folderExistsSnackbar)),
                                   );
                                   return;
                                 }
@@ -2119,9 +2120,9 @@ class _AddFolderSheetState extends State<_AddFolderSheet> {
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : const Text(
-                                '폴더 만들기',
-                                style: TextStyle(
+                            : Text(
+                                AppStrings.folderCreateButton,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
@@ -2179,7 +2180,9 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.albumName);
+    _controller = TextEditingController(
+      text: AppStrings.displayAlbumName(widget.albumName),
+    );
     _selectedColorValue = widget.initialColorValue;
   }
 
@@ -2235,7 +2238,7 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
 
                 // Header
                 Text(
-                  '폴더 편집',
+                  AppStrings.folderEditTitle,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
@@ -2246,8 +2249,8 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
                 const SizedBox(height: 2),
                 Text(
                   isDefaultAlbum
-                      ? '기본 앨범의 색상 테마를 변경합니다'
-                      : '폴더의 이름과 색상 테마를 변경합니다',
+                      ? AppStrings.folderEditDefaultSubtitle
+                      : AppStrings.folderEditCustomSubtitle,
                   style: TextStyle(
                     fontSize: 12,
                     color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
@@ -2268,7 +2271,7 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
                         : (isLight ? const Color(0xFF111418) : const Color(0xFFF4F6F8)),
                   ),
                   decoration: InputDecoration(
-                    hintText: '폴더 이름 입력 (최대 15자)',
+                    hintText: AppStrings.folderNameHint,
                     hintStyle: TextStyle(
                       fontSize: 13,
                       color: isLight
@@ -2279,7 +2282,7 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
                       fontSize: 11,
                       color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
                     ),
-                    helperText: isDefaultAlbum ? '기본 앨범의 이름은 변경할 수 없습니다.' : null,
+                    helperText: isDefaultAlbum ? AppStrings.folderDefaultNameHelper : null,
                     helperStyle: TextStyle(
                       fontSize: 11,
                       color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
@@ -2328,7 +2331,7 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '폴더 색상 테마',
+                      AppStrings.folderColorTheme,
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -2368,7 +2371,7 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '직접 선택',
+                            AppStrings.folderCustomColor,
                             style: TextStyle(
                               fontSize: 12,
                               color: isLight ? const Color(0xFF64748B) : const Color(0xFF9AA1AC),
@@ -2484,7 +2487,7 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
                         ),
                         onPressed: () => Navigator.pop(context),
                         child: Text(
-                          '취소',
+                          AppStrings.cancel,
                           style: TextStyle(
                             color: isLight ? const Color(0xFF475569) : const Color(0xFFF4F6F8),
                             fontWeight: FontWeight.w700,
@@ -2514,11 +2517,13 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
                         onPressed: _isSaving || !hasText
                             ? null
                             : () async {
-                                final name = _controller.text.trim();
+                                final name = isDefaultAlbum
+                                    ? widget.albumName
+                                    : _controller.text.trim();
                                 if (name.isEmpty) return;
                                 if (name != widget.albumName && widget.existingAlbums.contains(name)) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('이미 존재하는 폴더 이름입니다.')),
+                                    SnackBar(content: Text(AppStrings.folderExistsSnackbar)),
                                   );
                                   return;
                                 }
@@ -2528,7 +2533,7 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
                                 if (!ok) {
                                   if (mounted && context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('폴더 수정에 실패했습니다.')),
+                                      SnackBar(content: Text(AppStrings.folderUpdateFailedSnackbar)),
                                     );
                                     setState(() => _isSaving = false);
                                   }
@@ -2545,9 +2550,9 @@ class _EditAlbumSheetState extends State<_EditAlbumSheet> {
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : const Text(
-                                '저장하기',
-                                style: TextStyle(
+                            : Text(
+                                AppStrings.saveAction,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),

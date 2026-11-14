@@ -1,0 +1,7 @@
+"NSCameraUsageDescription" = "Camera access is required to take photos and videos with timestamps.";
+"NSMicrophoneUsageDescription" = "Microphone access is required to record audio during video recording.";
+"NSPhotoLibraryAddUsageDescription" = "Photo library access is required to save timestamped photos and videos.";
+"NSPhotoLibraryUsageDescription" = "Photo library access is required to import photos and save timestamped media.";
+"NSLocationWhenInUseUsageDescription" = "Location access is required to display your current location on photos and stamps.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Location access is required to display your current location on photos and stamps.";
+

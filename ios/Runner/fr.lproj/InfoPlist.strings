@@ -1,0 +1,7 @@
+"NSCameraUsageDescription" = "L'accès à la caméra est requis pour prendre des photos et des vidéos horodatées.";
+"NSMicrophoneUsageDescription" = "L'accès au microphone est requis pour enregistrer le son lors de l'enregistrement vidéo.";
+"NSPhotoLibraryAddUsageDescription" = "L'accès à la photothèque est requis pour enregistrer les photos et vidéos horodatées.";
+"NSPhotoLibraryUsageDescription" = "L'accès à la photothèque est requis pour importer des photos et enregistrer des médias horodatés.";
+"NSLocationWhenInUseUsageDescription" = "L'accès à la localisation est requis pour afficher votre position actuelle sur les photos et les tampons.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "L'accès à la localisation est requis pour afficher votre position actuelle sur les photos et les tampons.";
+

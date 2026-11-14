@@ -1,7 +1,7 @@
 // ignore_for_file: camel_case_types
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' hide TextDirection;
+import 'services/app_localizations.dart';
 import 'services/timestamp_access_manager.dart';
 import 'services/app_settings_service.dart';
 import 'stamps/sample_stamp_renderer.dart';
@@ -9,6 +9,8 @@ import 'stamps/stamp_text_store.dart';
 import 'widgets/stamp_text_edit_dialog.dart';
 import 'timestamp_metadata.dart';
 import 'ux_config.dart';
+
+List<String> get _kStampFallbackFonts => AppLocalizations.fontFallbackChain;
 
 // ───── Timestamp Design Types ─────
 enum TimestampDesign {
@@ -135,7 +137,10 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
       child: Opacity(
         opacity: widget.opacity,
         child: DefaultTextStyle.merge(
-          style: const TextStyle(fontFamily: 'Pretendard'),
+          style: TextStyle(
+            fontFamily: AppLocalizations.uiFontFamily,
+            fontFamilyFallback: _kStampFallbackFonts,
+          ),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -151,7 +156,7 @@ class _TimestampOverlayWidgetState extends State<TimestampOverlayWidget> {
 
   Widget _buildLocationOverlay() {
     final location = AppSettingsService().locationText.isEmpty
-        ? 'GPS 위치 확인 중'
+        ? AppStrings.gpsCheckingOverlay
         : AppSettingsService().locationText;
 
     final locAlign = AppSettingsService().locationAlignment;
@@ -320,7 +325,13 @@ class TimestampThumbnail extends StatelessWidget {
   final BorderRadius? borderRadius;
   final DateTime? time;
 
-  static final DateTime defaultThumbnailTime = DateTime(2026, 11, 6, 12, 34);
+  /// 초 단위 재렌더링으로 인한 프레임 드랍을 막기 위해 분(minute) 단위로 정규화된 현재 시각 반환
+  static DateTime currentMinuteTime([DateTime? source]) {
+    final n = source ?? DateTime.now();
+    return DateTime(n.year, n.month, n.day, n.hour, n.minute);
+  }
+
+  static DateTime get defaultThumbnailTime => currentMinuteTime();
 
   const TimestampThumbnail({
     super.key,
@@ -405,8 +416,14 @@ class TimestampThumbnail extends StatelessWidget {
                       child: Opacity(
                         opacity: isLocked ? 0.65 : 1.0,
                         child: DefaultTextStyle.merge(
-                          style: const TextStyle(fontFamily: 'Pretendard'),
-                          child: _thumbnail(design, time ?? defaultThumbnailTime),
+                          style: TextStyle(
+                            fontFamily: AppLocalizations.uiFontFamily,
+                            fontFamilyFallback: _kStampFallbackFonts,
+                          ),
+                          child: _thumbnail(
+                            design,
+                            currentMinuteTime(time),
+                          ),
                         ),
                       ),
                     ),
@@ -511,6 +528,7 @@ class TimestampThumbnail extends StatelessWidget {
                 text,
                 style: TextStyle(
                   fontFamily: CameraUX.fontRubberNippleFactory,
+                  fontFamilyFallback: _kStampFallbackFonts,
                   color: Colors.white,
                   fontSize: 10.5,
                   height: 1.0,
@@ -532,6 +550,7 @@ class TimestampThumbnail extends StatelessWidget {
                 text,
                 style: TextStyle(
                   fontFamily: CameraUX.fontNixieOne,
+                  fontFamilyFallback: _kStampFallbackFonts,
                   color: Colors.white,
                   fontSize: 11,
                   height: 1.0,
@@ -543,11 +562,12 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.n2_1:
-        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-        final weekday = weekdays[now.weekday - 1];
-        final dateStr = '${DateFormat('yyyy년 MM월 dd일').format(now)} ($weekday)';
-        final period = now.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('h:mm').format(now)}';
+        final dateStr = TimestampLocaleFormatter.formatLegacyN2_1Date(now);
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          now,
+          padHour: false,
+          localizePeriod: true,
+        );
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -562,6 +582,7 @@ class TimestampThumbnail extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: CameraUX.fontCafe24OnePrettyNight,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       color: Colors.white,
                       fontSize: 5.8,
                       shadows: shadow,
@@ -572,6 +593,7 @@ class TimestampThumbnail extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: CameraUX.fontCafe24OnePrettyNight,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       color: Colors.white,
                       fontSize: 14.5,
                       fontWeight: FontWeight.bold,
@@ -585,9 +607,15 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.n2_2:
-        final dateStr = DateFormat('yyyy년 MM월 dd일').format(now);
-        final period = now.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+        final dateStr = TimestampLocaleFormatter.formatWordDate(
+          now,
+          padMonthDay: true,
+        );
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          now,
+          padHour: true,
+          localizePeriod: true,
+        );
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -602,6 +630,7 @@ class TimestampThumbnail extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: CameraUX.fontNanumAmsterdam,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       color: Colors.white,
                       fontSize: 7.0,
                       shadows: shadow,
@@ -612,6 +641,7 @@ class TimestampThumbnail extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: CameraUX.fontNanumAmsterdam,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       color: Colors.white,
                       fontSize: 13.0,
                       shadows: shadow,
@@ -624,10 +654,16 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.n3_1:
-        final dateStr = DateFormat('dd MMM, yyyy', 'en_US').format(now);
-        final dayStr = DateFormat('EEEE', 'en_US').format(now);
-        final period = now.hour < 12 ? 'AM' : 'PM';
-        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+        final dateStr = TimestampLocaleFormatter.formatWordDate(
+          now,
+          padMonthDay: true,
+        );
+        final dayStr = TimestampLocaleFormatter.fullWeekday(now);
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          now,
+          padHour: true,
+          localizePeriod: false,
+        );
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -637,9 +673,9 @@ class TimestampThumbnail extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
-                  Text(dayStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
-                  Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontFamilyFallback: _kStampFallbackFonts, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(dayStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontFamilyFallback: _kStampFallbackFonts, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontFamilyFallback: _kStampFallbackFonts, fontSize: 8, color: Colors.white, shadows: shadow)),
                 ],
               ),
             ),
@@ -647,10 +683,20 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.n3_2:
-        final yearStr = DateFormat('yyyy').format(now);
-        final dateStr = DateFormat('MMMM dd', 'en_US').format(now);
-        final period = now.hour < 12 ? 'AM' : 'PM';
-        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+        final isYmd = TimestampLocaleFormatter.dateOrder == DateOrderType.ymd;
+        final yearStr = '${now.year}';
+        final dateStr = TimestampLocaleFormatter.formatWordMonthDay(
+          now,
+          fullMonth: true,
+          padDay: true,
+        );
+        final line1 = isYmd ? yearStr : dateStr;
+        final line2 = isYmd ? dateStr : yearStr;
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          now,
+          padHour: true,
+          localizePeriod: false,
+        );
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -660,9 +706,9 @@ class TimestampThumbnail extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(yearStr, style: TextStyle(fontFamily: CameraUX.fontCafe24Simplehae, fontSize: 8, color: Colors.white, shadows: shadow)),
-                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontCafe24Simplehae, fontSize: 8, color: Colors.white, shadows: shadow)),
-                  Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontCafe24Simplehae, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(line1, style: TextStyle(fontFamily: CameraUX.fontCafe24Simplehae, fontFamilyFallback: _kStampFallbackFonts, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(line2, style: TextStyle(fontFamily: CameraUX.fontCafe24Simplehae, fontFamilyFallback: _kStampFallbackFonts, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontCafe24Simplehae, fontFamilyFallback: _kStampFallbackFonts, fontSize: 8, color: Colors.white, shadows: shadow)),
                 ],
               ),
             ),
@@ -670,10 +716,11 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.s1_1:
-        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-        final weekday = weekdays[now.weekday - 1];
-        final period = now.hour < 12 ? '오전' : '오후';
-        final text = '${DateFormat('yy.MM.dd').format(now)}.$weekday $period ${DateFormat('h:mm').format(now)}';
+        final text = TimestampLocaleFormatter.formatLegacyS1_2(
+          now,
+          shortYear: true,
+          padHour: false,
+        );
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -688,7 +735,7 @@ class TimestampThumbnail extends StatelessWidget {
                     Image.asset(CameraUX.stampImg1, width: 130, height: 30, fit: BoxFit.fill, color: Colors.white),
                     Text(
                       text,
-                      style: TextStyle(fontFamily: CameraUX.fontTvnFunStory, fontSize: 9.5, color: Colors.white, shadows: shadow),
+                      style: TextStyle(fontFamily: CameraUX.fontTvnFunStory, fontFamilyFallback: _kStampFallbackFonts, fontSize: 9.5, color: Colors.white, shadows: shadow),
                     ),
                   ],
                 ),
@@ -698,10 +745,11 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.s1_2:
-        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-        final weekday = weekdays[now.weekday - 1];
-        final period = now.hour < 12 ? '오전' : '오후';
-        final text = '${DateFormat('yy.MM.dd').format(now)}.$weekday $period ${DateFormat('h:mm').format(now)}';
+        final text = TimestampLocaleFormatter.formatLegacyS1_2(
+          now,
+          shortYear: true,
+          padHour: false,
+        );
         return Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -716,7 +764,7 @@ class TimestampThumbnail extends StatelessWidget {
                     Image.asset(CameraUX.stampImg2, width: 130, height: 30, fit: BoxFit.fill, color: Colors.white),
                     Text(
                       text,
-                      style: TextStyle(fontFamily: CameraUX.fontCafe24Shiningstar, fontSize: 10, color: Colors.white, shadows: shadow),
+                      style: TextStyle(fontFamily: CameraUX.fontCafe24Shiningstar, fontFamilyFallback: _kStampFallbackFonts, fontSize: 10, color: Colors.white, shadows: shadow),
                     ),
                   ],
                 ),
@@ -726,9 +774,12 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.s2_1:
-        final dateStr = DateFormat('yyyy/MM/dd').format(now);
-        final period = now.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+        final dateStr = TimestampLocaleFormatter.formatNumericDate(now, sep: '/');
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          now,
+          padHour: true,
+          localizePeriod: true,
+        );
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(4),
@@ -737,7 +788,7 @@ class TimestampThumbnail extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontFamilyFallback: _kStampFallbackFonts, fontSize: 8, color: Colors.white, shadows: shadow)),
                   Container(
                     margin: const EdgeInsets.symmetric(vertical: 2.5),
                     width: 52,
@@ -754,7 +805,7 @@ class TimestampThumbnail extends StatelessWidget {
                           .toList(),
                     ),
                   ),
-                  Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 8, color: Colors.white, shadows: shadow)),
+                  Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontFamilyFallback: _kStampFallbackFonts, fontSize: 8, color: Colors.white, shadows: shadow)),
                 ],
               ),
             ),
@@ -762,9 +813,12 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.s2_2:
-        final period = now.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('h:mm').format(now)}';
-        final dateStr = DateFormat('yyyy MMM dd', 'en_US').format(now);
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          now,
+          padHour: false,
+          localizePeriod: true,
+        );
+        final dateStr = TimestampLocaleFormatter.formatLegacyS2_2Date(now);
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(4),
@@ -779,10 +833,10 @@ class TimestampThumbnail extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(100),
                     ),
-                    child: Text(timeStr, style: const TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 7.5, color: Colors.black87, fontWeight: FontWeight.bold)),
+                    child: Text(timeStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontFamilyFallback: _kStampFallbackFonts, fontSize: 7.5, color: Colors.black87, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 2),
-                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontSize: 7.5, color: Colors.white, shadows: shadow)),
+                  Text(dateStr, style: TextStyle(fontFamily: CameraUX.fontNanumBarunpen, fontFamilyFallback: _kStampFallbackFonts, fontSize: 7.5, color: Colors.white, shadows: shadow)),
                 ],
               ),
             ),
@@ -790,10 +844,16 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.s3_1:
-        final yearStr = DateFormat('yyyy').format(now);
-        final dateStr = DateFormat('MMMM dd', 'en_US').format(now);
-        final period = now.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+        final isYmd = TimestampLocaleFormatter.dateOrder == DateOrderType.ymd;
+        final yearStr = '${now.year}';
+        final dateStr = TimestampLocaleFormatter.formatLegacyS3_1MonthDay(now);
+        final line1 = isYmd ? yearStr : dateStr;
+        final line2 = isYmd ? dateStr : yearStr;
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          now,
+          padHour: true,
+          localizePeriod: true,
+        );
         Widget buildDivider() => Container(
               margin: const EdgeInsets.symmetric(vertical: 2.0),
               width: 52,
@@ -819,9 +879,10 @@ class TimestampThumbnail extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    yearStr,
+                    line1,
                     style: TextStyle(
                       fontFamily: CameraUX.fontTvnFunStory,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       fontSize: 8,
                       color: Colors.white,
                       height: 1.0,
@@ -830,9 +891,10 @@ class TimestampThumbnail extends StatelessWidget {
                   ),
                   buildDivider(),
                   Text(
-                    dateStr,
+                    line2,
                     style: TextStyle(
                       fontFamily: CameraUX.fontTvnFunStory,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       fontSize: 8,
                       color: Colors.white,
                       height: 1.0,
@@ -844,6 +906,7 @@ class TimestampThumbnail extends StatelessWidget {
                     timeStr,
                     style: TextStyle(
                       fontFamily: CameraUX.fontTvnFunStory,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       fontSize: 8,
                       color: Colors.white,
                       height: 1.0,
@@ -857,11 +920,17 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.s3_2:
-        final dateStr = DateFormat('yy/MM/dd').format(now);
-        final weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-        final weekdayStr = weekdays[now.weekday - 1];
-        final period = now.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+        final dateStr = TimestampLocaleFormatter.formatNumericDate(
+          now,
+          sep: '/',
+          shortYear: true,
+        );
+        final weekdayStr = TimestampLocaleFormatter.fullWeekday(now);
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          now,
+          padHour: true,
+          localizePeriod: true,
+        );
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(4),
@@ -881,6 +950,7 @@ class TimestampThumbnail extends StatelessWidget {
                     dateStr,
                     style: TextStyle(
                       fontFamily: CameraUX.fontTvnFunStory,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       fontSize: 6.0,
                       color: Colors.white,
                       height: 1.0,
@@ -891,6 +961,7 @@ class TimestampThumbnail extends StatelessWidget {
                     weekdayStr,
                     style: TextStyle(
                       fontFamily: CameraUX.fontTvnFunStory,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       fontSize: 8.5,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -902,6 +973,7 @@ class TimestampThumbnail extends StatelessWidget {
                     timeStr,
                     style: TextStyle(
                       fontFamily: CameraUX.fontTvnFunStory,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       fontSize: 6.0,
                       color: Colors.white,
                       height: 1.0,
@@ -925,7 +997,7 @@ class TimestampThumbnail extends StatelessWidget {
         );
 
       case TimestampDesign.style1:
-        final dayStr = DateFormat('EEEE', 'en_US').format(now);
+        final dayStr = TimestampLocaleFormatter.fullWeekday(now);
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(4),
@@ -939,6 +1011,7 @@ class TimestampThumbnail extends StatelessWidget {
                     text: _Style1Stamp.arcText(),
                     textStyle: TextStyle(
                       fontFamily: CameraUX.fontRondal,
+                      fontFamilyFallback: _kStampFallbackFonts,
                       fontSize: 4.8,
                       color: Colors.white.withValues(alpha: 0.92),
                       letterSpacing: 0.2,
@@ -950,9 +1023,10 @@ class TimestampThumbnail extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        DateFormat('MM').format(now),
+                        TimestampLocaleFormatter.formatStyle1LeftNumber(now),
                         style: TextStyle(
                           fontFamily: CameraUX.fontLobster,
+                          fontFamilyFallback: _kStampFallbackFonts,
                           fontSize: 5.5,
                           color: Colors.white,
                           shadows: shadow,
@@ -964,6 +1038,7 @@ class TimestampThumbnail extends StatelessWidget {
                           dayStr,
                           style: TextStyle(
                             fontFamily: CameraUX.fontRondalBold,
+                            fontFamilyFallback: _kStampFallbackFonts,
                             fontSize: 11.5,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -973,9 +1048,10 @@ class TimestampThumbnail extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        DateFormat('dd').format(now),
+                        TimestampLocaleFormatter.formatStyle1RightNumber(now),
                         style: TextStyle(
                           fontFamily: CameraUX.fontLobster,
+                          fontFamilyFallback: _kStampFallbackFonts,
                           fontSize: 5.5,
                           color: Colors.white,
                           shadows: shadow,
@@ -998,9 +1074,14 @@ class TimestampThumbnail extends StatelessWidget {
                           color: Colors.white,
                         ),
                         Text(
-                          '${now.hour < 12 ? 'AM' : 'PM'} ${DateFormat('hh:mm').format(now)}',
+                          TimestampLocaleFormatter.format12hTime(
+                            now,
+                            padHour: true,
+                            localizePeriod: false,
+                          ),
                           style: TextStyle(
                             fontFamily: CameraUX.fontRondal,
+                            fontFamilyFallback: _kStampFallbackFonts,
                             fontSize: 5.2,
                             color: Colors.white,
                             shadows: shadow,
@@ -1040,6 +1121,7 @@ class _N1_1Stamp extends StatelessWidget {
         softWrap: false,
         style: TextStyle(
           fontFamily: CameraUX.fontRubberNippleFactory,
+          fontFamilyFallback: _kStampFallbackFonts,
           fontSize: fontSize,
           color: Colors.white,
           height: 1.0,
@@ -1069,6 +1151,7 @@ class _N1_2Stamp extends StatelessWidget {
         softWrap: false,
         style: TextStyle(
           fontFamily: CameraUX.fontNixieOne,
+          fontFamilyFallback: _kStampFallbackFonts,
           fontSize: fontSize,
           color: Colors.white,
           height: 1.0,
@@ -1088,11 +1171,12 @@ class _N2_1Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final weekday = weekdays[now.weekday - 1];
-    final dateStr = '${DateFormat('yyyy년 MM월 dd일').format(now)} ($weekday)';
-    final period = now.hour < 12 ? '오전' : '오후';
-    final timeStr = '$period ${DateFormat('h:mm').format(now)}';
+    final dateStr = TimestampLocaleFormatter.formatLegacyN2_1Date(now);
+    final timeStr = TimestampLocaleFormatter.format12hTime(
+      now,
+      padHour: false,
+      localizePeriod: true,
+    );
     final shadows = TimestampMetadata.getShadows(TimestampDesign.n2_1);
     final dateFontSize = fontSize * 0.36;
 
@@ -1107,6 +1191,7 @@ class _N2_1Stamp extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24OnePrettyNight,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: dateFontSize,
               color: Colors.white,
               height: 1.1,
@@ -1119,6 +1204,7 @@ class _N2_1Stamp extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24OnePrettyNight,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize,
               color: Colors.white,
               height: 1.0,
@@ -1140,9 +1226,15 @@ class _N2_2Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('yyyy년 MM월 dd일').format(now);
-    final period = now.hour < 12 ? '오전' : '오후';
-    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final dateStr = TimestampLocaleFormatter.formatWordDate(
+      now,
+      padMonthDay: true,
+    );
+    final timeStr = TimestampLocaleFormatter.format12hTime(
+      now,
+      padHour: true,
+      localizePeriod: true,
+    );
     final shadows = TimestampMetadata.getShadows(TimestampDesign.n2_2);
     final dateFontSize = fontSize * 0.52;
 
@@ -1157,6 +1249,7 @@ class _N2_2Stamp extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumAmsterdam,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: dateFontSize,
               color: Colors.white,
               height: 1.1,
@@ -1169,6 +1262,7 @@ class _N2_2Stamp extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumAmsterdam,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize,
               color: Colors.white,
               height: 1.0,
@@ -1190,10 +1284,16 @@ class _N3_1Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('dd MMM, yyyy', 'en_US').format(now);
-    final dayStr = DateFormat('EEEE', 'en_US').format(now);
-    final period = now.hour < 12 ? 'AM' : 'PM';
-    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final dateStr = TimestampLocaleFormatter.formatWordDate(
+      now,
+      padMonthDay: true,
+    );
+    final dayStr = TimestampLocaleFormatter.fullWeekday(now);
+    final timeStr = TimestampLocaleFormatter.format12hTime(
+      now,
+      padHour: true,
+      localizePeriod: false,
+    );
     final shadows = TimestampMetadata.getShadows(TimestampDesign.n3_1);
     final crossAxis = _getCrossAxis(alignment);
     final textAlign = _getTextAlign(alignment);
@@ -1209,6 +1309,7 @@ class _N3_1Stamp extends StatelessWidget {
             textAlign: textAlign,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize,
               color: Colors.white,
               height: 1.1,
@@ -1220,6 +1321,7 @@ class _N3_1Stamp extends StatelessWidget {
             textAlign: textAlign,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize,
               color: Colors.white,
               height: 1.1,
@@ -1231,6 +1333,7 @@ class _N3_1Stamp extends StatelessWidget {
             textAlign: textAlign,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize,
               color: Colors.white,
               height: 1.1,
@@ -1252,10 +1355,20 @@ class _N3_2Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final yearStr = DateFormat('yyyy').format(now);
-    final dateStr = DateFormat('MMMM dd', 'en_US').format(now);
-    final period = now.hour < 12 ? 'AM' : 'PM';
-    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final isYmd = TimestampLocaleFormatter.dateOrder == DateOrderType.ymd;
+    final yearStr = '${now.year}';
+    final dateStr = TimestampLocaleFormatter.formatWordMonthDay(
+      now,
+      fullMonth: true,
+      padDay: true,
+    );
+    final line1 = isYmd ? yearStr : dateStr;
+    final line2 = isYmd ? dateStr : yearStr;
+    final timeStr = TimestampLocaleFormatter.format12hTime(
+      now,
+      padHour: true,
+      localizePeriod: false,
+    );
     final shadows = TimestampMetadata.getShadows(TimestampDesign.n3_2);
     final crossAxis = _getCrossAxis(alignment);
     final textAlign = _getTextAlign(alignment);
@@ -1267,10 +1380,11 @@ class _N3_2Stamp extends StatelessWidget {
         crossAxisAlignment: crossAxis,
         children: [
           Text(
-            yearStr,
+            line1,
             textAlign: textAlign,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24Simplehae,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize,
               color: Colors.white,
               height: 1.0,
@@ -1279,10 +1393,11 @@ class _N3_2Stamp extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            dateStr,
+            line2,
             textAlign: textAlign,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24Simplehae,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize,
               color: Colors.white,
               height: 1.0,
@@ -1295,6 +1410,7 @@ class _N3_2Stamp extends StatelessWidget {
             textAlign: textAlign,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24Simplehae,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize,
               color: Colors.white,
               height: 1.0,
@@ -1316,10 +1432,7 @@ class _S1_1Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final weekday = weekdays[now.weekday - 1];
-    final period = now.hour < 12 ? '오전' : '오후';
-    final text = '${DateFormat('yyyy.MM.dd').format(now)}.$weekday $period ${DateFormat('hh:mm').format(now)}';
+    final text = TimestampLocaleFormatter.formatLegacyS1_2(now);
     final shadows = TimestampMetadata.getShadows(TimestampDesign.s1_1);
     final scale = fontSize / 24.0;
     final frameW = 280.0 * scale;
@@ -1344,6 +1457,7 @@ class _S1_1Stamp extends StatelessWidget {
               text,
               style: TextStyle(
                 fontFamily: CameraUX.fontTvnFunStory,
+                fontFamilyFallback: _kStampFallbackFonts,
                 fontSize: fontSize,
                 color: Colors.white,
                 height: 1.0,
@@ -1366,10 +1480,7 @@ class _S1_2Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final weekday = weekdays[now.weekday - 1];
-    final period = now.hour < 12 ? '오전' : '오후';
-    final text = '${DateFormat('yyyy.MM.dd').format(now)}.$weekday $period ${DateFormat('hh:mm').format(now)}';
+    final text = TimestampLocaleFormatter.formatLegacyS1_2(now);
     final shadows = TimestampMetadata.getShadows(TimestampDesign.s1_2);
     final scale = fontSize / 26.0;
     final frameW = 280.0 * scale;
@@ -1394,6 +1505,7 @@ class _S1_2Stamp extends StatelessWidget {
               text,
               style: TextStyle(
                 fontFamily: CameraUX.fontCafe24Shiningstar,
+                fontFamilyFallback: _kStampFallbackFonts,
                 fontSize: fontSize,
                 color: Colors.white,
                 height: 1.0,
@@ -1416,9 +1528,12 @@ class _S2_1Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('yyyy/MM/dd').format(now);
-    final period = now.hour < 12 ? '오전' : '오후';
-    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final dateStr = TimestampLocaleFormatter.formatNumericDate(now, sep: '/');
+    final timeStr = TimestampLocaleFormatter.format12hTime(
+      now,
+      padHour: true,
+      localizePeriod: true,
+    );
     final shadows = TimestampMetadata.getShadows(TimestampDesign.s2_1);
     final scale = fontSize / 25.0;
     final crossAxis = _getCrossAxis(alignment);
@@ -1436,6 +1551,7 @@ class _S2_1Stamp extends StatelessWidget {
             textAlign: textAlign,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize * 0.9,
               color: Colors.white,
               height: 1.0,
@@ -1463,6 +1579,7 @@ class _S2_1Stamp extends StatelessWidget {
             textAlign: textAlign,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize * 0.9,
               color: Colors.white,
               height: 1.0,
@@ -1484,9 +1601,12 @@ class _S2_2Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final period = now.hour < 12 ? '오전' : '오후';
-    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
-    final dateStr = DateFormat('yyyy MMM dd', 'en_US').format(now);
+    final timeStr = TimestampLocaleFormatter.format12hTime(
+      now,
+      padHour: true,
+      localizePeriod: true,
+    );
+    final dateStr = TimestampLocaleFormatter.formatLegacyS2_2Date(now);
     final shadows = TimestampMetadata.getShadows(TimestampDesign.s2_2);
     final scale = fontSize / 25.0;
     final crossAxis = _getCrossAxis(alignment);
@@ -1508,6 +1628,7 @@ class _S2_2Stamp extends StatelessWidget {
               timeStr,
               style: TextStyle(
                 fontFamily: CameraUX.fontNanumBarunpen,
+                fontFamilyFallback: _kStampFallbackFonts,
                 fontSize: fontSize * 0.82,
                 color: Colors.black87,
                 fontWeight: FontWeight.bold,
@@ -1521,6 +1642,7 @@ class _S2_2Stamp extends StatelessWidget {
             textAlign: textAlign,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize * 0.85,
               color: Colors.white,
               height: 1.0,
@@ -1542,10 +1664,16 @@ class _S3_1Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final yearStr = DateFormat('yyyy').format(now);
-    final dateStr = DateFormat('MMMM dd', 'en_US').format(now);
-    final period = now.hour < 12 ? '오전' : '오후';
-    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final isYmd = TimestampLocaleFormatter.dateOrder == DateOrderType.ymd;
+    final yearStr = '${now.year}';
+    final dateStr = TimestampLocaleFormatter.formatLegacyS3_1MonthDay(now);
+    final line1 = isYmd ? yearStr : dateStr;
+    final line2 = isYmd ? dateStr : yearStr;
+    final timeStr = TimestampLocaleFormatter.format12hTime(
+      now,
+      padHour: true,
+      localizePeriod: true,
+    );
     final shadows = TimestampMetadata.getShadows(TimestampDesign.s3_1);
     final scale = fontSize / 32.0;
     final dividerW = 140.0 * scale;
@@ -1558,9 +1686,10 @@ class _S3_1Stamp extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            yearStr,
+            line1,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize * 0.85,
               color: Colors.white,
               height: 1.0,
@@ -1575,9 +1704,10 @@ class _S3_1Stamp extends StatelessWidget {
             color: Colors.white,
           ),
           Text(
-            dateStr,
+            line2,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize * 0.85,
               color: Colors.white,
               height: 1.0,
@@ -1595,6 +1725,7 @@ class _S3_1Stamp extends StatelessWidget {
             timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize * 0.85,
               color: Colors.white,
               height: 1.0,
@@ -1616,11 +1747,17 @@ class _S3_2Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('yy/MM/dd').format(now);
-    final weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-    final weekdayStr = weekdays[now.weekday - 1];
-    final period = now.hour < 12 ? '오전' : '오후';
-    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final dateStr = TimestampLocaleFormatter.formatNumericDate(
+      now,
+      sep: '/',
+      shortYear: true,
+    );
+    final weekdayStr = TimestampLocaleFormatter.fullWeekday(now);
+    final timeStr = TimestampLocaleFormatter.format12hTime(
+      now,
+      padHour: true,
+      localizePeriod: true,
+    );
     final shadows = TimestampMetadata.getShadows(TimestampDesign.s3_2);
     final scale = fontSize / 26.0;
     final bracketW = 100.0 * scale;
@@ -1644,6 +1781,7 @@ class _S3_2Stamp extends StatelessWidget {
             dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize * 0.75,
               color: Colors.white,
               height: 1.0,
@@ -1654,6 +1792,7 @@ class _S3_2Stamp extends StatelessWidget {
             weekdayStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize * 1.15,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -1665,6 +1804,7 @@ class _S3_2Stamp extends StatelessWidget {
             timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kStampFallbackFonts,
               fontSize: fontSize * 0.75,
               color: Colors.white,
               height: 1.0,
@@ -1708,12 +1848,14 @@ class _Style1Stamp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Title Case (e.g. Tuesday, Saturday)
-    final dayStr = DateFormat('EEEE', 'en_US').format(now);
-    final monthStr = DateFormat('MM').format(now);
-    final dateStr = DateFormat('dd').format(now);
-    final period = now.hour < 12 ? 'AM' : 'PM';
-    final timeStr = '$period ${DateFormat('hh:mm').format(now)}';
+    final dayStr = TimestampLocaleFormatter.fullWeekday(now);
+    final leftNumStr = TimestampLocaleFormatter.formatStyle1LeftNumber(now);
+    final rightNumStr = TimestampLocaleFormatter.formatStyle1RightNumber(now);
+    final timeStr = TimestampLocaleFormatter.format12hTime(
+      now,
+      padHour: true,
+      localizePeriod: false,
+    );
     final shadows = TimestampMetadata.getShadows(TimestampDesign.style1);
     final scale = fontSize / 34.0;
     final pillW = 85.0 * scale;
@@ -1734,6 +1876,7 @@ class _Style1Stamp extends StatelessWidget {
               text: arcText(),
               textStyle: TextStyle(
                 fontFamily: CameraUX.fontRondal,
+                fontFamilyFallback: _kStampFallbackFonts,
                 fontSize: fontSize * 0.32,
                 color: Colors.white.withValues(alpha: 0.92),
                 letterSpacing: 0.8 * scale,
@@ -1749,10 +1892,11 @@ class _Style1Stamp extends StatelessWidget {
               SizedBox(
                 width: 26 * scale,
                 child: Text(
-                  monthStr,
+                  leftNumStr,
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontFamily: CameraUX.fontLobster,
+                    fontFamilyFallback: _kStampFallbackFonts,
                     fontSize: fontSize * 0.42,
                     color: Colors.white,
                     shadows: shadows,
@@ -1765,6 +1909,7 @@ class _Style1Stamp extends StatelessWidget {
                   dayStr,
                   style: TextStyle(
                     fontFamily: CameraUX.fontRondalBold,
+                    fontFamilyFallback: _kStampFallbackFonts,
                     fontSize: fontSize,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -1777,10 +1922,11 @@ class _Style1Stamp extends StatelessWidget {
               SizedBox(
                 width: 26 * scale,
                 child: Text(
-                  dateStr,
+                  rightNumStr,
                   textAlign: TextAlign.left,
                   style: TextStyle(
                     fontFamily: CameraUX.fontLobster,
+                    fontFamilyFallback: _kStampFallbackFonts,
                     fontSize: fontSize * 0.42,
                     color: Colors.white,
                     shadows: shadows,
@@ -1807,6 +1953,7 @@ class _Style1Stamp extends StatelessWidget {
                   timeStr,
                   style: TextStyle(
                     fontFamily: CameraUX.fontRondal,
+                    fontFamilyFallback: _kStampFallbackFonts,
                     fontSize: fontSize * 0.34,
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -1838,7 +1985,7 @@ class _CurvedTextWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var effectiveStyle = textStyle.copyWith(
-      fontFamilyFallback: const ['stamp_nanum_myeongjo', 'stamp_nanum_square'],
+      fontFamilyFallback: _kStampFallbackFonts,
     );
     // 텍스트 호의 실제 시각적 가로 너비(양 끝점 간격)를 정밀 측정하여 불필요한 좌우 여백을 완전히 제거
     double totalTextLength = 0.0;

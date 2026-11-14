@@ -1,0 +1,7 @@
+"NSCameraUsageDescription" = "Se necesita acceso a la cámara para tomar fotos y videos con marca de tiempo.";
+"NSMicrophoneUsageDescription" = "Se necesita acceso al micrófono para grabar audio durante la grabación de video.";
+"NSPhotoLibraryAddUsageDescription" = "Se necesita acceso a la fototeca para guardar fotos y videos con marca de tiempo.";
+"NSPhotoLibraryUsageDescription" = "Se necesita acceso a la fototeca para importar fotos y guardar contenido con marca de tiempo.";
+"NSLocationWhenInUseUsageDescription" = "Se necesita acceso a la ubicación para mostrar su ubicación actual en fotos y sellos.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Se necesita acceso a la ubicación para mostrar su ubicación actual en fotos y sellos.";
+

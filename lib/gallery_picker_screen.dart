@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'ux_config.dart';
 import 'services/app_settings_service.dart';
+import 'services/app_localizations.dart';
 import 'widgets/ad_banner_widget.dart';
 
 /// Result from gallery picker containing the selected file, its creation time,
@@ -377,7 +378,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
   }
 
   String _getAlbumDisplayName(AssetPathEntity album) {
-    if (album.isAll) return '최근 항목';
+    if (album.isAll) return AppStrings.galleryRecentItems;
     return album.name;
   }
 
@@ -462,26 +463,30 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
             ),
             const SizedBox(height: 24),
             Text(
-              isLimited ? '모든 사진 접근 권한이 필요합니다' : '사진 접근 권한이 필요합니다',
+              isLimited
+                  ? AppStrings.galleryPermissionAllNeededTitle
+                  : AppStrings.galleryPermissionNeededTitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppSettingsService().textColor,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'Pretendard',
+                fontFamily: AppLocalizations.uiFontFamily,
+                fontFamilyFallback: AppLocalizations.fontFallbackChain,
               ),
             ),
             const SizedBox(height: 12),
             Text(
               isLimited
-                  ? '현재 일부 사진만 선택되어 있어 Log 앨범만 표시되고 있습니다.\n\n카메라, 다운로드, 스크린샷 등 기기의 모든 앨범을 확인하시려면 사진 접근 권한을 \'모두 허용\'으로 변경해주세요.'
-                  : '기기에 저장된 모든 사진 앨범을 불러오고 타임스탬프를 적용하려면 사진 접근 권한이 필요합니다.',
+                  ? AppStrings.galleryPermissionLimitedDesc
+                  : AppStrings.galleryPermissionDeniedDesc,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppSettingsService().subTextColor,
                 fontSize: 14,
                 height: 1.5,
-                fontFamily: 'Pretendard',
+                fontFamily: AppLocalizations.uiFontFamily,
+                fontFamilyFallback: AppLocalizations.fontFallbackChain,
               ),
             ),
             const SizedBox(height: 32),
@@ -491,12 +496,15 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
                 onPressed: () => PhotoManager.openSetting(),
                 icon: const Icon(Icons.settings, color: Colors.black, size: 20),
                 label: Text(
-                  isLimited ? '설정에서 \'모두 허용\'으로 변경' : '권한 설정하러 가기',
-                  style: const TextStyle(
+                  isLimited
+                      ? AppStrings.galleryPermissionAllowAllBtn
+                      : AppStrings.galleryPermissionGoSettingsBtn,
+                  style: TextStyle(
                     color: Colors.black,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'Pretendard',
+                    fontFamily: AppLocalizations.uiFontFamily,
+                    fontFamilyFallback: AppLocalizations.fontFallbackChain,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -512,13 +520,14 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              '설정 > 권한 > 사진 및 동영상 > \'모두 허용\' 선택 후 앱으로 돌아오시면 자동으로 모든 앨범이 나타납니다.',
+              AppStrings.galleryPermissionGuideBottom,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppSettingsService().subTextColor.withValues(alpha: 0.6),
                 fontSize: 12,
                 height: 1.4,
-                fontFamily: 'Pretendard',
+                fontFamily: AppLocalizations.uiFontFamily,
+                fontFamilyFallback: AppLocalizations.fontFallbackChain,
               ),
             ),
           ],
@@ -539,13 +548,14 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
           ),
           Expanded(
             child: Text(
-              '사진 고르기',
+              AppStrings.galleryPickPhotoTitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: settings.textColor,
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'Pretendard',
+                fontFamily: AppLocalizations.uiFontFamily,
+                fontFamilyFallback: AppLocalizations.fontFallbackChain,
               ),
             ),
           ),
@@ -559,8 +569,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
     final settings = AppSettingsService();
     final isDenied = _permissionStatus == PermissionStatusView.denied;
     final text = isDenied
-        ? '사진 접근 권한이 필요합니다 · 설정에서 모든 사진 허용하기'
-        : '일부 사진만 허용됨 · 설정에서 \'항상 모두 허용\'으로 변경하기';
+        ? AppStrings.galleryBannerDenied
+        : AppStrings.galleryBannerLimited;
 
     return GestureDetector(
       onTap: () => PhotoManager.openSetting(),
@@ -586,7 +596,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
                   color: settings.accentColor,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  fontFamily: 'Pretendard',
+                  fontFamily: AppLocalizations.uiFontFamily,
+                fontFamilyFallback: AppLocalizations.fontFallbackChain,
                 ),
               ),
             ),
@@ -641,7 +652,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
                         : AppSettingsService().subTextColor,
                     fontSize: 13,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                    fontFamily: 'Pretendard',
+                    fontFamily: AppLocalizations.uiFontFamily,
+                fontFamilyFallback: AppLocalizations.fontFallbackChain,
                   ),
                 ),
               ),
@@ -663,13 +675,14 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
     }
 
     if (_photos.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          '사진이 없습니다',
+          AppStrings.galleryEmptyPhotos,
           style: TextStyle(
             color: Colors.white54,
             fontSize: 14,
-            fontFamily: 'Pretendard',
+            fontFamily: AppLocalizations.uiFontFamily,
+            fontFamilyFallback: AppLocalizations.fontFallbackChain,
           ),
         ),
       );

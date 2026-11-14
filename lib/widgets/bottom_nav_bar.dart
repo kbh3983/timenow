@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/app_settings_service.dart';
+import '../services/app_localizations.dart';
 import '../ux_config.dart';
 import '../album_service.dart';
 
@@ -113,7 +114,7 @@ class CustomBottomNavBar extends StatelessWidget {
                             children: [
                               if (photoPickerAction != null)
                                 _labeledGalleryButton(
-                                  label: '사진선택',
+                                  label: AppStrings.navPickPhoto,
                                   thumbnail: thumbnail,
                                   onPressed: photoPickerAction,
                                   shadow: shadow,
@@ -123,7 +124,7 @@ class CustomBottomNavBar extends StatelessWidget {
                               if (albumAction != null)
                                 _labeledIconButton(
                                   icon: Icons.calendar_today_outlined,
-                                  label: '앨범',
+                                  label: AppStrings.navAlbum,
                                   onPressed: albumAction,
                                   shadow: shadow,
                                   iconColor: iconColor,
@@ -134,7 +135,7 @@ class CustomBottomNavBar extends StatelessWidget {
                         : Center(
                             child: photoPickerAction != null
                                 ? _labeledGalleryButton(
-                                    label: '사진선택',
+                                    label: AppStrings.navPickPhoto,
                                     thumbnail: thumbnail,
                                     onPressed: photoPickerAction,
                                     shadow: shadow,
@@ -157,7 +158,7 @@ class CustomBottomNavBar extends StatelessWidget {
                               if (onStampManagementPressed != null)
                                 _labeledIconButton(
                                   imageAsset: 'assets/icons/stamp_manage.png',
-                                  label: '스탬프 관리',
+                                  label: AppStrings.navStampManage,
                                   onPressed: onStampManagementPressed!,
                                   shadow: shadow,
                                   iconColor: iconColor,
@@ -165,7 +166,7 @@ class CustomBottomNavBar extends StatelessWidget {
                                 ),
                               _labeledIconButton(
                                 icon: Icons.settings_outlined,
-                                label: '설정',
+                                label: AppStrings.navSettings,
                                 onPressed: onSettingsPressed!,
                                 shadow: shadow,
                                 iconColor: iconColor,
@@ -177,7 +178,7 @@ class CustomBottomNavBar extends StatelessWidget {
                             child: albumAction != null
                                 ? _labeledIconButton(
                                     icon: Icons.calendar_today_outlined,
-                                    label: '앨범',
+                                    label: AppStrings.navAlbum,
                                     onPressed: albumAction,
                                     shadow: shadow,
                                     iconColor: iconColor,
@@ -246,7 +247,11 @@ class CustomBottomNavBar extends StatelessWidget {
                 fontSize: SharedUX.navLabelSize,
                 fontWeight: FontWeight.w500,
                 shadows: shadow,
-                fontFamily: SharedUX.navLabelFontFamily,
+                fontFamily: AppLocalizations.resolveFontFamily(
+                  SharedUX.navLabelFontFamily,
+                  label,
+                ),
+                fontFamilyFallback: AppLocalizations.fontFallbackChain,
                 letterSpacing: -0.3,
               ),
             ),
@@ -336,7 +341,11 @@ class CustomBottomNavBar extends StatelessWidget {
                 fontSize: SharedUX.navLabelSize,
                 fontWeight: FontWeight.w500,
                 shadows: shadow,
-                fontFamily: SharedUX.navLabelFontFamily,
+                fontFamily: AppLocalizations.resolveFontFamily(
+                  SharedUX.navLabelFontFamily,
+                  label,
+                ),
+                fontFamilyFallback: AppLocalizations.fontFallbackChain,
                 letterSpacing: -0.3,
               ),
             ),

@@ -10,8 +10,8 @@
   <meta name="google-site-verification" content="DvzLfpLlrTtvlAs_1wXu7_paa_lIRWZeVFnIRx8bfGI" />
 
   <meta name="description" content="지금 이 순간을 가장 선명하고 세련되게 기록하는 타임스탬프 카메라 앱, LOG">
-  <meta property="og:title" content="LOG - 타임스탬프 카메라">
-  <meta property="og:description" content="매일의 일상, 운동, 식단, 공부를 타임스탬프로 세련되게 기록하세요.">
+  <meta property="og:title" content="LOG - Timestamp Camera">
+  <meta property="og:description" content="Capture daily life, workouts, meals, and study sessions with stylish real-time timestamps.">
   <meta property="og:type" content="website">
 
   <link rel="icon" type="image/png" href="assets/icons/app_logo.png">
@@ -59,6 +59,8 @@
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid var(--card-border);
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
     .brand {
@@ -89,6 +91,187 @@
       font-weight: 700;
       padding: 2px 7px;
       border-radius: 12px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .header-subtitle {
+      font-size: 14px;
+      color: var(--text-sub);
+    }
+
+    .header-nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(195, 251, 40, 0.1);
+      color: var(--accent-color);
+      border: 1px solid rgba(195, 251, 40, 0.35);
+      border-radius: 10px;
+      padding: 7px 13px;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    .header-nav-link:hover {
+      background: rgba(195, 251, 40, 0.18);
+      box-shadow: 0 0 12px rgba(195, 251, 40, 0.2);
+    }
+
+    /* Language Readiness Banner on Home */
+    .lang-status-section {
+      background: linear-gradient(145deg, rgba(26, 29, 36, 0.85), rgba(18, 20, 24, 0.92));
+      border: 1px solid rgba(195, 251, 40, 0.28);
+      border-radius: 24px;
+      padding: 36px 32px;
+      margin: 0 0 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .lang-status-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .lang-status-header h2 {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .lang-status-header p {
+      font-size: 14.5px;
+      color: var(--text-sub);
+      max-width: 680px;
+    }
+
+    .lang-status-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-color);
+      color: #000;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 11px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .lang-status-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px var(--accent-glow);
+    }
+
+    .lang-pills-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .lang-pill-box {
+      background: rgba(11, 12, 14, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px 20px;
+    }
+
+    .lang-pill-box.ready {
+      border-color: rgba(195, 251, 40, 0.35);
+    }
+
+    .lang-pill-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .lang-pill-box.ready .lang-pill-title {
+      color: var(--accent-color);
+    }
+
+    .lang-pill-box.pending .lang-pill-title {
+      color: #FFB547;
+    }
+
+    .pill-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill-tag {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+    }
+
+    .pill-tag.active {
+      background: rgba(195, 251, 40, 0.14);
+      border-color: rgba(195, 251, 40, 0.4);
+      color: var(--accent-color);
+    }
+
+    /* Language Switcher */
+    .lang-switcher {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .lang-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: rgba(26, 29, 36, 0.9);
+      color: var(--text-main);
+      border: 1px solid rgba(195, 251, 40, 0.35);
+      border-radius: 10px;
+      padding: 7px 32px 7px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .lang-select:hover,
+    .lang-select:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 12px rgba(195, 251, 40, 0.2);
+    }
+
+    .lang-select option {
+      background: #14171d;
+      color: #ffffff;
+    }
+
+    .lang-arrow {
+      position: absolute;
+      right: 10px;
+      pointer-events: none;
+      color: var(--accent-color);
+      font-size: 11px;
     }
 
     /* Hero Section */
@@ -124,7 +307,7 @@
     .hero p {
       font-size: 18px;
       color: var(--text-sub);
-      max-width: 620px;
+      max-width: 660px;
       margin: 0 auto 36px;
     }
 
@@ -272,6 +455,10 @@
       .features-grid {
         grid-template-columns: 1fr;
       }
+
+      .header-subtitle {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -286,71 +473,114 @@
         <span class="brand-title">LOG</span>
         <span class="brand-badge">Camera</span>
       </a>
-      <div style="font-size: 14px; color: var(--text-sub);">
-        타임스탬프 카메라
+      <div class="header-right">
+        <div class="header-subtitle" id="headerSubtitle">타임스탬프 카메라</div>
+        <a href="languages.html" class="header-nav-link" id="headerLangStatusBtn">🌏 지원 국가 · 폰트 현황</a>
+        <div class="lang-switcher">
+          <select id="langSelect" class="lang-select" aria-label="Language selector">
+            <option value="ko">🌐 한국어</option>
+            <option value="en">🌐 English</option>
+            <option value="zh">🌐 简体中文</option>
+            <option value="ja">🌐 日本語</option>
+            <option value="es">🌐 Español</option>
+            <option value="de">🌐 Deutsch</option>
+            <option value="fr">🌐 Français</option>
+          </select>
+          <span class="lang-arrow">▼</span>
+        </div>
       </div>
     </header>
 
     <!-- Hero -->
     <section class="hero">
-      <div class="hero-tag">✨ 순간을 선명하게 기록하는 타임스탬프 카메라</div>
-      <h1>당신의 일상을 가장 감성적으로<br><span>기록하는 순간, LOG</span></h1>
-      <p>운동, 식단, 공부 인증부터 일상의 모든 순간까지 실시간 타임스탬프와 위치 태그로 기록하고 스마트하게 관리하세요.</p>
-      <a href="#download" onclick="alert('Google Play 스토어 출시 준비 중입니다.'); return false;" class="hero-btn">
+      <div class="hero-tag" id="heroTag">✨ 순간을 선명하게 기록하는 타임스탬프 카메라</div>
+      <h1 id="heroTitle">당신의 일상을 가장 감성적으로<br><span>기록하는 순간, LOG</span></h1>
+      <p id="heroDesc">운동, 식단, 공부 인증부터 일상의 모든 순간까지 실시간 타임스탬프와 위치 태그로 기록하고 스마트하게 관리하세요.</p>
+      <a href="#download" id="heroBtn" class="hero-btn">
         Google Play에서 다운로드
       </a>
     </section>
 
     <!-- Features -->
     <section class="features">
-      <h2 class="section-title">주요 기능 안내</h2>
+      <h2 class="section-title" id="featuresTitle">주요 기능 안내</h2>
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">⏱️</div>
-          <h3>실시간 고정밀 타임스탬프</h3>
-          <p>촬영 순간의 날짜, 요일, 시간(초 단위)을 사진과 동영상에 자연스럽고 선명하게 합성합니다.</p>
+          <h3 id="f1Title">실시간 고정밀 타임스탬프</h3>
+          <p id="f1Desc">촬영 순간의 날짜, 요일, 시간(초 단위)을 국가별 표기 형식에 맞춰 사진과 동영상에 자연스럽고 선명하게 합성합니다.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🎥</div>
-          <h3>고화질 사진 및 동영상 녹화</h3>
-          <p>1:1, 4:5, 16:9 등 다양한 종횡비와 함께 노이즈 없는 깨끗한 오디오가 담긴 고화질 비디오를 촬영할 수 있습니다.</p>
+          <h3 id="f2Title">고화질 사진 및 동영상 녹화</h3>
+          <p id="f2Desc">1:1, 4:5, 16:9 등 다양한 종횡비와 함께 노이즈 없는 깨끗한 오디오가 담긴 고화질 비디오를 촬영할 수 있습니다.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">📍</div>
-          <h3>GPS 위치 스탬프 연동</h3>
-          <p>현재 위치 정보를 실시간으로 감지하여 사진과 비디오에 감성적인 위치 배지로 함께 기록할 수 있습니다.</p>
+          <h3 id="f3Title">GPS 위치 스탬프 연동</h3>
+          <p id="f3Desc">현재 위치 정보를 실시간으로 감지하여 사진과 비디오에 감성적인 위치 배지로 함께 기록할 수 있습니다.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">📅</div>
-          <h3>캘린더 기반 앨범 관리</h3>
-          <p>날짜별, 앨범별로 기록을 깔끔하게 정리하여 언제든 과거의 소중한 순간들을 한눈에 모아볼 수 있습니다.</p>
+          <h3 id="f4Title">캘린더 기반 앨범 관리</h3>
+          <p id="f4Desc">날짜별, 앨범별로 기록을 깔끔하게 정리하여 언제든 과거의 소중한 순간들을 한눈에 모아볼 수 있습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Global Language & Stamp Font Status Section -->
+    <section class="lang-status-section">
+      <div class="lang-status-header">
+        <div>
+          <h2 id="lsTitle">🌏 지원 국가 및 스탬프 폰트 준비 현황</h2>
+          <p id="lsDesc">LOG는 46종 모든 스탬프의 감성·손글씨 폰트가 100% 완벽히 지원되는 언어부터 정식 출시하며, 추가 폰트 작업 현황을 투명하게 공개합니다.</p>
+        </div>
+        <a href="languages.html" class="lang-status-btn" id="lsBtn">지원 국가 · 폰트 현황 보기 →</a>
+      </div>
+      <div class="lang-pills-row">
+        <div class="lang-pill-box ready">
+          <div class="lang-pill-title" id="lsReadyLabel">✅ 현재 100% 완벽 지원 (즉시 출시 · 46종 폰트 완비)</div>
+          <div class="pill-tags">
+            <span class="pill-tag active">🇰🇷 한국어 (Korean)</span>
+            <span class="pill-tag active">🇺🇸 English (Global Default)</span>
+          </div>
+        </div>
+        <div class="lang-pill-box pending">
+          <div class="lang-pill-title" id="lsPendingLabel">⏳ 번역 완료 · 스탬프 전용 폰트 추가 대기</div>
+          <div class="pill-tags">
+            <span class="pill-tag">🇪🇸 Español (악센트 손글씨 대기)</span>
+            <span class="pill-tag">🇩🇪 Deutsch (움라우트 손글씨 대기)</span>
+            <span class="pill-tag">🇫🇷 Français (악센트 손글씨 대기)</span>
+            <span class="pill-tag">🇯🇵 日本語 (일본어 전용 폰트 대기)</span>
+            <span class="pill-tag">🇨🇳 简体中文 (간체 전용 폰트 대기)</span>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Developer & Business Info (Google Play Console 심사용 공식 정보) -->
     <section class="company-info">
-      <h2>서비스 및 개발자 정보</h2>
+      <h2 id="infoSectionTitle">서비스 및 개발자 정보</h2>
       <div class="info-grid">
         <div class="info-item">
-          <span class="info-label">서비스명</span>
-          <span class="info-value">LOG (로그 - 타임스탬프 카메라)</span>
+          <span class="info-label" id="infoServiceLabel">서비스명</span>
+          <span class="info-value" id="infoServiceValue">LOG (로그 - 타임스탬프 카메라)</span>
         </div>
         <div class="info-item">
-          <span class="info-label">개발자 / 운영자</span>
+          <span class="info-label" id="infoDevLabel">개발자 / 운영자</span>
           <span class="info-value">bebong</span>
         </div>
         <div class="info-item">
-          <span class="info-label">대표 문의 이메일</span>
+          <span class="info-label" id="infoEmailLabel">대표 문의 이메일</span>
           <span class="info-value"><a href="mailto:kmh96503981@gmail.com">kmh96503981@gmail.com</a></span>
         </div>
         <div class="info-item">
-          <span class="info-label">공식 웹사이트</span>
+          <span class="info-label" id="infoWebLabel">공식 웹사이트</span>
           <span class="info-value"><a href="https://kbh3983.github.io/log/">https://kbh3983.github.io/log/</a></span>
         </div>
         <div class="info-item">
-          <span class="info-label">카테고리</span>
-          <span class="info-value">사진 / 유틸리티</span>
+          <span class="info-label" id="infoCatLabel">카테고리</span>
+          <span class="info-value" id="infoCatValue">사진 / 유틸리티</span>
         </div>
       </div>
     </section>
@@ -359,12 +589,340 @@
     <footer>
       <p>&copy; 2026 LOG. All rights reserved.</p>
       <div style="margin-top: 12px;">
-        <a href="privacy.html">개인정보처리방침</a>
+        <a href="languages.html" id="footerLangStatus">지원 국가 및 폰트 현황</a>
         <span>·</span>
-        <a href="mailto:kmh96503981@gmail.com">문의하기</a>
+        <a href="privacy.html" id="footerPrivacy">개인정보처리방침</a>
+        <span>·</span>
+        <a href="mailto:kmh96503981@gmail.com" id="footerContact">문의하기</a>
       </div>
     </footer>
   </div>
+
+  <script>
+    const I18N = {
+      ko: {
+        pageTitle: "LOG (로그) - 타임스탬프 카메라",
+        headerSubtitle: "타임스탬프 카메라",
+        heroTag: "✨ 순간을 선명하게 기록하는 타임스탬프 카메라",
+        heroTitle: "당신의 일상을 가장 감성적으로<br><span>기록하는 순간, LOG</span>",
+        heroDesc: "운동, 식단, 공부 인증부터 일상의 모든 순간까지 실시간 타임스탬프와 위치 태그로 기록하고 스마트하게 관리하세요.",
+        heroBtn: "Google Play에서 다운로드",
+        comingSoonAlert: "Google Play 스토어 출시 준비 중입니다.",
+        featuresTitle: "주요 기능 안내",
+        f1Title: "실시간 고정밀 타임스탬프",
+        f1Desc: "촬영 순간의 날짜, 요일, 시간(초 단위)을 국가별 표기 형식에 맞춰 사진과 동영상에 자연스럽고 선명하게 합성합니다.",
+        f2Title: "고화질 사진 및 동영상 녹화",
+        f2Desc: "1:1, 4:5, 16:9 등 다양한 종횡비와 함께 노이즈 없는 깨끗한 오디오가 담긴 고화질 비디오를 촬영할 수 있습니다.",
+        f3Title: "GPS 위치 스탬프 연동",
+        f3Desc: "현재 위치 정보를 실시간으로 감지하여 사진과 비디오에 감성적인 위치 배지로 함께 기록할 수 있습니다.",
+        f4Title: "캘린더 기반 앨범 관리",
+        f4Desc: "날짜별, 앨범별로 기록을 깔끔하게 정리하여 언제든 과거의 소중한 순간들을 한눈에 모아볼 수 있습니다.",
+        infoSectionTitle: "서비스 및 개발자 정보",
+        infoServiceLabel: "서비스명",
+        infoServiceValue: "LOG (로그 - 타임스탬프 카메라)",
+        infoDevLabel: "개발자 / 운영자",
+        infoEmailLabel: "대표 문의 이메일",
+        infoWebLabel: "공식 웹사이트",
+        infoCatLabel: "카테고리",
+        infoCatValue: "사진 / 유틸리티",
+        headerLangStatusBtn: "🌏 지원 국가 · 폰트 현황",
+        lsTitle: "🌏 지원 국가 및 스탬프 폰트 준비 현황",
+        lsDesc: "LOG는 46종 모든 스탬프의 감성·손글씨 폰트가 100% 완벽히 지원되는 언어부터 정식 출시하며, 추가 폰트 작업 현황을 투명하게 공개합니다.",
+        lsBtn: "지원 국가 · 폰트 현황 보기 →",
+        lsReadyLabel: "✅ 현재 100% 완벽 지원 (즉시 출시 · 46종 폰트 완비)",
+        lsPendingLabel: "⏳ 번역 완료 · 스탬프 전용 폰트 추가 대기",
+        footerLangStatus: "지원 국가 및 폰트 현황",
+        footerPrivacy: "개인정보처리방침",
+        footerContact: "문의하기"
+      },
+      en: {
+        pageTitle: "LOG - Timestamp Camera",
+        headerSubtitle: "Timestamp Camera",
+        heroTag: "✨ Capture Every Moment Clearly with Timestamps",
+        heroTitle: "The Most Stylish Way to<br><span>Log Your Daily Moments, LOG</span>",
+        heroDesc: "From workouts, meals, and study logs to everyday memories — capture photos and videos with real-time localized timestamps and GPS location tags.",
+        heroBtn: "Get it on Google Play",
+        comingSoonAlert: "Coming soon to Google Play Store.",
+        featuresTitle: "Key Features",
+        f1Title: "Real-Time Precision Timestamps",
+        f1Desc: "Automatically formats date, weekday, and time (down to the second) for your region and blends them crisply onto photos and videos.",
+        f2Title: "HD Photo & Video Recording",
+        f2Desc: "Shoot in 1:1, 4:5, or 16:9 aspect ratios with crystal-clear audio and zero pop noise.",
+        f3Title: "GPS Location Tagging",
+        f3Desc: "Detects your current address in real time and stamps it as a clean location badge on your photos and videos.",
+        f4Title: "Calendar & Folder Album",
+        f4Desc: "Organize your records by date and custom folders so you can revisit every meaningful moment at a glance.",
+        infoSectionTitle: "Service & Developer Information",
+        infoServiceLabel: "Service Name",
+        infoServiceValue: "LOG (Timestamp Camera)",
+        infoDevLabel: "Developer / Operator",
+        infoEmailLabel: "Contact Email",
+        infoWebLabel: "Official Website",
+        infoCatLabel: "Category",
+        infoCatValue: "Photography / Utilities",
+        headerLangStatusBtn: "🌏 Supported Regions & Fonts",
+        lsTitle: "🌏 Supported Languages & Stamp Font Readiness",
+        lsDesc: "LOG rolls out languages with 100% native glyph support across all 46 handcrafted stamp fonts first, and tracks upcoming font packs transparently.",
+        lsBtn: "View Font & Region Status →",
+        lsReadyLabel: "✅ 100% Supported Now (Live · All 46 Fonts Complete)",
+        lsPendingLabel: "⏳ Translation Complete · Dedicated Stamp Fonts Pending",
+        footerLangStatus: "Supported Languages & Fonts",
+        footerPrivacy: "Privacy Policy",
+        footerContact: "Contact Us"
+      },
+      zh: {
+        pageTitle: "LOG - 时间戳相机",
+        headerSubtitle: "时间戳相机",
+        heroTag: "✨ 清晰记录每一刻的时间戳相机",
+        heroTitle: "用最具质感的方式<br><span>记录你的日常瞬间，LOG</span>",
+        heroDesc: "从健身打卡、饮食记录、学习认证到日常点滴，使用实时本地化时间戳与GPS位置标签拍摄并智能管理。",
+        heroBtn: "在 Google Play 下载",
+        comingSoonAlert: "Google Play 商店即将上线，敬请期待。",
+        featuresTitle: "核心功能",
+        f1Title: "实时高精度时间戳",
+        f1Desc: "按各国日期与时间格式自动排版年月日、星期与精确到秒的时间，自然清晰地合成在照片与视频中。",
+        f2Title: "高清照片与视频录制",
+        f2Desc: "支持 1:1、4:5、16:9 等多种画幅比例，录制画质清晰、无杂音的高品质视频。",
+        f3Title: "GPS 位置标签联动",
+        f3Desc: "实时获取当前地理位置，在照片与视频中添加精致的位置徽章。",
+        f4Title: "日历与文件夹相册管理",
+        f4Desc: "按日期与自定义文件夹井井有条地整理记录，随时回顾每一个珍贵瞬间。",
+        infoSectionTitle: "服务与开发者信息",
+        infoServiceLabel: "服务名称",
+        infoServiceValue: "LOG (时间戳相机)",
+        infoDevLabel: "开发者 / 运营方",
+        infoEmailLabel: "联系邮箱",
+        infoWebLabel: "官方网站",
+        infoCatLabel: "应用类别",
+        infoCatValue: "摄影 / 工具",
+        headerLangStatusBtn: "🌏 支持国家与字体状态",
+        lsTitle: "🌏 支持国家及印章字体准备现状",
+        lsDesc: "LOG 优先开放内置 46 款手写与装饰印章字体 100% 完美支持的语种，并公开各语种专用字体的准备进度。",
+        lsBtn: "查看支持国家与字体详情 →",
+        lsReadyLabel: "✅ 当前 100% 完美支持（已上线 · 46 款字体完备）",
+        lsPendingLabel: "⏳ 翻译已完成 · 待补充专用印章字体",
+        footerLangStatus: "支持国家与字体状态",
+        footerPrivacy: "隐私政策",
+        footerContact: "联系我们"
+      },
+      ja: {
+        pageTitle: "LOG - タイムスタンプカメラ",
+        headerSubtitle: "タイムスタンプカメラ",
+        heroTag: "✨ 瞬間を鮮明に記録するタイムスタンプカメラ",
+        heroTitle: "あなたの日常を最もおしゃれに<br><span>記録する瞬間、LOG</span>",
+        heroDesc: "ワークアウト、食事、勉強の記録から日常のあらゆる瞬間まで、リアルタイムのタイムスタンプと位置タグで記録しスマートに管理しましょう。",
+        heroBtn: "Google Play で手に入れよう",
+        comingSoonAlert: "Google Play ストアでのリリースを準備中です。",
+        featuresTitle: "主な機能",
+        f1Title: "リアルタイム高精度タイムスタンプ",
+        f1Desc: "撮影瞬間の日付・曜日・時間（秒単位）を各国の表記形式に合わせて写真や動画に美しく合成します。",
+        f2Title: "高画質な写真＆動画撮影",
+        f2Desc: "1:1、4:5、16:9など多彩なアスペクト比に対応し、ノイズのないクリアな音声で高画質動画を撮影できます。",
+        f3Title: "GPS位置スタンプ連動",
+        f3Desc: "現在地情報をリアルタイムで検出し、写真や動画におしゃれな位置バッジとして一緒に記録できます。",
+        f4Title: "カレンダー型アルバム管理",
+        f4Desc: "日付別・フォルダ別に記録をすっきり整理し、大切な瞬間をいつでも一目で振り返ることができます。",
+        infoSectionTitle: "サービスおよび開発者情報",
+        infoServiceLabel: "サービス名",
+        infoServiceValue: "LOG (タイムスタンプカメラ)",
+        infoDevLabel: "開発者 / 運営者",
+        infoEmailLabel: "お問い合わせメール",
+        infoWebLabel: "公式ウェブサイト",
+        infoCatLabel: "カテゴリ",
+        infoCatValue: "写真 / ユーティリティ",
+        headerLangStatusBtn: "🌏 対応国・フォント状況",
+        lsTitle: "🌏 対応言語およびスタンプフォント準備状況",
+        lsDesc: "LOGは全46種のデザイン・手書きスタンプフォントが100%完全対応している言語から順次リリースし、フォント追加状況を公開しています。",
+        lsBtn: "対応国・フォント詳細を見る →",
+        lsReadyLabel: "✅ 現在 100% 完全対応（リリース済 · 全46種フォント完備）",
+        lsPendingLabel: "⏳ 翻訳完了 · スタンプ専用フォント追加待ち",
+        footerLangStatus: "対応国・フォント状況",
+        footerPrivacy: "プライバシーポリシー",
+        footerContact: "お問い合わせ"
+      },
+      es: {
+        pageTitle: "LOG - Cámara con Marca de Tiempo",
+        headerSubtitle: "Cámara con Marca de Tiempo",
+        heroTag: "✨ Captura cada momento con marcas de tiempo precisas",
+        heroTitle: "La forma más elegante de<br><span>registrar tu día a día, LOG</span>",
+        heroDesc: "Desde entrenamientos, comidas y estudio hasta tus momentos diarios: graba fotos y videos con fecha, hora localizada en tiempo real y etiquetas GPS.",
+        heroBtn: "Descargar en Google Play",
+        comingSoonAlert: "Próximamente disponible en Google Play Store.",
+        featuresTitle: "Funciones Principales",
+        f1Title: "Marca de Tiempo en Tiempo Real",
+        f1Desc: "Adapta automáticamente el orden de fecha, día y hora (con segundos) según tu idioma e intégralo con nitidez en fotos y videos.",
+        f2Title: "Fotos y Videos en Alta Definición",
+        f2Desc: "Graba en formatos 1:1, 4:5 o 16:9 con audio limpio y sin ruidos al iniciar o finalizar.",
+        f3Title: "Etiqueta de Ubicación GPS",
+        f3Desc: "Detecta tu ubicación actual en tiempo real y añade una insignia de lugar elegante en tus capturas.",
+        f4Title: "Álbum con Calendario y Carpetas",
+        f4Desc: "Organiza tus recuerdos por fecha y carpetas personalizadas para revivir cada momento de un vistazo.",
+        infoSectionTitle: "Información del Servicio y Desarrollador",
+        infoServiceLabel: "Nombre del Servicio",
+        infoServiceValue: "LOG (Cámara con Marca de Tiempo)",
+        infoDevLabel: "Desarrollador / Operador",
+        infoEmailLabel: "Correo de Contacto",
+        infoWebLabel: "Sitio Web Oficial",
+        infoCatLabel: "Categoría",
+        infoCatValue: "Fotografía / Utilidades",
+        headerLangStatusBtn: "🌏 Idiomas y Fuentes",
+        lsTitle: "🌏 Idiomas Compatibles y Estado de Fuentes",
+        lsDesc: "LOG lanza primero los idiomas con soporte nativo al 100 % en las 46 fuentes de sellos y publica el estado de nuevas fuentes.",
+        lsBtn: "Ver Estado de Idiomas y Fuentes →",
+        lsReadyLabel: "✅ 100 % Compatible Ahora (Activo · 46 Fuentes Completas)",
+        lsPendingLabel: "⏳ Traducción Completa · Fuentes de Sellos en Preparación",
+        footerLangStatus: "Idiomas y Fuentes",
+        footerPrivacy: "Política de Privacidad",
+        footerContact: "Contacto"
+      },
+      de: {
+        pageTitle: "LOG - Zeitstempel-Kamera",
+        headerSubtitle: "Zeitstempel-Kamera",
+        heroTag: "✨ Jeden Moment präzise mit Zeitstempel festhalten",
+        heroTitle: "Der stilvollste Weg,<br><span>Ihren Alltag festzuhalten – LOG</span>",
+        heroDesc: "Ob Workout, Ernährung, Lernfortschritt oder Alltagsmomente: Nehmen Sie Fotos und Videos mit lokalisierten Echtzeit-Zeitstempeln und GPS-Standort-Tags auf.",
+        heroBtn: "Jetzt bei Google Play",
+        comingSoonAlert: "Demnächst im Google Play Store verfügbar.",
+        featuresTitle: "Hauptfunktionen",
+        f1Title: "Präziser Echtzeit-Zeitstempel",
+        f1Desc: "Passt Datum, Wochentag und Uhrzeit (sekundengenau) automatisch an Ihr regionales Format an und bettet sie gestochen scharf in Fotos und Videos ein.",
+        f2Title: "HD-Foto- & Videoaufnahme",
+        f2Desc: "Nehmen Sie im Format 1:1, 4:5 oder 16:9 mit kristallklarem Audio ohne Knackgeräusche auf.",
+        f3Title: "GPS-Standortstempel",
+        f3Desc: "Erkennt Ihren aktuellen Standort in Echtzeit und fügt Fotos sowie Videos ein dezentes Standort-Badge hinzu.",
+        f4Title: "Kalender- & Ordner-Album",
+        f4Desc: "Sortieren Sie Ihre Aufnahmen übersichtlich nach Datum und eigenen Ordnern, um besondere Momente jederzeit wiederzufinden.",
+        infoSectionTitle: "Service- & Entwicklerinformationen",
+        infoServiceLabel: "Dienstname",
+        infoServiceValue: "LOG (Zeitstempel-Kamera)",
+        infoDevLabel: "Entwickler / Betreiber",
+        infoEmailLabel: "Kontakt-E-Mail",
+        infoWebLabel: "Offizielle Website",
+        infoCatLabel: "Kategorie",
+        infoCatValue: "Fotografie / Dienstprogramme",
+        headerLangStatusBtn: "🌏 Sprachen & Fonts",
+        lsTitle: "🌏 Unterstützte Regionen & Schriftarten-Status",
+        lsDesc: "LOG veröffentlicht zuerst Sprachen mit 100 % Unterstützung aller 46 Stempel-Schriftarten.",
+        lsBtn: "Font- & Sprachstatus ansehen →",
+        lsReadyLabel: "✅ Zu 100 % unterstützt (Aktiv · Alle 46 Fonts komplett)",
+        lsPendingLabel: "⏳ Übersetzung fertig · Stempel-Fonts in Vorbereitung",
+        footerLangStatus: "Sprachen & Schriftarten",
+        footerPrivacy: "Datenschutzerklärung",
+        footerContact: "Kontakt"
+      },
+      fr: {
+        pageTitle: "LOG - Caméra Horodateur",
+        headerSubtitle: "Caméra Horodateur",
+        heroTag: "✨ Capturez chaque instant avec un horodatage précis",
+        heroTitle: "La façon la plus élégante de<br><span>documenter votre quotidien, LOG</span>",
+        heroDesc: "Du sport aux repas, des révisions aux moments du quotidien : prenez des photos et vidéos avec horodatage localisé en temps réel et badge GPS.",
+        heroBtn: "Disponible sur Google Play",
+        comingSoonAlert: "Bientôt disponible sur le Google Play Store.",
+        featuresTitle: "Fonctionnalités Clés",
+        f1Title: "Horodatage Haute Précision en Temps Réel",
+        f1Desc: "Formate automatiquement la date, le jour et l'heure (à la seconde près) selon votre langue et les intègre nettement sur vos photos et vidéos.",
+        f2Title: "Photos & Vidéos Haute Définition",
+        f2Desc: "Filmez aux formats 1:1, 4:5 ou 16:9 avec un son clair et sans bruit parasite.",
+        f3Title: "Badge de Localisation GPS",
+        f3Desc: "Détecte votre position actuelle en temps réel pour l'afficher élégamment sur vos photos et vidéos.",
+        f4Title: "Album Calendrier & Dossiers",
+        f4Desc: "Classez vos souvenirs par date et par dossier personnalisé pour retrouver chaque instant en un coup d'œil.",
+        infoSectionTitle: "Informations sur le Service et le Développeur",
+        infoServiceLabel: "Nom du Service",
+        infoServiceValue: "LOG (Caméra Horodateur)",
+        infoDevLabel: "Développeur / Opérateur",
+        infoEmailLabel: "E-mail de Contact",
+        infoWebLabel: "Site Officiel",
+        infoCatLabel: "Catégorie",
+        infoCatValue: "Photographie / Utilitaires",
+        headerLangStatusBtn: "🌏 Langues et Polices",
+        lsTitle: "🌏 Langues Prises en Charge et État des Polices",
+        lsDesc: "LOG déploie en priorité les langues prises en charge à 100 % par nos 46 polices de tampons décoratives.",
+        lsBtn: "Voir l'état des langues et polices →",
+        lsReadyLabel: "✅ 100 % Pris en Charge (Actif · 46 Polices Complètes)",
+        lsPendingLabel: "⏳ Traduction Terminée · Polices Tampons en Attente",
+        footerLangStatus: "Langues et Polices",
+        footerPrivacy: "Politique de Confidentialité",
+        footerContact: "Contact"
+      }
+    };
+
+    function detectInitialLang() {
+      const params = new URLSearchParams(window.location.search);
+      const urlLang = params.get('lang');
+      if (urlLang && I18N[urlLang]) return urlLang;
+      const saved = localStorage.getItem('log_site_lang');
+      if (saved && I18N[saved]) return saved;
+      const nav = (navigator.language || navigator.userLanguage || 'ko').toLowerCase();
+      for (const code of Object.keys(I18N)) {
+        if (nav.startsWith(code)) return code;
+      }
+      return 'en';
+    }
+
+    let currentLang = detectInitialLang();
+
+    function applyLang(lang) {
+      if (!I18N[lang]) lang = 'en';
+      currentLang = lang;
+      localStorage.setItem('log_site_lang', lang);
+      document.documentElement.lang = lang;
+
+      const t = I18N[lang];
+      document.title = t.pageTitle;
+      document.getElementById('headerSubtitle').textContent = t.headerSubtitle;
+      document.getElementById('heroTag').textContent = t.heroTag;
+      document.getElementById('heroTitle').innerHTML = t.heroTitle;
+      document.getElementById('heroDesc').textContent = t.heroDesc;
+      document.getElementById('heroBtn').textContent = t.heroBtn;
+      document.getElementById('featuresTitle').textContent = t.featuresTitle;
+      document.getElementById('f1Title').textContent = t.f1Title;
+      document.getElementById('f1Desc').textContent = t.f1Desc;
+      document.getElementById('f2Title').textContent = t.f2Title;
+      document.getElementById('f2Desc').textContent = t.f2Desc;
+      document.getElementById('f3Title').textContent = t.f3Title;
+      document.getElementById('f3Desc').textContent = t.f3Desc;
+      document.getElementById('f4Title').textContent = t.f4Title;
+      document.getElementById('f4Desc').textContent = t.f4Desc;
+      document.getElementById('infoSectionTitle').textContent = t.infoSectionTitle;
+      document.getElementById('infoServiceLabel').textContent = t.infoServiceLabel;
+      document.getElementById('infoServiceValue').textContent = t.infoServiceValue;
+      document.getElementById('infoDevLabel').textContent = t.infoDevLabel;
+      document.getElementById('infoEmailLabel').textContent = t.infoEmailLabel;
+      document.getElementById('infoWebLabel').textContent = t.infoWebLabel;
+      document.getElementById('infoCatLabel').textContent = t.infoCatLabel;
+      document.getElementById('infoCatValue').textContent = t.infoCatValue;
+      document.getElementById('headerLangStatusBtn').textContent = t.headerLangStatusBtn;
+      document.getElementById('headerLangStatusBtn').href = 'languages.html?lang=' + lang;
+      document.getElementById('lsTitle').textContent = t.lsTitle;
+      document.getElementById('lsDesc').textContent = t.lsDesc;
+      document.getElementById('lsBtn').textContent = t.lsBtn;
+      document.getElementById('lsBtn').href = 'languages.html?lang=' + lang;
+      document.getElementById('lsReadyLabel').textContent = t.lsReadyLabel;
+      document.getElementById('lsPendingLabel').textContent = t.lsPendingLabel;
+      document.getElementById('footerLangStatus').textContent = t.footerLangStatus;
+      document.getElementById('footerLangStatus').href = 'languages.html?lang=' + lang;
+      document.getElementById('footerPrivacy').textContent = t.footerPrivacy;
+      document.getElementById('footerPrivacy').href = 'privacy.html?lang=' + lang;
+      document.getElementById('footerContact').textContent = t.footerContact;
+
+      const select = document.getElementById('langSelect');
+      if (select.value !== lang) {
+        select.value = lang;
+      }
+    }
+
+    document.getElementById('langSelect').addEventListener('change', (e) => {
+      applyLang(e.target.value);
+    });
+
+    document.getElementById('heroBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      alert(I18N[currentLang].comingSoonAlert);
+    });
+
+    applyLang(currentLang);
+  </script>
 
 </body>
 

@@ -15,6 +15,7 @@ import 'widgets/bottom_nav_bar.dart';
 import 'widgets/ad_banner_widget.dart';
 import 'ux_config.dart';
 import 'services/app_settings_service.dart';
+import 'services/app_localizations.dart';
 
 class VideoReviewScreen extends StatefulWidget {
   final File videoFile;
@@ -167,7 +168,7 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
       debugPrint('Video save error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('동영상 저장 중 오류가 발생했습니다: $e')),
+          SnackBar(content: Text(AppStrings.videoSaveError(e))),
         );
       }
     } finally {
@@ -456,7 +457,7 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
                 ),
                 child: Center(
                   child: Text(
-                    album,
+                    AppStrings.displayAlbumName(album),
                     style: TextStyle(
                       color: isSelected
                           ? ReviewUX.albumButtonSelectedText

@@ -10,6 +10,7 @@ import 'sample_stamp_compat.dart' as sc;
 import 'sample_stamp_data.dart';
 import 'sample_stamp_entities.dart';
 import 'stamp_text_store.dart';
+import '../services/app_localizations.dart';
 
 /// 샘플 앱의 기준 화면 가로 폭 (baseDeviceWidth). 모든 좌표는 이 폭 기준 디자인 단위입니다.
 const double kSampleBaseWidth = 390.0;
@@ -284,8 +285,13 @@ class SampleStampLibrary {
     // CanvasFactory.build 와 동일한 순서로 수집 후 z 로 정렬
     for (final t in SampleStampRepository.timestampBox.values) {
       if (t.groupId != groupId || t.groupScale != scale) continue;
-      final text = sc.RegexUtil.replace(
-          DateFormat(t.regex, 'en_US').format(now), t.regexReplaceType);
+      final text = TimestampLocaleFormatter.formatSampleStampEntity(
+        regex: t.regex,
+        i18nTypes: t.regexReplaceType,
+        dt: now,
+        entityId: t.id,
+        groupId: t.groupId,
+      );
       add(t.z, _TextElement.timestamp(
         id: StampTextStore.canonicalKey(t.id),
         text: text,
@@ -875,8 +881,11 @@ class _TextElement extends _SampleElement {
         style: TextStyle(
           color: Color(color),
           fontSize: fontSize,
-          fontFamily: _fontFamily(family),
-          fontFamilyFallback: const ['stamp_nanum_myeongjo', 'stamp_nanum_square'],
+          fontFamily: AppLocalizations.resolveFontFamily(
+            _fontFamily(family),
+            text,
+          ),
+          fontFamilyFallback: AppLocalizations.fontFallbackChain,
           height: height,
           fontWeight: _fontWeight(weight),
         ),
@@ -1277,8 +1286,11 @@ class _ArcTextElement extends _SampleElement {
       angles.clear();
       final style = TextStyle(
         height: 1.0,
-        fontFamily: _fontFamily(family),
-        fontFamilyFallback: const ['stamp_nanum_myeongjo', 'stamp_nanum_square'],
+        fontFamily: AppLocalizations.resolveFontFamily(
+          _fontFamily(family),
+          text,
+        ),
+        fontFamilyFallback: AppLocalizations.fontFallbackChain,
         color: Color(color),
         fontSize: size,
       );
@@ -1378,7 +1390,11 @@ class _DayRollerElement extends _SampleElement {
           style: TextStyle(
             fontWeight: _fontWeight(weight),
             height: 1.0,
-            fontFamily: _fontFamily(family),
+            fontFamily: AppLocalizations.resolveFontFamily(
+              _fontFamily(family),
+              fmt.format(days[i]),
+            ),
+            fontFamilyFallback: AppLocalizations.fontFallbackChain,
             color: i == 2 ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
             fontSize: fontSize,
           ),
@@ -1581,23 +1597,32 @@ class SampleStampThumbnail extends StatefulWidget {
 }
 
 class _SampleStampThumbnailState extends State<SampleStampThumbnail> {
-  static final DateTime defaultThumbnailTime = DateTime(2026, 11, 6, 12, 34);
+  late final DateTime _entryMinuteTime = _toMinute(DateTime.now());
+
+  static DateTime _toMinute(DateTime dt) =>
+      DateTime(dt.year, dt.month, dt.day, dt.hour, dt.minute);
 
   SampleStampScene? _cachedScene;
   int? _cachedScaleIndex;
   DateTime? _cachedTime;
+  String? _cachedLang;
 
   @override
   Widget build(BuildContext context) {
     final count = SampleStampLibrary.scaleCount(widget.groupId);
     final scaleIndex = count >= 3 ? 1 : 0;
-    final targetTime = widget.time ?? defaultThumbnailTime;
+    final targetTime = widget.time != null
+        ? _toMinute(widget.time!)
+        : _entryMinuteTime;
+    final currentLang = AppLocalizations.languageCode;
 
     if (_cachedScene == null ||
         _cachedScaleIndex != scaleIndex ||
-        _cachedTime != targetTime) {
+        _cachedTime != targetTime ||
+        _cachedLang != currentLang) {
       _cachedScaleIndex = scaleIndex;
       _cachedTime = targetTime;
+      _cachedLang = currentLang;
       _cachedScene = SampleStampLibrary.buildScene(
         widget.groupId,
         scaleIndex: scaleIndex,

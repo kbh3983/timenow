@@ -18,6 +18,7 @@ import 'stamp_management_screen.dart';
 import 'settings_screen.dart';
 import 'package:flutter/services.dart';
 import 'services/app_settings_service.dart';
+import 'services/app_localizations.dart';
 
 class PhotoReviewScreen extends StatefulWidget {
   final File imageFile;
@@ -186,7 +187,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('저장 중 오류가 발생했습니다: $e')));
+        ).showSnackBar(SnackBar(content: Text(AppStrings.saveError(e))));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -581,7 +582,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    album,
+                    AppStrings.displayAlbumName(album),
                     style: TextStyle(
                       color: isSelected
                           ? ReviewUX.albumButtonSelectedText
@@ -646,6 +647,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                     design: design,
                     isSelected: _selectedDesign == design,
                     onTap: () => _onDesignTapped(design),
+                    time: TimestampThumbnail.currentMinuteTime(widget.captureTime),
                   ),
                 );
               }
@@ -697,7 +699,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '스탬프\n관리',
+                              AppStrings.stampManageTwoLine,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: isLight ? const Color(0xFF1E2026) : Colors.white,

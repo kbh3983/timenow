@@ -8,13 +8,16 @@ import 'package:path_provider/path_provider.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 
-import 'package:intl/intl.dart' hide TextDirection;
 import '../stamps/sample_stamp_renderer.dart';
 import '../stamps/stamp_text_store.dart';
 import '../timestamp_overlays.dart';
 import '../timestamp_metadata.dart';
 import '../ux_config.dart';
+import 'app_localizations.dart';
 import 'app_settings_service.dart';
+
+List<String> get _kVideoStampFallbackFonts =>
+    AppLocalizations.fontFallbackChain;
 
 class VideoProcessingService {
   static final VideoProcessingService _instance =
@@ -488,6 +491,7 @@ class VideoProcessingService {
             text: text,
             style: TextStyle(
               fontFamily: CameraUX.fontRubberNippleFactory,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
@@ -511,6 +515,7 @@ class VideoProcessingService {
             text: text,
             style: TextStyle(
               fontFamily: CameraUX.fontNixieOne,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
@@ -528,17 +533,18 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.n2_1: {
-        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-        final weekday = weekdays[currentTime.weekday - 1];
-        final dateStr =
-            '${DateFormat('yyyy년 MM월 dd일').format(currentTime)} ($weekday)';
-        final period = currentTime.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('h:mm').format(currentTime)}';
+        final dateStr = TimestampLocaleFormatter.formatLegacyN2_1Date(currentTime);
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          currentTime,
+          padHour: false,
+          localizePeriod: true,
+        );
         final dateTp = TextPainter(
           text: TextSpan(
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24OnePrettyNight,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.36,
               color: Colors.white,
               height: 1.1,
@@ -555,6 +561,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24OnePrettyNight,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
@@ -586,14 +593,21 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.n2_2: {
-        final dateStr = DateFormat('yyyy년 MM월 dd일').format(currentTime);
-        final period = currentTime.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
+        final dateStr = TimestampLocaleFormatter.formatWordDate(
+          currentTime,
+          padMonthDay: true,
+        );
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          currentTime,
+          padHour: true,
+          localizePeriod: true,
+        );
         final dateTp = TextPainter(
           text: TextSpan(
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumAmsterdam,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.52,
               color: Colors.white,
               height: 1.1,
@@ -610,6 +624,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumAmsterdam,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
@@ -641,12 +656,19 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.n3_1: {
-        final dateStr = DateFormat('dd MMM, yyyy', 'en_US').format(currentTime);
-        final dayStr = DateFormat('EEEE', 'en_US').format(currentTime);
-        final period = currentTime.hour < 12 ? 'AM' : 'PM';
-        final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
+        final dateStr = TimestampLocaleFormatter.formatWordDate(
+          currentTime,
+          padMonthDay: true,
+        );
+        final dayStr = TimestampLocaleFormatter.fullWeekday(currentTime);
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          currentTime,
+          padHour: true,
+          localizePeriod: false,
+        );
         final lineStyle = TextStyle(
           fontFamily: CameraUX.fontNanumBarunpen,
+          fontFamilyFallback: _kVideoStampFallbackFonts,
           shadows: shadows,
           color: Colors.white,
           fontSize: effectiveFontSize,
@@ -697,24 +719,35 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.n3_2: {
-        final yearStr = DateFormat('yyyy').format(currentTime);
-        final dateStr = DateFormat('MMMM dd', 'en_US').format(currentTime);
-        final period = currentTime.hour < 12 ? 'AM' : 'PM';
-        final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
+        final isYmd = TimestampLocaleFormatter.dateOrder == DateOrderType.ymd;
+        final yearStr = '${currentTime.year}';
+        final dateStr = TimestampLocaleFormatter.formatWordMonthDay(
+          currentTime,
+          fullMonth: true,
+          padDay: true,
+        );
+        final line1 = isYmd ? yearStr : dateStr;
+        final line2 = isYmd ? dateStr : yearStr;
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          currentTime,
+          padHour: true,
+          localizePeriod: false,
+        );
         final lineStyle = TextStyle(
           fontFamily: CameraUX.fontCafe24Simplehae,
+          fontFamilyFallback: _kVideoStampFallbackFonts,
           shadows: shadows,
           color: Colors.white,
           fontSize: effectiveFontSize,
           height: 1.0,
         );
         final line1Tp = TextPainter(
-          text: TextSpan(text: yearStr, style: lineStyle),
+          text: TextSpan(text: line1, style: lineStyle),
           maxLines: 1,
           textDirection: TextDirection.ltr,
         )..layout();
         final line2Tp = TextPainter(
-          text: TextSpan(text: dateStr, style: lineStyle),
+          text: TextSpan(text: line2, style: lineStyle),
           maxLines: 1,
           textDirection: TextDirection.ltr,
         )..layout();
@@ -755,11 +788,7 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.s1_1: {
-        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-        final weekday = weekdays[currentTime.weekday - 1];
-        final period = currentTime.hour < 12 ? '오전' : '오후';
-        final text =
-            '${DateFormat('yyyy.MM.dd').format(currentTime)}.$weekday $period ${DateFormat('hh:mm').format(currentTime)}';
+        final text = TimestampLocaleFormatter.formatLegacyS1_2(currentTime);
         final scale = effectiveFontSize / 24.0;
         final frameW = 280.0 * scale;
         final frameH = 50.0 * scale;
@@ -769,6 +798,7 @@ class VideoProcessingService {
             text: text,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
@@ -807,11 +837,7 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.s1_2: {
-        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-        final weekday = weekdays[currentTime.weekday - 1];
-        final period = currentTime.hour < 12 ? '오전' : '오후';
-        final text =
-            '${DateFormat('yyyy.MM.dd').format(currentTime)}.$weekday $period ${DateFormat('hh:mm').format(currentTime)}';
+        final text = TimestampLocaleFormatter.formatLegacyS1_2(currentTime);
         final scale = effectiveFontSize / 26.0;
         final frameW = 280.0 * scale;
         final frameH = 50.0 * scale;
@@ -821,6 +847,7 @@ class VideoProcessingService {
             text: text,
             style: TextStyle(
               fontFamily: CameraUX.fontCafe24Shiningstar,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize,
               color: Colors.white,
               height: 1.0,
@@ -859,9 +886,12 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.s2_1: {
-        final dateStr = DateFormat('yyyy/MM/dd').format(currentTime);
-        final period = currentTime.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
+        final dateStr = TimestampLocaleFormatter.formatNumericDate(currentTime, sep: '/');
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          currentTime,
+          padHour: true,
+          localizePeriod: true,
+        );
         final scale = effectiveFontSize / 25.0;
         final barW = 100.0 * scale;
         final barH = 2.2 * scale;
@@ -872,6 +902,7 @@ class VideoProcessingService {
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.9,
               color: Colors.white,
               height: 1.0,
@@ -887,6 +918,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.9,
               color: Colors.white,
               height: 1.0,
@@ -930,9 +962,12 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.s2_2: {
-        final period = currentTime.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
-        final dateStr = DateFormat('yyyy MMM dd', 'en_US').format(currentTime);
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          currentTime,
+          padHour: true,
+          localizePeriod: true,
+        );
+        final dateStr = TimestampLocaleFormatter.formatLegacyS2_2Date(currentTime);
         final scale = effectiveFontSize / 25.0;
 
         final timeTp = TextPainter(
@@ -940,6 +975,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.82,
               color: Colors.black87,
               fontWeight: FontWeight.bold,
@@ -957,6 +993,7 @@ class VideoProcessingService {
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontNanumBarunpen,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.85,
               color: Colors.white,
               height: 1.0,
@@ -999,19 +1036,26 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.s3_1: {
-        final yearStr = DateFormat('yyyy').format(currentTime);
-        final dateStr = DateFormat('MMMM dd', 'en_US').format(currentTime);
-        final period = currentTime.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
+        final isYmd = TimestampLocaleFormatter.dateOrder == DateOrderType.ymd;
+        final yearStr = '${currentTime.year}';
+        final dateStr = TimestampLocaleFormatter.formatLegacyS3_1MonthDay(currentTime);
+        final line1Str = isYmd ? yearStr : dateStr;
+        final line2Str = isYmd ? dateStr : yearStr;
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          currentTime,
+          padHour: true,
+          localizePeriod: true,
+        );
         final scale = effectiveFontSize / 32.0;
         final dividerW = 140.0 * scale;
         final dividerH = 20.0 * scale;
 
         final yearTp = TextPainter(
           text: TextSpan(
-            text: yearStr,
+            text: line1Str,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.85,
               color: Colors.white,
               height: 1.0,
@@ -1023,9 +1067,10 @@ class VideoProcessingService {
 
         final dateTp = TextPainter(
           text: TextSpan(
-            text: dateStr,
+            text: line2Str,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.85,
               color: Colors.white,
               height: 1.0,
@@ -1040,6 +1085,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.85,
               color: Colors.white,
               height: 1.0,
@@ -1095,11 +1141,17 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.s3_2: {
-        final dateStr = DateFormat('yy/MM/dd').format(currentTime);
-        final weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-        final weekdayStr = weekdays[currentTime.weekday - 1];
-        final period = currentTime.hour < 12 ? '오전' : '오후';
-        final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
+        final dateStr = TimestampLocaleFormatter.formatNumericDate(
+          currentTime,
+          sep: '/',
+          shortYear: true,
+        );
+        final weekdayStr = TimestampLocaleFormatter.fullWeekday(currentTime);
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          currentTime,
+          padHour: true,
+          localizePeriod: true,
+        );
         final scale = effectiveFontSize / 26.0;
         final bracketW = 100.0 * scale;
         final bracketH = 22.0 * scale;
@@ -1110,6 +1162,7 @@ class VideoProcessingService {
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.75,
               color: Colors.white,
               height: 1.0,
@@ -1124,6 +1177,7 @@ class VideoProcessingService {
             text: weekdayStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 1.15,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -1139,6 +1193,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontTvnFunStory,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.75,
               color: Colors.white,
               height: 1.0,
@@ -1197,11 +1252,14 @@ class VideoProcessingService {
       }
 
       case TimestampDesign.style1: {
-        final dayStr = DateFormat('EEEE', 'en_US').format(currentTime);
-        final monthStr = DateFormat('MM').format(currentTime);
-        final dateStr = DateFormat('dd').format(currentTime);
-        final period = currentTime.hour < 12 ? 'AM' : 'PM';
-        final timeStr = '$period ${DateFormat('hh:mm').format(currentTime)}';
+        final dayStr = TimestampLocaleFormatter.fullWeekday(currentTime);
+        final monthStr = TimestampLocaleFormatter.formatStyle1LeftNumber(currentTime);
+        final dateStr = TimestampLocaleFormatter.formatStyle1RightNumber(currentTime);
+        final timeStr = TimestampLocaleFormatter.format12hTime(
+          currentTime,
+          padHour: true,
+          localizePeriod: false,
+        );
         final scale = effectiveFontSize / 34.0;
         final pillW = 85.0 * scale;
         final pillH = 34.0 * scale;
@@ -1209,7 +1267,7 @@ class VideoProcessingService {
 
         var curvedStyle = TextStyle(
           fontFamily: CameraUX.fontRondal,
-          fontFamilyFallback: const ['stamp_nanum_myeongjo', 'stamp_nanum_square'],
+          fontFamilyFallback: _kVideoStampFallbackFonts,
           fontSize: effectiveFontSize * 0.32,
           color: Colors.white.withValues(alpha: 0.92),
           letterSpacing: 0.8 * scale,
@@ -1258,6 +1316,7 @@ class VideoProcessingService {
             text: monthStr,
             style: TextStyle(
               fontFamily: CameraUX.fontLobster,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.42,
               color: Colors.white,
               shadows: shadows,
@@ -1271,6 +1330,7 @@ class VideoProcessingService {
             text: dayStr,
             style: TextStyle(
               fontFamily: CameraUX.fontRondalBold,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -1287,6 +1347,7 @@ class VideoProcessingService {
             text: dateStr,
             style: TextStyle(
               fontFamily: CameraUX.fontLobster,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.42,
               color: Colors.white,
               shadows: shadows,
@@ -1300,6 +1361,7 @@ class VideoProcessingService {
             text: timeStr,
             style: TextStyle(
               fontFamily: CameraUX.fontRondal,
+              fontFamilyFallback: _kVideoStampFallbackFonts,
               fontSize: effectiveFontSize * 0.34,
               color: Colors.white,
               fontWeight: FontWeight.bold,
@@ -1393,7 +1455,7 @@ class VideoProcessingService {
     // 위치 정보 표시가 켜져 있는 경우 비디오 오버레이 캔버스에도 위치 태그 렌더링 (사진 모드와 100% 동일한 디자인, 크기, 비율)
     if (AppSettingsService().showLocation) {
       final locText = AppSettingsService().locationText.isEmpty
-          ? 'GPS 위치 확인 중'
+          ? AppStrings.gpsCheckingOverlay
           : AppSettingsService().locationText;
 
       final double S = scale ?? (canvasWidth / 390.0);
@@ -1425,7 +1487,11 @@ class VideoProcessingService {
         text: TextSpan(
           text: locText,
           style: TextStyle(
-            fontFamily: 'Pretendard',
+            fontFamily: AppLocalizations.resolveFontFamily(
+              'Pretendard',
+              locText,
+            ),
+            fontFamilyFallback: _kVideoStampFallbackFonts,
             fontSize: 11.0 * S,
             fontWeight: FontWeight.w600,
             height: 1.25,

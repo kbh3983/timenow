@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'app_localizations.dart';
 
 class AdService {
   static final AdService _instance = AdService._internal();
@@ -113,7 +114,7 @@ class AdService {
           onAdFailedToLoad: (error) {
             _rewardedAd = null;
             _isAdLoading = false;
-            onFailed?.call('광고를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+            onFailed?.call(AppStrings.adLoadFailed);
           },
         ),
       );
@@ -151,7 +152,7 @@ class AdService {
         debugPrint('AdService: onAdFailedToShowFullScreenContent: $error');
         ad.dispose();
         loadRewardedAd();
-        onFailed?.call('광고 표시에 실패했습니다: ${error.message}');
+        onFailed?.call(AppStrings.adShowFailed(error.message));
       },
     );
 
