@@ -349,7 +349,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen>
       if (file != null && mounted) {
         Navigator.pop(
           context,
-          GalleryResult(file: file, creationTime: asset.createDateTime),
+          GalleryResult(file: file, creationTime: asset.createDateTime.toLocal()),
         );
       }
     } finally {

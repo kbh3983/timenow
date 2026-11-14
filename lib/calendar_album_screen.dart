@@ -11,7 +11,8 @@ enum CalendarViewMode { calendar, grid }
 
 class CalendarAlbumScreen extends StatefulWidget {
   final String? initialAlbum;
-  const CalendarAlbumScreen({super.key, this.initialAlbum});
+  final DateTime? initialDate;
+  const CalendarAlbumScreen({super.key, this.initialAlbum, this.initialDate});
 
   @override
   State<CalendarAlbumScreen> createState() => _CalendarAlbumScreenState();
@@ -39,6 +40,10 @@ class _CalendarAlbumScreenState extends State<CalendarAlbumScreen> {
     super.initState();
     if (widget.initialAlbum != null) {
       _selectedAlbum = widget.initialAlbum!;
+    }
+    if (widget.initialDate != null) {
+      _focusedDay = widget.initialDate!;
+      _selectedDay = widget.initialDate!;
     }
     _loadData();
   }

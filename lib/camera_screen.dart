@@ -601,11 +601,10 @@ class _CameraScreenState extends State<CameraScreen>
           await _ensurePhotoCameraActive();
           if (result == true) {
             _showSavedSnackbar();
-            _loadAlbums();
           } else if (result is String && result != "전체") {
             setState(() => _currentAlbum = result);
-            _loadAlbums();
           }
+          await _loadAlbums();
         }
       }
     } catch (e) {
@@ -1557,11 +1556,10 @@ class _CameraScreenState extends State<CameraScreen>
           if (mounted) {
             if (result == true) {
               _showSavedSnackbar();
-              _loadAlbums();
             } else if (result is String && result != "전체") {
               setState(() => _currentAlbum = result);
-              _loadAlbums();
             }
+            await _loadAlbums();
           }
         }
         if (mounted) {

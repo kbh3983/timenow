@@ -110,7 +110,7 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
         await tempFile.writeAsBytes(bytes);
 
         // 2. Save to System Gallery
-        await Gal.putImage(tempPath, album: 'Timenow');
+        await Gal.putImage(tempPath, album: 'LOG');
 
         // 3. Save to App Album
         await AlbumService.savePhoto(bytes, _selectedAlbum, originalDate: widget.captureTime);
@@ -119,8 +119,10 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  CalendarAlbumScreen(initialAlbum: _selectedAlbum),
+              builder: (context) => CalendarAlbumScreen(
+                initialAlbum: _selectedAlbum,
+                initialDate: widget.captureTime,
+              ),
             ),
           );
           if (mounted) {
@@ -429,7 +431,10 @@ class _PhotoReviewScreenState extends State<PhotoReviewScreen> {
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => CalendarAlbumScreen(initialAlbum: _selectedAlbum),
+            builder: (context) => CalendarAlbumScreen(
+              initialAlbum: _selectedAlbum,
+              initialDate: widget.captureTime,
+            ),
           ),
         );
         if (mounted && result is String) {

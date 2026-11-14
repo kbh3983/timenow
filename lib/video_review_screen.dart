@@ -134,7 +134,7 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
       }
 
       // 1. 시스템 갤러리에 저장
-      await Gal.putVideo(fileToSave.path, album: 'Timenow');
+      await Gal.putVideo(fileToSave.path, album: 'LOG');
 
       // 2. 앱 앨범에 저장
       await AlbumService.saveVideo(
@@ -153,8 +153,10 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                CalendarAlbumScreen(initialAlbum: _selectedAlbum),
+            builder: (context) => CalendarAlbumScreen(
+              initialAlbum: _selectedAlbum,
+              initialDate: widget.captureTime,
+            ),
           ),
         );
         if (mounted) {
@@ -520,8 +522,10 @@ class _VideoReviewScreenState extends State<VideoReviewScreen>
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                CalendarAlbumScreen(initialAlbum: _selectedAlbum),
+            builder: (context) => CalendarAlbumScreen(
+              initialAlbum: _selectedAlbum,
+              initialDate: widget.captureTime,
+            ),
           ),
         );
         if (mounted && result is String) {
